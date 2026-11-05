@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Welcome to Gobi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.win{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--bg);display:flex;overflow:hidden;border-radius:12px;border:1px solid var(--sep)}
+.dot{width:12px;height:12px;border-radius:50%}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.t2{color:var(--text2)}
+.act{display:flex;align-items:center;gap:14px;width:100%;height:48px;padding:0 12px;border:0;border-radius:8px;background:transparent;color:var(--text);font:inherit;text-align:left;cursor:default}
+.act:hover{background:var(--hover)}
+.act .ic{color:var(--accentT)}
+.act .sub{font-size:12px;color:var(--text2)}
+.act kbd{margin-left:auto;font:12px -apple-system,BlinkMacSystemFont,sans-serif;color:var(--text2)}
+.rp{display:flex;align-items:center;gap:12px;height:56px;padding:0 20px}
+.rp.sel{background:var(--accentBg)}
+.chip{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:9px;font-size:11px;font-weight:600;background:var(--hover);color:var(--text2)}
+</style>
+</helmet>
+<div class="win" style="width: 1100px; height: 680px; {{vars}}">
+
+  <!-- Left: brand + actions -->
+  <div style="width:420px;background:var(--side);border-right:1px solid var(--sep);flex:none;display:flex;flex-direction:column;padding:0 28px 28px">
+    <div style="height:52px;display:flex;align-items:center;margin:0 -28px;padding:0 14px" aria-hidden="true">
+      <div style="display:flex;gap:8px"><div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;padding:28px 0 28px">
+      <div style="width:84px;height:84px;border-radius:19px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font:700 44px/1 -apple-system,BlinkMacSystemFont,sans-serif" aria-hidden="true">G</div>
+      <div style="font-size:26px;font-weight:700;margin-top:16px">Welcome to Gobi</div>
+      <div class="t2" style="margin-top:2px">Version 0.1 &#183; Go 1.26.5 ready</div>
+    </div>
+    <button class="act"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg><span>New Project&#8230;<br><span class="sub">Create a Go module from a template</span></span><kbd>&#8984;&#8679;N</kbd></button>
+    <button class="act"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg><span>Open&#8230;<br><span class="sub">Folder, go.mod or go.work</span></span><kbd>&#8984;O</kbd></button>
+    <button class="act"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><circle cx="5" cy="4" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="11" cy="6" r="1.5"/><path d="M5 5.5v5M11 7.5c0 2.5-6 1.5-6 3"/></svg><span>Clone Repository&#8230;<br><span class="sub">From a Git URL</span></span><kbd>&#8984;&#8679;K</kbd></button>
+    <button class="act"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M8 2v8M4.5 7L8 10.5 11.5 7M3 13h10"/></svg><span>Import Existing Code&#8230;<br><span class="sub">Folder without go.mod: create the module</span></span></button>
+    <div style="flex:1"></div>
+    <div class="t2" style="text-align:center;font-size:12px;border:1px dashed var(--sep);border-radius:10px;padding:14px">Drag a folder here to open it</div>
+  </div>
+
+  <!-- Right: recent projects -->
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+    <div style="height:52px;display:flex;align-items:center;padding:0 20px;gap:10px;border-bottom:1px solid var(--sep);flex:none">
+      <span style="font-weight:600">Recent projects</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px;height:28px;width:200px;padding:0 8px;border:1px solid var(--sep);border-radius:6px;color:var(--text2)"><svg class="ic" style="width:16px;height:16px" aria-hidden="true" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg><span>Search</span></div>
+    </div>
+    <div class="rp sel">
+      <svg class="ic" style="color:var(--accentT)" aria-hidden="true" viewBox="0 0 16 16"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>
+      <div style="flex:1;min-width:0"><div style="font-weight:600">hello</div><div class="t2" style="font-size:12px">~/Work/hello</div></div>
+      <span class="chip">go.mod</span><span class="t2" style="font-size:12px">feat/graceful-shutdown</span>
+    </div>
+    <div class="rp">
+      <svg class="ic" style="color:var(--accentT)" aria-hidden="true" viewBox="0 0 16 16"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>
+      <div style="flex:1;min-width:0"><div style="font-weight:600">device-service</div><div class="t2" style="font-size:12px">~/Work/device-service</div></div>
+      <span class="chip">go.work &#183; 3 modules</span><span class="t2" style="font-size:12px">develop</span>
+    </div>
+    <div class="rp">
+      <svg class="ic" style="color:var(--accentT)" aria-hidden="true" viewBox="0 0 16 16"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>
+      <div style="flex:1;min-width:0"><div style="font-weight:600">go-utils</div><div class="t2" style="font-size:12px">~/Work/go-utils</div></div>
+      <span class="chip">go.mod</span><span class="t2" style="font-size:12px">master</span>
+    </div>
+    <div class="rp">
+      <svg class="ic t2" aria-hidden="true" viewBox="0 0 16 16"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>
+      <div style="flex:1;min-width:0"><div style="font-weight:600">scratch</div><div class="t2" style="font-size:12px">~/Desktop/scratch</div></div>
+      <span class="chip">Restricted</span><span class="t2" style="font-size:12px">no git</span>
+    </div>
+    <div style="flex:1"></div>
+    <div class="t2" style="border-top:1px solid var(--sep);padding:12px 20px;font-size:12px;display:flex;gap:16px"><span>Show this window when Gobi launches</span><span style="margin-left:auto">Clear recent&#8230;</span></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1100,"height":680}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#FFFFFF',side:'#EDEDF0',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)'};
+    const D = {bg:'#1E1E1E',side:'#2A2A2C',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

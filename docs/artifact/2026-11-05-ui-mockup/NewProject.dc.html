@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi new project</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.win{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid var(--sep)}
+.dot{width:12px;height:12px;border-radius:50%}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.t2{color:var(--text2)}
+.btn{height:28px;padding:0 14px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;display:inline-flex;align-items:center;gap:6px;cursor:default}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.sec{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);padding:12px 12px 4px}
+.row{display:flex;align-items:center;gap:8px;height:28px;padding:0 12px;white-space:nowrap}
+.row.sel{background:var(--accentBg);color:var(--accentT);font-weight:600}
+.fr{display:flex;align-items:center;gap:12px;min-height:32px}
+.fr label{width:130px;flex:none;text-align:right;color:var(--text2)}
+.fld{flex:1;height:28px;border:1px solid var(--sep);border-radius:6px;padding:0 8px;display:flex;align-items:center;background:var(--field);min-width:0}
+.mono{font:12px ui-monospace,"SF Mono",Menlo,monospace}
+.tr{display:flex;align-items:center;gap:6px;height:22px;font:12px ui-monospace,"SF Mono",Menlo,monospace}
+</style>
+</helmet>
+<div class="win" style="width: 1000px; height: 680px; {{vars}}">
+
+  <div style="height:52px;background:var(--bar);border-bottom:1px solid var(--sep);display:flex;align-items:center;padding:0 14px;flex:none">
+    <div style="display:flex;gap:8px;margin-right:14px" aria-hidden="true"><div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div></div>
+    <div style="flex:1;text-align:center;font-weight:600">New Project</div><div style="width:70px"></div>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+    <!-- Templates -->
+    <div style="width:230px;background:var(--side);border-right:1px solid var(--sep);flex:none">
+      <div class="sec">Go module</div>
+      <div class="row sel">Command-line tool</div>
+      <div class="row">Library</div>
+      <div class="row">HTTP service</div>
+      <div class="row">gRPC service</div>
+      <div class="sec">Workspace</div>
+      <div class="row">go.work (multi-module)</div>
+      <div class="sec">Other</div>
+      <div class="row">Empty module</div>
+      <div class="row t2">Custom templates&#8230;</div>
+    </div>
+
+    <!-- Form -->
+    <div style="flex:1;padding:24px 24px 0;display:flex;flex-direction:column;min-width:0">
+      <div style="font-size:20px;font-weight:600">Command-line tool</div>
+      <div class="t2" style="margin:2px 0 18px">A <span class="mono">main</span> package with a test, ready to run.</div>
+
+      <div class="fr"><label>Name</label><div class="fld">hello</div></div>
+      <div class="fr"><label>Location</label><div class="fld">~/Work</div><button class="btn">Choose&#8230;</button></div>
+      <div class="fr"><label>Module path</label><div class="fld mono">example.com/hello</div></div>
+      <div class="fr"><label>Go version</label><div class="fld">Auto &#183; 1.26.5 (installed)</div></div>
+      <div class="fr"><label>Environment</label><div class="fld">local</div></div>
+      <div style="height:8px"></div>
+      <div class="fr" style="min-height:24px"><label></label><label style="width:auto;text-align:left;color:var(--text);display:flex;gap:8px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)">Initialize Git repository (branch master)</label></div>
+      <div class="fr" style="min-height:24px"><label></label><label style="width:auto;text-align:left;color:var(--text);display:flex;gap:8px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)">Add .gitignore, .env.example and README.md</label></div>
+      <div class="fr" style="min-height:24px"><label></label><label style="width:auto;text-align:left;color:var(--text);display:flex;gap:8px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)">Add a sample test</label></div>
+      <div class="fr" style="min-height:24px"><label></label><label style="width:auto;text-align:left;color:var(--text);display:flex;gap:8px;align-items:center"><input type="checkbox" style="accent-color:var(--accent)">Add to an existing go.work</label></div>
+      <div style="flex:1"></div>
+      <div class="t2" style="font-size:12px;padding-bottom:10px">Runs <span class="mono">go mod init example.com/hello</span> with the selected toolchain.</div>
+    </div>
+
+    <!-- Preview -->
+    <div style="width:240px;border-left:1px solid var(--sep);background:var(--side);flex:none;padding:12px 16px">
+      <div class="t2" style="font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:0 0 8px">Will create</div>
+      <div class="tr">hello/</div>
+      <div class="tr" style="padding-left:14px">go.mod</div>
+      <div class="tr" style="padding-left:14px">main.go</div>
+      <div class="tr" style="padding-left:14px">main_test.go</div>
+      <div class="tr" style="padding-left:14px">README.md</div>
+      <div class="tr" style="padding-left:14px">.gitignore</div>
+      <div class="tr" style="padding-left:14px">.env.example</div>
+      <div class="tr" style="padding-left:14px">.gobi/environments.toml</div>
+    </div>
+  </div>
+
+  <div style="height:56px;border-top:1px solid var(--sep);background:var(--bar);display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:0 20px;flex:none">
+    <button class="btn">Cancel</button><button class="btn pri">Create</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1000,"height":680}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#FFFFFF',side:'#EDEDF0',bar:'#F5F5F7',field:'#FFFFFF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)'};
+    const D = {bg:'#1E1E1E',side:'#2A2A2C',bar:'#323235',field:'#1A1A1C',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

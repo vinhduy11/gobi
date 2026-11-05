@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gobi core bootstrap: implementation report</title>
+<style>
+  :root { --bg:#fff; --text:#1d1d1f; --muted:#5c5c61; --line:#d6d6da; --code:#f5f5f7; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1e1e1e; --text:#f2f2f7; --muted:#a8a8ae; --line:#454549; --code:#2a2a2c; } }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:26px; margin:0 0 4px; } h2 { font-size:19px; margin:36px 0 8px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p.sub { color:var(--muted); margin:0; } code { background:var(--code); padding:1px 5px; border-radius:4px; font:13px ui-monospace,Menlo,monospace; }
+  table { border-collapse:collapse; width:100%; margin:8px 0; } th,td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Gobi core bootstrap</h1>
+<p class="sub">Slice 1 implementation report, 2026-11-05</p>
+
+<h2>Specs</h2>
+<p>Build the foundation of a Go IDE (macOS first) as a cross-platform Go daemon, <code>gobid</code>, that supervises the official
+Go toolchain and serves native UI clients over a local socket. Slice 1 scope:</p>
+<ul>
+  <li>LSP framing shared by UI-to-core and core-to-gopls, defensive against malformed input.</li>
+  <li>Toolchain discovery and a <code>doctor</code> command (report only, never installs).</li>
+  <li>Private unix-socket transport: single instance, stale-socket recovery, peer-UID check, versioned handshake.</li>
+  <li>A gopls broker: shared server per workspace, id translation, cancellation, server-request routing, restart with document replay.</li>
+  <li>Workspace trust: untrusted workspaces cannot make <code>go</code> download or switch toolchains.</li>
+  <li>TDD throughout; tests against a scriptable fake LSP server, plus an opt-in test against the real gopls.</li>
+</ul>
+
+<h2>Actions</h2>
+<table>
+<tr><th>Area</th><th>What was done</th></tr>
+<tr><td>Repository</td><td>New <code>gobi/</code> repo with <code>master</code>, <code>develop</code> and a feature branch cut from <code>master</code>; lean <code>CLAUDE.md</code> index with topic files under <code>docs/claude/</code>.</td></tr>
+<tr><td><code>internal/rpc</code></td><td>Reader/Writer for <code>Content-Length</code> framing; size cap; rejects duplicate, unknown and malformed headers and bare LF; fuzz test (4.5M executions clean); benchmark.</td></tr>
+<tr><td><code>internal/toolchain</code></td><td>Finder (GOBIN, GOPATH/bin, PATH), version check, <code>gobid doctor</code>. gopls v0.24.0 and Delve 1.27.2 installed and pinned in the README.</td></tr>
+<tr><td><code>internal/ipc</code></td><td>Directory and socket checks with <code>lstat</code>, <code>flock</code> single instance, stale-socket probe, <code>LOCAL_PEERCRED</code> / <code>SO_PEERCRED</code>, handshake with timeout and channel routing. 12 tests.</td></tr>
+<tr><td><code>internal/lsp</code></td><td>Broker, UTF-16 text sync, document store with owners, registry, fake LSP server. Tests cover shared server, id collisions across clients, cancel translation, broker-answered requests, forwarded <code>applyEdit</code>, broadcast, restart with replay, malformed server output, client disconnect, missing binary, trust environment.</td></tr>
+<tr><td>Performance fix</td><td>Benchmarks showed decode-and-re-encode id rewriting at about 100 MB/s. Replaced by a byte scan and splice (about 1.2 GB/s); fuzzed against the slow version.</td></tr>
+<tr><td><code>internal/daemon</code>, <code>gobid serve</code></td><td>Wires socket, registry and brokers; SIGINT/SIGTERM shutdown removes the socket. Real-gopls hover test passes (opt-in). Manual smoke test: second instance refused, socket 0600, cleanup on SIGTERM.</td></tr>
+<tr><td>Docs</td><td>Architecture doc, implementation note, README, CHANGELOG, UI mockup sources in <code>docs/artifact/</code>.</td></tr>
+</table>
+<p>Measured on Apple silicon, Go 1.26.5 (core-side micro-benchmarks only): rewrite request id in an 868 KB completion list 8.3 ms to 0.7 ms; read id and method 4.7 ms to 0.58 ms; 4 KB frame write plus read about 1.4 µs.</p>
+
+<h2>Tradeoffs</h2>
+<table>
+<tr><th>Decision</th><th>Chosen over</th><th>Why, and the cost</th></tr>
+<tr><td>Broker owns the gopls session</td><td>Transparent byte pipe</td><td>Needed for id translation, restart with replay and sharing one gopls between windows. Cost: the broker must track open documents and implement incremental edits.</td></tr>
+<tr><td>Separate connection per channel</td><td>One multiplexed stream</td><td>No id or method collisions between LSP, DAP and control traffic. Cost: more sockets and handshakes.</td></tr>
+<tr><td>JSON everywhere for now</td><td>Binary framing (msgpack, protobuf)</td><td>gopls and Delve speak JSON; a binary UI leg would add a conversion on every message. Measured core cost is small. Revisit for Gobi-owned channels if the Swift spike shows decode cost.</td></tr>
+<tr><td>Byte-scan id rewrite, duplicates refused</td><td>Decode and re-encode</td><td>12x faster on large messages. Cost: a hand-written scanner, covered by tests and fuzzing; messages with duplicate <code>id</code> or <code>method</code> are rejected.</td></tr>
+<tr><td>Trust flag set by the client, default untrusted</td><td>Core-side persistent trust store</td><td>Smallest thing that lets the UI drive the restriction. The client is the same user, so this is a usability gate, not a security boundary. Only <code>GOTOOLCHAIN=local</code> is enforced so far.</td></tr>
+<tr><td>Fallback socket directory under <code>/tmp</code> for long paths</td><td>Fail when the path is too long</td><td>macOS limits unix socket paths to about 104 bytes. The fallback directory is still created 0700 and owner-checked.</td></tr>
+<tr><td>Linear restart backoff, no crash-loop memory</td><td>Exponential backoff with a circuit breaker</td><td>Simple and testable. A gopls that crashes right after every start keeps retrying five times per crash cycle.</td></tr>
+<tr><td>Unix only</td><td>Named-pipe transport now</td><td>macOS first. Windows needs a pipe transport and a different lock and peer check.</td></tr>
+<tr><td>Dynamic capability registration answered with null</td><td>Forwarding registrations to the UI</td><td>Keeps the broker simple; clients will not receive file-watch registrations from gopls yet.</td></tr>
+</table>
+
+<h2>Known gaps</h2>
+<ul>
+  <li>No test yet for <code>go.work</code> changes, vendor mode, cgo-disabled files, per-file build constraints or an offline missing toolchain.</li>
+  <li>No CI configuration and no written dependency and licence review.</li>
+  <li>Swift-side decoding cost and end-to-end latency are unmeasured.</li>
+</ul>
+</main>
+</body>
+</html>

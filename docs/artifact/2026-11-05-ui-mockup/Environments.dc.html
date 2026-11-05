@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi environments</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.win{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid var(--sep)}
+.mono{font:12px/20px ui-monospace,"SF Mono",Menlo,monospace}
+.dot{width:12px;height:12px;border-radius:50%}
+.btn{height:28px;min-width:28px;padding:0 12px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:default}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sec{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);padding:18px 0 6px}
+.row{display:flex;align-items:center;gap:8px;height:28px;padding:0 12px;white-space:nowrap}
+.row.sel{background:var(--accentBg);color:var(--accentT)}
+.t2{color:var(--text2)}
+.kv{display:flex;align-items:center;height:30px;border-bottom:1px solid var(--line);gap:12px}
+.kv .k{width:150px;flex:none;font:12px/30px ui-monospace,"SF Mono",Menlo,monospace}
+.kv .v{flex:1;font:12px/30px ui-monospace,"SF Mono",Menlo,monospace;color:var(--text2)}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;font-size:11px;font-weight:600}
+.fld{height:28px;border:1px solid var(--sep);border-radius:6px;padding:0 8px;display:flex;align-items:center;font:12px ui-monospace,"SF Mono",Menlo,monospace;background:var(--field)}
+.tr{display:flex;align-items:center;height:28px;font:12px/28px ui-monospace,"SF Mono",Menlo,monospace;border-bottom:1px solid var(--line)}
+.tr.h{font:600 11px/28px -apple-system,BlinkMacSystemFont,sans-serif;color:var(--text2);border-bottom:1px solid var(--sep)}
+.c1{width:130px;flex:none}.c2{flex:1}.c3{width:150px;flex:none}.c4{width:70px;flex:none}
+</style>
+</helmet>
+<div class="win" style="width: 1200px; height: 800px; {{vars}}">
+
+  <div style="height:52px;background:var(--bar);border-bottom:1px solid var(--sep);display:flex;align-items:center;padding:0 14px;flex:none">
+    <div style="display:flex;gap:8px;margin-right:14px" aria-hidden="true">
+      <div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div>
+    </div>
+    <div style="flex:1;text-align:center;font-weight:600">Environments &#8212; hello</div>
+    <div style="width:70px"></div>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+
+    <!-- Profile list -->
+    <div style="width:240px;background:var(--side);border-right:1px solid var(--sep);flex:none;display:flex;flex-direction:column">
+      <div style="padding:14px 12px 6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase" class="t2">Profiles</div>
+      <div class="row"><span style="width:8px;height:8px;border-radius:50%;background:#34C759" aria-hidden="true"></span>local<span class="t2" style="margin-left:auto">default</span></div>
+      <div class="row"><span style="width:8px;height:8px;border-radius:50%;background:#007AFF" aria-hidden="true"></span>dev</div>
+      <div class="row sel"><span style="width:8px;height:8px;border-radius:50%;background:#FF9F0A" aria-hidden="true"></span>staging<span style="margin-left:auto">remote</span></div>
+      <div style="flex:1"></div>
+      <div style="padding:12px;border-top:1px solid var(--sep);display:flex;gap:6px">
+        <button class="btn" style="flex:1" aria-label="Add profile">+ New</button>
+        <button class="btn" style="flex:1" aria-label="Duplicate profile">Duplicate</button>
+      </div>
+    </div>
+
+    <!-- Detail -->
+    <div style="flex:1;padding:8px 28px 0;overflow:hidden;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:12px;padding-top:12px">
+        <div style="font-size:20px;font-weight:600">staging</div>
+        <span class="chip" style="background:rgba(255,159,10,.2);color:var(--warn)">Remote &#183; non-local targets</span>
+        <span class="t2" style="margin-left:auto;font-size:12px">.gobi/environments.toml</span>
+      </div>
+
+      <div class="sec">Variables</div>
+      <div class="kv"><span class="k">APP_ENV</span><span class="v">staging</span></div>
+      <div class="kv"><span class="k">DB_HOST</span><span class="v">postgres.staging.example</span></div>
+      <div class="kv"><span class="k">DB_PASSWORD</span><span class="v">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</span><span class="chip" style="background:var(--hover);color:var(--text2)">Keychain</span></div>
+      <div class="kv"><span class="k">REDIS_URL</span><span class="v">redis.staging.example:6379</span></div>
+
+      <div style="display:flex;gap:28px">
+        <div style="flex:1">
+          <div class="sec">Env files (later overrides earlier)</div>
+          <div class="fld" style="margin-bottom:6px">&#8801;&nbsp; .env.base</div>
+          <div class="fld">&#8801;&nbsp; .env.staging <span class="t2" style="margin-left:auto">gitignored</span></div>
+        </div>
+        <div style="flex:1">
+          <div class="sec">Go</div>
+          <div class="kv" style="height:28px"><span class="k" style="width:90px;font-family:inherit;color:var(--text2)">Toolchain</span><span class="fld" style="flex:1">Auto (go.mod) &#9662;</span></div>
+          <div class="kv" style="height:28px"><span class="k" style="width:90px;font-family:inherit;color:var(--text2)">Build tags</span><span class="fld" style="flex:1">staging</span></div>
+          <div class="kv" style="height:28px"><span class="k" style="width:90px;font-family:inherit;color:var(--text2)">GOFLAGS</span><span class="fld" style="flex:1">-mod=readonly</span></div>
+          <div class="kv" style="height:28px;border:0"><span class="k" style="width:90px;font-family:inherit;color:var(--text2)">GOOS/GOARCH</span><span class="fld" style="flex:1">darwin/arm64</span></div>
+        </div>
+      </div>
+
+      <div class="sec">Safety</div>
+      <label style="display:flex;align-items:center;gap:8px;height:26px"><input type="checkbox" checked style="accent-color:var(--accent)">Ask before tests, migrations or scripts that touch non-local targets</label>
+      <label style="display:flex;align-items:center;gap:8px;height:26px"><input type="checkbox" checked style="accent-color:var(--accent)">Block DROP / CREATE and destructive migrations on non-local databases</label>
+
+      <div class="sec">Resolved targets</div>
+      <div class="tr h"><span class="c1">Component</span><span class="c2">Host:port</span><span class="c3">Config source</span><span class="c4">Local?</span></div>
+      <div class="tr"><span class="c1">PostgreSQL</span><span class="c2">postgres.staging.example:5432</span><span class="c3">.env.staging</span><span class="c4" style="color:var(--err);font-weight:600">No</span></div>
+      <div class="tr"><span class="c1">Redis</span><span class="c2">redis.staging.example:6379</span><span class="c3">.env.staging</span><span class="c4" style="color:var(--err);font-weight:600">No</span></div>
+      <div class="tr"><span class="c1">Kafka</span><span class="c2">kafka.staging.example:9092</span><span class="c3">.env.base</span><span class="c4" style="color:var(--err);font-weight:600">No</span></div>
+      <div class="tr"><span class="c1">MQTT</span><span class="c2">localhost:1883</span><span class="c3">.env.base</span><span class="c4" style="color:var(--ok);font-weight:600">Yes</span></div>
+
+      <div style="flex:1"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 0 18px">
+        <button class="btn">Cancel</button><button class="btn pri">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1200,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#FFFFFF',side:'#EDEDF0',bar:'#F5F5F7',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',line:'#EEEEF1',field:'#FFFFFF',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)',err:'#C4261D',warn:'#8A5A00',ok:'#1E7B34'};
+    const D = {bg:'#1E1E1E',side:'#2A2A2C',bar:'#323235',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',line:'#2A2A2C',field:'#1A1A1C',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)',err:'#FF6961',warn:'#FFD60A',ok:'#32D74B'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi editing window</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.win{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid var(--sep)}
+.mono{font:12px/20px ui-monospace,"SF Mono",Menlo,monospace;tab-size:4}
+.tb{height:52px;background:var(--bar);border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:8px;padding:0 14px;flex:none}
+.dot{width:12px;height:12px;border-radius:50%}
+.btn{height:28px;min-width:28px;padding:0 9px;border:0;border-radius:6px;background:transparent;color:var(--text);font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:default}
+.btn:hover{background:var(--hover)}
+.btn.on{background:var(--accentBg);color:var(--accentT)}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sec{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);padding:12px 12px 4px}
+.row{display:flex;align-items:center;gap:6px;height:24px;padding:0 12px;white-space:nowrap}
+.row.sel{background:var(--accentBg);color:var(--accentT)}
+.t2{color:var(--text2)}
+.badge{font:600 10px/14px ui-monospace,"SF Mono",Menlo,monospace;width:16px;text-align:center}
+.ln{display:flex;height:20px;align-items:center}
+.no{width:44px;text-align:right;padding-right:10px;color:var(--text2);flex:none}
+.mk{width:18px;flex:none;display:flex;justify-content:center}
+.cd{white-space:pre}
+.kw{color:var(--kw)}.st{color:var(--str)}.cm{color:var(--cm)}.ty{color:var(--ty)}.nm{color:var(--num)}
+.seg{display:inline-flex;background:var(--hover);border-radius:7px;padding:2px}
+.seg span{padding:2px 10px;border-radius:5px;font-size:12px}
+.seg .a{background:var(--bg);box-shadow:0 0 0 .5px var(--sep),0 1px 2px rgba(0,0,0,.12);font-weight:600}
+.ptab{padding:0 10px;height:32px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);border:0;background:transparent;font-family:inherit}
+.ptab.a{color:var(--text);font-weight:600;box-shadow:inset 0 -2px 0 var(--accent)}
+</style>
+</helmet>
+<div class="win" style="width: 1440px; height: 900px; {{vars}}">
+
+  <!-- Toolbar -->
+  <div class="tb">
+    <div style="display:flex;gap:8px;margin-right:14px" aria-hidden="true">
+      <div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div>
+    </div>
+    <button class="btn" aria-label="Toggle sidebar"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6 3v10"/></svg></button>
+    <button class="btn on" aria-label="Run"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z"/></svg>Run</button>
+    <button class="btn" aria-label="Debug"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M8 5a3 3 0 013 3v2a3 3 0 01-6 0V8a3 3 0 013-3zM5 8H2m12 0h-3M5 11l-2 2m8-2l2 2M6 4L5 2m5 2l1-2"/></svg>Debug</button>
+    <button class="btn" aria-label="Profile"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M2.5 11a5.5 5.5 0 1111 0M8 11l2.5-3.5"/></svg>Profile</button>
+    <button class="btn" style="border:1px solid var(--sep);margin-left:6px" aria-label="Run configuration: hello"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>hello &#8250; go run ./cmd/hello</button>
+    <button class="btn" style="border:1px solid var(--sep)" aria-label="Environment: local"><span style="width:8px;height:8px;border-radius:50%;background:#34C759" aria-hidden="true"></span>local &#9662;</button>
+    <button class="btn" style="border:1px solid var(--sep)" aria-label="Go toolchain: auto from go.mod">Go 1.26.5 &#9662;</button>
+    <div style="flex:1;display:flex;justify-content:center">
+      <div style="display:flex;align-items:center;gap:8px;height:28px;padding:0 14px;border-radius:14px;background:var(--hover);font-size:12px">
+        <span style="width:8px;height:8px;border-radius:50%;background:#34C759" aria-hidden="true"></span>
+        <span>gopls ready</span><span class="t2">&#183; Go 1.26.5 &#183; darwin/arm64</span>
+      </div>
+    </div>
+    <button class="btn" style="border:1px solid var(--sep);min-width:200px;justify-content:flex-start;color:var(--text2)" aria-label="Search and commands"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>Search&#8230;<span style="margin-left:auto">&#8984;&#8679;P</span></button>
+    <button class="btn" aria-label="Toggle inspector"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M10 3v10"/></svg></button>
+  </div>
+
+  <!-- Body -->
+  <div style="flex:1;display:flex;min-height:0">
+
+    <!-- Sidebar -->
+    <div style="width:260px;background:var(--side);border-right:1px solid var(--sep);display:flex;flex-direction:column;flex:none">
+      <div style="padding:8px 10px 0"><span class="seg"><span class="a">Files</span><span>Symbols</span><span>Tests</span></span></div>
+      <div class="sec">Explorer</div>
+      <div class="row"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg><svg class="ic" aria-hidden="true" viewBox="0 0 16 16" style="color:var(--accentT)"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>hello</div>
+      <div class="row" style="padding-left:28px"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg><svg class="ic" aria-hidden="true" viewBox="0 0 16 16" style="color:var(--accentT)"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>cmd/hello</div>
+      <div class="row" style="padding-left:62px"><svg class="ic t2" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3"/></svg>main.go</div>
+      <div class="row" style="padding-left:28px"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg><svg class="ic" aria-hidden="true" viewBox="0 0 16 16" style="color:var(--accentT)"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>internal/server</div>
+      <div class="row sel" style="padding-left:62px"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3"/></svg>server.go<span style="margin-left:auto;color:var(--warn)" class="badge">M</span></div>
+      <div class="row" style="padding-left:62px"><svg class="ic t2" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3"/></svg>server_test.go<span style="margin-left:auto;color:var(--ok)" class="badge">A</span></div>
+      <div class="row" style="padding-left:28px"><svg class="ic t2" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3"/></svg>go.mod</div>
+      <div class="row" style="padding-left:28px"><svg class="ic t2" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3"/></svg>go.work</div>
+      <div class="row" style="padding-left:28px"><svg class="ic t2" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3"/></svg>README.md</div>
+      <div style="flex:1"></div>
+      <div style="border-top:1px solid var(--sep)">
+        <div class="sec" style="display:flex;align-items:center;gap:6px"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><circle cx="5" cy="4" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="11" cy="6" r="1.5"/><path d="M5 5.5v5M11 7.5c0 2.5-6 1.5-6 3"/></svg>Source control</div>
+        <div class="row"><span>feat/graceful-shutdown</span><span class="t2" style="margin-left:auto">&#8593;1</span></div>
+        <div class="row t2"><span class="badge" style="color:var(--warn)">M</span>internal/server/server.go</div>
+        <div class="row t2"><span class="badge" style="color:var(--ok)">A</span>internal/server/server_test.go</div>
+        <div style="padding:8px 12px 12px"><button class="btn" style="width:100%;border:1px solid var(--sep);background:var(--bg)" aria-label="Commit">Commit&#8230;</button></div>
+      </div>
+    </div>
+
+    <!-- Editor column -->
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+      <div style="height:36px;background:var(--bar);border-bottom:1px solid var(--sep);display:flex;align-items:stretch;flex:none">
+        <div style="padding:0 14px;display:flex;align-items:center;gap:8px;color:var(--text2);border-right:1px solid var(--sep)">main.go</div>
+        <div style="padding:0 10px 0 14px;display:flex;align-items:center;gap:8px;background:var(--bg);border-right:1px solid var(--sep);font-weight:600">server.go<button class="btn" style="height:20px;min-width:20px;padding:0" aria-label="Close server.go"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16" style="width:12px;height:12px"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+        <div style="padding:0 14px;display:flex;align-items:center;gap:8px;color:var(--text2);border-right:1px solid var(--sep)">server_test.go</div>
+      </div>
+      <div class="t2" style="height:26px;display:flex;align-items:center;gap:6px;padding:0 14px;font-size:12px;border-bottom:1px solid var(--sep);flex:none">hello &#8250; internal &#8250; server &#8250; server.go &#8250; <span style="color:var(--text)">(*Server).Run</span></div>
+
+      <div class="mono" style="flex:1;position:relative;background:var(--bg);padding-top:8px;overflow:hidden">
+        <div class="ln"><span class="no">10</span><span class="mk"></span><span class="cd cm">// Server wraps http.Server with graceful shutdown.</span></div>
+        <div class="ln"><span class="no">11</span><span class="mk"></span><span class="cd"><span class="kw">type</span> <span class="ty">Server</span> <span class="kw">struct</span> {</span></div>
+        <div class="ln"><span class="no">12</span><span class="mk"></span><span class="cd">    srv <span class="ty">*http.Server</span></span></div>
+        <div class="ln"><span class="no">13</span><span class="mk"></span><span class="cd">    log <span class="ty">*slog.Logger</span></span></div>
+        <div class="ln"><span class="no">14</span><span class="mk"></span><span class="cd">}</span></div>
+        <div class="ln"><span class="no">15</span><span class="mk"></span><span class="cd"></span></div>
+        <div class="ln"><span class="no">16</span><span class="mk"></span><span class="cd"><span class="kw">func</span> New(addr <span class="ty">string</span>, h <span class="ty">http.Handler</span>) <span class="ty">*Server</span> {</span></div>
+        <div class="ln"><span class="no">17</span><span class="mk"></span><span class="cd">    <span class="kw">return</span> &amp;Server{</span></div>
+        <div class="ln"><span class="no">18</span><span class="mk"></span><span class="cd">        srv: &amp;http.Server{Addr: addr, Handler: h, ReadHeaderTimeout: <span class="nm">5</span> * time.Second},</span></div>
+        <div class="ln"><span class="no">19</span><span class="mk"></span><span class="cd">        log: slog.Default(),</span></div>
+        <div class="ln"><span class="no">20</span><span class="mk"></span><span class="cd">    }</span></div>
+        <div class="ln"><span class="no">21</span><span class="mk"></span><span class="cd">}</span></div>
+        <div class="ln"><span class="no">22</span><span class="mk"></span><span class="cd"></span></div>
+        <div class="ln t2" style="font-size:11px;padding-left:62px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">3 references &#183; 1 implementation &#183; run test</div>
+        <div class="ln"><span class="no">23</span><span class="mk"></span><span class="cd"><span class="kw">func</span> (s <span class="ty">*Server</span>) Run(ctx <span class="ty">context.Context</span>) <span class="ty">error</span> {</span></div>
+        <div class="ln"><span class="no">24</span><span class="mk"><span style="width:3px;height:20px;background:#34C759"></span></span><span class="cd">    errc := <span class="kw">make</span>(<span class="kw">chan</span> <span class="ty">error</span>, <span class="nm">1</span>)</span></div>
+        <div class="ln"><span class="no">25</span><span class="mk"><span style="width:3px;height:20px;background:#34C759"></span></span><span class="cd">    <span class="kw">go</span> <span class="kw">func</span>() { errc &lt;- s.srv.ListenAndServe() }()</span></div>
+        <div class="ln"><span class="no">26</span><span class="mk"><span style="width:3px;height:20px;background:#34C759"></span></span><span class="cd">    <span class="kw">select</span> {</span></div>
+        <div class="ln"><span class="no">27</span><span class="mk"><span style="width:3px;height:20px;background:#34C759"></span></span><span class="cd">    <span class="kw">case</span> &lt;-ctx.Done():</span></div>
+        <div class="ln" style="background:var(--hover)"><span class="no" style="color:var(--text)">28</span><span class="mk"><span style="width:3px;height:20px;background:#007AFF"></span></span><span class="cd">        <span class="kw">return</span> s.srv.<span style="text-decoration:underline wavy var(--err);text-underline-offset:3px">Shu</span><span style="display:inline-block;width:1.5px;height:15px;background:var(--text);vertical-align:middle"></span></span></div>
+        <div class="ln"><span class="no">29</span><span class="mk"></span><span class="cd">    <span class="kw">case</span> err := &lt;-errc:</span></div>
+        <div class="ln"><span class="no">30</span><span class="mk"></span><span class="cd">        <span class="kw">return</span> err</span></div>
+        <div class="ln"><span class="no">31</span><span class="mk"></span><span class="cd">    }</span></div>
+        <div class="ln"><span class="no">32</span><span class="mk"></span><span class="cd">}</span></div>
+
+        <!-- completion popup -->
+        <div style="position:absolute;left:236px;top:412px;width:420px;background:var(--bar);border:1px solid var(--sep);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.22);padding:4px;font:12px/1.3 ui-monospace,'SF Mono',Menlo,monospace">
+          <div style="display:flex;align-items:center;gap:8px;height:24px;padding:0 8px;border-radius:5px;background:var(--accent);color:#fff"><span class="badge" style="color:#fff">&#402;</span>Shutdown<span style="margin-left:auto;opacity:.95">func(ctx context.Context) error</span></div>
+          <div style="display:flex;align-items:center;gap:8px;height:24px;padding:0 8px"><span class="badge t2">&#402;</span>RegisterOnShutdown<span class="t2" style="margin-left:auto">func(f func())</span></div>
+          <div class="t2" style="border-top:1px solid var(--sep);margin-top:4px;padding:6px 8px 4px;font:11px/1.35 -apple-system,BlinkMacSystemFont,sans-serif">Shutdown gracefully shuts down the server without interrupting any active connections.</div>
+        </div>
+      </div>
+
+      <!-- Bottom panel -->
+      <div style="height:206px;border-top:1px solid var(--sep);background:var(--bg);display:flex;flex-direction:column;flex:none">
+        <div style="height:32px;border-bottom:1px solid var(--sep);background:var(--bar);display:flex;align-items:center;padding:0 6px;flex:none">
+          <button class="ptab a">Problems<span style="background:var(--err);color:#fff;border-radius:8px;padding:0 6px;font-size:11px">2</span></button>
+          <button class="ptab">Tests</button><button class="ptab">Terminal</button><button class="ptab">Debug</button><button class="ptab">Profiler</button><button class="ptab">Git</button><button class="ptab">Output</button>
+        </div>
+        <div style="padding:4px 0;font-size:12px">
+          <div class="row"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16" style="color:var(--err)"><circle cx="8" cy="8" r="6"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5"/></svg><span>s.srv.Shu undefined (type *http.Server has no field or method Shu)</span><span class="t2" style="margin-left:auto">server.go:28 &#183; gopls</span></div>
+          <div class="row"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16" style="color:var(--warn)"><path d="M8 2.5l6 10.5H2zM8 7v3M8 11.8v.2"/></svg><span>result of fmt.Sprintf call not used</span><span class="t2" style="margin-left:auto">cmd/hello/main.go:21 &#183; go vet (unusedresult)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inspector -->
+    <div style="width:240px;background:var(--side);border-left:1px solid var(--sep);flex:none">
+      <div class="sec">Outline</div>
+      <div class="row"><span class="badge" style="color:var(--ty)">T</span>Server</div>
+      <div class="row"><span class="badge" style="color:var(--kw)">&#402;</span>New</div>
+      <div class="row sel"><span class="badge">&#402;</span>(*Server).Run</div>
+      <div class="sec">Go module</div>
+      <div class="row t2" style="justify-content:space-between"><span>Module</span><span style="color:var(--text)">hello</span></div>
+      <div class="row t2" style="justify-content:space-between"><span>Go</span><span style="color:var(--text)">1.26</span></div>
+      <div class="row t2" style="justify-content:space-between"><span>Workspace</span><span style="color:var(--text)">go.work</span></div>
+      <div class="sec">This file</div>
+      <div class="row t2" style="justify-content:space-between"><span>Format on save</span><span style="color:var(--text)">gofmt</span></div>
+      <div class="row t2" style="justify-content:space-between"><span>Imports</span><span style="color:var(--text)">goimports</span></div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="t2" style="height:24px;background:var(--bar);border-top:1px solid var(--sep);display:flex;align-items:center;gap:16px;padding:0 14px;font-size:11px;flex:none">
+    <span>feat/graceful-shutdown &#8593;1</span><span>gopls ready</span>
+    <span style="margin-left:auto">Ln 28, Col 24</span><span>UTF-8</span><span>LF</span><span>Go 1.26.5</span><span>gofmt on save</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#FFFFFF',side:'#EDEDF0',bar:'#F5F5F7',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)',kw:'#AD3DA4',str:'#C41A16',cm:'#5D6C79',ty:'#326D74',num:'#1C00CF',err:'#C4261D',warn:'#8A5A00',ok:'#1E7B34'};
+    const D = {bg:'#1E1E1E',side:'#2A2A2C',bar:'#323235',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)',kw:'#FF7AB2',str:'#FF8170',cm:'#8A97A3',ty:'#5DD8FF',num:'#D9C97C',err:'#FF6961',warn:'#FFD60A',ok:'#32D74B'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

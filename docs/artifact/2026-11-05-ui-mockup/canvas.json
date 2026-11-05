@@ -1,0 +1,22 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-11-05T12:00:00Z"},
+  "title": "Gobi IDE Mockup",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1440, "h": 900, "title": "Edit"},
+    "Debug.dc.html": {"x": 1520, "y": 0, "w": 1440, "h": 900, "title": "Debug (dlv)"},
+    "Profiler.dc.html": {"x": 3040, "y": 0, "w": 1440, "h": 900, "title": "Profile (pprof)"},
+    "Environments.dc.html": {"x": 0, "y": 1020, "w": 1200, "h": 800, "title": "Environments"},
+    "Toolchains.dc.html": {"x": 1280, "y": 1020, "w": 1200, "h": 800, "title": "Go toolchains"},
+    "Welcome.dc.html": {"x": 0, "y": 1940, "w": 1100, "h": 680, "title": "Welcome (new / open / clone / import)"},
+    "NewProject.dc.html": {"x": 1180, "y": 1940, "w": 1000, "h": 680, "title": "New Project"},
+    "Trust.dc.html": {"x": 2260, "y": 1940, "w": 560, "h": 400, "title": "Workspace trust"}
+  },
+  "order": ["Main.dc.html", "Debug.dc.html", "Profiler.dc.html", "Environments.dc.html", "Toolchains.dc.html", "Welcome.dc.html", "NewProject.dc.html", "Trust.dc.html"],
+  "notes": {
+    "title": {"x": 0, "y": -260, "text": "Gobi: macOS window, Apple HIG (AppKit look)", "kind": "title1", "maxW": 4480}
+  },
+  "designSystems": []
+}

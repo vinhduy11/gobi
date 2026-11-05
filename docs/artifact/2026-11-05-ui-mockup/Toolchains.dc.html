@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi Go toolchains</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.win{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid var(--sep)}
+.dot{width:12px;height:12px;border-radius:50%}
+.btn{height:28px;min-width:28px;padding:0 12px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:default}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.sec{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);padding:20px 0 8px}
+.t2{color:var(--text2)}
+.mono{font:12px/28px ui-monospace,"SF Mono",Menlo,monospace}
+.tr{display:flex;align-items:center;height:32px;border-bottom:1px solid var(--line);gap:10px}
+.tr.h{height:28px;font:600 11px/28px -apple-system,BlinkMacSystemFont,sans-serif;color:var(--text2);border-bottom:1px solid var(--sep)}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;font-size:11px;font-weight:600;background:var(--hover);color:var(--text2)}
+.seg{display:inline-flex;background:var(--hover);border-radius:7px;padding:2px}
+.seg span{padding:2px 12px;border-radius:5px;font-size:12px}
+.seg .a{background:var(--bg);box-shadow:0 0 0 .5px var(--sep),0 1px 2px rgba(0,0,0,.12);font-weight:600}
+.mi{display:flex;align-items:center;height:26px;padding:0 10px;border-radius:5px;gap:8px}
+</style>
+</helmet>
+<div class="win" style="width: 1200px; height: 800px; {{vars}}">
+
+  <div style="height:52px;background:var(--bar);border-bottom:1px solid var(--sep);display:flex;align-items:center;padding:0 14px;flex:none">
+    <div style="display:flex;gap:8px;margin-right:14px" aria-hidden="true">
+      <div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div>
+    </div>
+    <div style="flex:1;text-align:center;font-weight:600">Go toolchains</div>
+    <div style="width:70px"></div>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+    <!-- Left: settings -->
+    <div style="flex:1;padding:8px 28px 0;min-width:0">
+
+      <div class="sec">This project</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="seg"><span class="a">Auto (go.mod)</span><span>Pinned</span><span>Installed only</span></span>
+        <span class="t2" style="font-size:12px">go.mod: go 1.26 &#183; toolchain go1.26.5 &#183; GOTOOLCHAIN=auto</span>
+      </div>
+
+      <div class="sec">Installed</div>
+      <div class="tr h"><span style="width:20px"></span><span style="width:110px">Version</span><span style="width:130px">Source</span><span style="flex:1">Location</span><span style="width:80px">Status</span></div>
+      <div class="tr"><input type="radio" name="d" checked aria-label="Default go1.26.5" style="accent-color:var(--accent);margin:0 2px"><span class="mono" style="width:110px">go1.26.5</span><span style="width:130px">System</span><span class="mono t2" style="flex:1">/usr/local/go</span><span class="chip" style="width:80px;justify-content:center;background:rgba(52,199,89,.2);color:var(--ok)">Default</span></div>
+      <div class="tr"><input type="radio" name="d" aria-label="Default go1.25.9" style="accent-color:var(--accent);margin:0 2px"><span class="mono" style="width:110px">go1.25.9</span><span style="width:130px">golang.org/dl</span><span class="mono t2" style="flex:1">~/sdk/go1.25.9</span><span style="width:80px" class="t2">Ready</span></div>
+      <div class="tr"><input type="radio" name="d" aria-label="Default go1.24.12" style="accent-color:var(--accent);margin:0 2px"><span class="mono" style="width:110px">go1.24.12</span><span style="width:130px">golang.org/dl</span><span class="mono t2" style="flex:1">~/sdk/go1.24.12</span><span style="width:80px" class="t2">Ready</span></div>
+      <div style="display:flex;gap:8px;padding-top:12px"><button class="btn">+ Install version&#8230;</button><button class="btn">Check for updates</button></div>
+
+      <div class="sec">Run on multiple versions</div>
+      <div style="display:flex;align-items:center;gap:16px;height:30px">
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)">1.24</label>
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)">1.25</label>
+        <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)">1.26</label>
+        <span style="flex:1"></span><button class="btn pri">Run tests on 3 versions</button>
+      </div>
+      <div class="tr h" style="margin-top:6px"><span style="width:110px">Version</span><span style="width:150px">go vet</span><span style="flex:1">go test ./&#8230;</span><span style="width:80px;text-align:right">Time</span></div>
+      <div class="tr"><span class="mono" style="width:110px">go1.24.12</span><span style="width:150px;color:var(--ok)">Passed</span><span style="flex:1;color:var(--ok)">Passed &#183; 42 tests</span><span class="t2" style="width:80px;text-align:right">12.4 s</span></div>
+      <div class="tr"><span class="mono" style="width:110px">go1.25.9</span><span style="width:150px;color:var(--ok)">Passed</span><span style="flex:1;color:var(--ok)">Passed &#183; 42 tests</span><span class="t2" style="width:80px;text-align:right">11.8 s</span></div>
+      <div class="tr"><span class="mono" style="width:110px">go1.26.5</span><span style="width:150px;color:var(--ok)">Passed</span><span style="flex:1;color:var(--err);font-weight:600">1 failed &#183; TestServer_Run</span><span class="t2" style="width:80px;text-align:right">11.1 s</span></div>
+
+      <div class="t2" style="padding-top:18px;font-size:12px;line-height:1.5;max-width:640px">The selected version is used for Run, Debug, Test and Profile, and gopls is restarted with it so diagnostics match the Go version you build with. Each profile in Environments can override the project setting.</div>
+    </div>
+
+    <!-- Right: toolbar popup preview -->
+    <div style="width:330px;background:var(--side);border-left:1px solid var(--sep);flex:none;padding:20px">
+      <div class="t2" style="font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding-bottom:10px">Toolbar popup</div>
+      <button class="btn" aria-label="Go toolchain" style="margin-bottom:6px">Go 1.26.5 &#9662;</button>
+      <div style="background:var(--bar);border:1px solid var(--sep);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.2);padding:6px">
+        <div class="mi" style="background:var(--accent);color:#fff"><span style="width:14px">&#10003;</span>Auto (go.mod) &#183; 1.26.5</div>
+        <div class="mi"><span style="width:14px"></span>Go 1.26.5</div>
+        <div class="mi"><span style="width:14px"></span>Go 1.25.9</div>
+        <div class="mi"><span style="width:14px"></span>Go 1.24.12</div>
+        <div style="height:1px;background:var(--sep);margin:5px 4px"></div>
+        <div class="mi"><span style="width:14px"></span>Run on multiple versions&#8230;</div>
+        <div class="mi"><span style="width:14px"></span>Manage toolchains&#8230;</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1200,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#FFFFFF',side:'#EDEDF0',bar:'#F5F5F7',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',line:'#EEEEF1',hover:'rgba(0,0,0,.06)',accent:'#007AFF',err:'#C4261D',ok:'#1E7B34'};
+    const D = {bg:'#1E1E1E',side:'#2A2A2C',bar:'#323235',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',line:'#2A2A2C',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',err:'#FF6961',ok:'#32D74B'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>
