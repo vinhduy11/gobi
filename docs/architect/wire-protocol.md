@@ -11,7 +11,7 @@ What the payload holds depends on the channel.
 | `dap`, `pty`, later channels | binary from the start (dlv's DAP is JSON, so `dap` will be a translated binary channel) |
 
 ## Encoding
-The protobuf wire format, hand-coded in `core/internal/wire` and `ui-macos/Sources/GobiClient/Wire.swift`: a field is a
+The protobuf wire format, hand-coded in `core/internal/wire` and `ui/macos/Sources/GobiClient/Wire.swift`: a field is a
 key (`number << 3 | type`) and a value; types used are 0 (varint) and 2 (length-delimited). Strings are UTF-8; an empty
 string is left out; booleans are 0 or 1; nested messages are length-delimited. Receivers ignore field numbers they do not
 know, so a newer peer can add fields. Never reuse or renumber a field. Any protobuf library can read these bytes, so a

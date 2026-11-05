@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Gobi software layers",
+    "subtitle": "Reference for every stack: three layers, calls go downward only",
+    "output": "gobi-software-layers.html"
+  },
+  "components": [
+    {
+      "id": "editorview",
+      "type": "frontend",
+      "label": "Editor view",
+      "sublabel": "text, gutter, find bar",
+      "pos": [
+        40,
+        60
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "windows",
+      "type": "frontend",
+      "label": "Windows and dialogs",
+      "sublabel": "welcome, project, new, clone",
+      "pos": [
+        260,
+        60
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "panels",
+      "type": "frontend",
+      "label": "Panels",
+      "sublabel": "explorer, tabs, terminal",
+      "pos": [
+        480,
+        60
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "editormodel",
+      "type": "messagebus",
+      "label": "Editor model",
+      "sublabel": "lines, syntax, find, edits",
+      "pos": [
+        40,
+        240
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "state",
+      "type": "messagebus",
+      "label": "Project state",
+      "sublabel": "recents, trust, tabs, forms",
+      "pos": [
+        260,
+        240
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "client",
+      "type": "messagebus",
+      "label": "gobid client",
+      "sublabel": "handshake, control, LSP",
+      "pos": [
+        480,
+        240
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "transport",
+      "type": "backend",
+      "label": "Transport and channels",
+      "sublabel": "socket, handshake, binary wire",
+      "pos": [
+        480,
+        420
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "language",
+      "type": "backend",
+      "label": "Language services",
+      "sublabel": "gopls broker, JSON, Markdown",
+      "pos": [
+        260,
+        560
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "projects",
+      "type": "backend",
+      "label": "Project services",
+      "sublabel": "new, open, clone, import",
+      "pos": [
+        480,
+        560
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "platform",
+      "type": "backend",
+      "label": "Run services",
+      "sublabel": "terminal, toolchain, debug",
+      "pos": [
+        700,
+        560
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "tools",
+      "type": "external",
+      "label": "Your tools",
+      "sublabel": "gopls, go, git, dlv, shell",
+      "pos": [
+        940,
+        560
+      ],
+      "size": [
+        160,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "UI layer",
+      "wraps": [
+        "editorview",
+        "windows",
+        "panels"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Application layer",
+      "wraps": [
+        "editormodel",
+        "state",
+        "client"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Core layer",
+      "wraps": [
+        "transport",
+        "language",
+        "projects",
+        "platform"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "editorview",
+      "to": "editormodel",
+      "label": "",
+      "variant": "default"
+    },
+    {
+      "from": "windows",
+      "to": "state",
+      "label": "",
+      "variant": "default"
+    },
+    {
+      "from": "panels",
+      "to": "client",
+      "label": "",
+      "variant": "default"
+    },
+    {
+      "from": "state",
+      "to": "client",
+      "label": "uses",
+      "variant": "default",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "client",
+      "to": "transport",
+      "label": "protobuf \u00b7 JSON-RPC (LSP)",
+      "variant": "emphasis",
+      "labelAt": [
+        710,
+        362
+      ]
+    },
+    {
+      "from": "transport",
+      "to": "language",
+      "label": "",
+      "variant": "default",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "transport",
+      "to": "projects",
+      "label": "",
+      "variant": "default"
+    },
+    {
+      "from": "transport",
+      "to": "platform",
+      "label": "",
+      "variant": "default",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "platform",
+      "to": "tools",
+      "label": "spawns",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "UI layer",
+      "items": [
+        "Draws and takes input with the platform's toolkit",
+        "Holds no protocol and no project rules",
+        "Replaced as a whole for each platform"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Application layer",
+      "items": [
+        "Same behaviour on every platform, no toolkit imports",
+        "The only code that talks to the core",
+        "Today it is written again per platform"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Core layer",
+      "items": [
+        "Cross-platform, owns gopls, go, git, dlv and shells",
+        "Knows nothing about any UI",
+        "A UI can be swapped without touching it"
+      ]
+    }
+  ]
+}

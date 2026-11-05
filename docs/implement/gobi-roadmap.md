@@ -192,7 +192,7 @@ stored per workspace root and shown in the status bar.
 - Offline mode with a missing pinned toolchain → stable diagnostic, no fallback.
 - Multi-module roots and `go.work` change → broker restarts/reconfigures gopls via the epoch path (fakelsp test).
 - Vendor mode, cgo-disabled files and per-file build constraints are covered by real-gopls opt-in tests on fixtures.
-- CI: Go tests + fuzz smoke on every change, macOS Swift smoke build once `ui-macos/` exists; tool versions pinned in README.
+- CI: Go tests + fuzz smoke on every change, macOS Swift smoke build once `ui/macos/` exists; tool versions pinned in README.
 - Dependency/licence review recorded in `docs/architect/` for `x/sys`, `creack/pty`, SwiftTerm, `google/pprof`.
 
 ## Follow-ups to tune (raised after slice 1 was implemented)
@@ -253,7 +253,7 @@ extensions, auto-update/notarization, crash consent, opt-in telemetry, localizat
 3. dlv DAP channel + `go test`/`go vet` runner with streamed output; **environment profiles** (`internal/env`:
    toml load, Keychain secrets, target resolution + non-local guard) and **toolchain manager** (`internal/toolchain`
    extension: list/select/install, multi-version run matrix).
-4. `ui-macos/` editor shell: file tree, diagnostics, completion via lsp channel; env + Go-version toolbar popups,
+4. `ui/macos/` editor shell: file tree, diagnostics, completion via lsp channel; env + Go-version toolbar popups,
    Environments and Go toolchains windows (per the mockup), non-local confirmation dialog (not yet mocked up).
 5. pprof: core aggregates profile (`github.com/google/pprof/profile`) → flame-graph tree; UI renders.
 6. **Terminal**: core channel `"pty"` (PTY via `golang.org/x/sys/unix` / `github.com/creack/pty`, resize,

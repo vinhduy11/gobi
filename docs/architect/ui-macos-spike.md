@@ -6,7 +6,7 @@ measure a large file, and decide whether stock `NSTextView` on TextKit 2 can car
 Environment: macOS 26.6.2, Apple silicon (8 cores), Swift 6.2 from the Command Line Tools only (no Xcode),
 release builds. Minimum deployment target recorded as macOS 14.
 
-## What was built (`ui-macos/`)
+## What was built (`ui/macos/`)
 
 - `GobiClient` (Foundation only): LSP frame decoder on `[UInt8]`, incremental UTF-16 line index, unix-socket
   connection, handshake, a small LSP client, and gobid discovery that starts the daemon when none answers.

@@ -14,7 +14,7 @@ choice open.
   It can be ported by hand to another language; it cannot be linked from one.
 
 ## What does not carry over
-`ui-macos/` (AppKit, TextKit 2): the editor, gutter, colouring, explorer, tabs and dialogs. A Windows UI is a new
+`ui/macos/` (AppKit, TextKit 2): the editor, gutter, colouring, explorer, tabs and dialogs. A Windows UI is a new
 front end. The editor is the costly part: colouring, input methods such as Vietnamese, 100k-line files, keystroke time.
 
 ## Options for a Windows UI (not chosen yet)

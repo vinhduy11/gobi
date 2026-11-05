@@ -70,5 +70,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ui-macos/`: `GobiApp FILE --selftest` exits with code 1 at once when FILE cannot be read, instead of waiting forever.
 
 ### Changed
+- Layers made explicit. The Swift package is split into `GobiModel` (pure logic, no imports), `GobiClient` (gobid connection), `GobiEditor` (AppKit editor) and `GobiApp`; `scripts/check-layers.sh` enforces the imports. The Go core is ordered as foundation, services, transport, composition and entry point; `internal/layers` enforces the imports. See `docs/architect/layers.md` and the diagram `docs/diagram/gobi-layers.html`.
+- The macOS UI moved from `ui-macos/` to `ui/macos/`, so `ui/windows/` and `ui/linux/` can sit beside it. Older entries below keep the old name.
 - The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.

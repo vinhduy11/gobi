@@ -2,7 +2,7 @@
 
 Instructions for whoever picks this up (written so a smaller model can follow them without the earlier conversation).
 Read `docs/architect/ui-macos-spike.md` first for the measurements and `docs/architect/gobi-architecture.md` for the
-overall design. All work is in `ui-macos/` unless a task says otherwise.
+overall design. All work is in `ui/macos/` unless a task says otherwise.
 
 ## Rules of engagement
 
@@ -28,7 +28,7 @@ overall design. All work is in `ui-macos/` unless a task says otherwise.
   can mistake it for a document (`AppDelegate` already ignores the `--snapshot` value).
 - Build the daemon once: `cd core && go build -o <out>/gobid ./cmd/gobid`, then `export GOBID_PATH=<out>/gobid`. gopls
   v0.24.0 must be installed (`~/go/bin/gopls`). A Go file only gets diagnostics when a `go.mod` is above it.
-- Generate the large test files: `python3 ui-macos/scripts/make-fixtures.py <out>/fixtures`. This gives `biggo/`
+- Generate the large test files: `python3 ui/macos/scripts/make-fixtures.py <out>/fixtures`. This gives `biggo/`
   (valid 100k-line program), `biggo_err/` (error on the last line) and `longline/`.
 - Release builds only for numbers: `swift build -c release --product GobiApp` (also `gobi-bench`, `gobi-check`).
 

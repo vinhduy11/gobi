@@ -6,7 +6,7 @@ pprof, gofmt / goimports and `go.work`. Gobi does not reimplement any of them.
 ## Split
 
 - **`gobid`** (`core/`, Go): cross-platform daemon. Supervises gopls and the other tools, owns all tool logic.
-- **UI** (`ui-macos/`, Swift/AppKit, not built yet): thin native client, Apple HIG look. Windows and Linux add their own
+- **UI** (`ui/macos/`, Swift/AppKit, not built yet): thin native client, Apple HIG look. Windows and Linux add their own
   shell later and reuse `gobid` unchanged.
 - The two talk over a private unix socket. Windows will need a named-pipe transport (`internal/ipc` is unix-only today).
 

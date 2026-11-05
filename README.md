@@ -7,7 +7,7 @@ A Go IDE, macOS first. Gobi is a client of the official Go toolchain: gopls (LSP
 
 - `core/`: `gobid`, a cross-platform Go daemon. It supervises gopls and the other tools and talks to the UI
   over a local socket.
-- `ui-macos/`: native Swift / AppKit UI (not created yet). Windows and Linux shells come later.
+- `ui/macos/`: native Swift / AppKit UI. `ui/windows/` and `ui/linux/` come later, next to it.
 - `docs/`: architecture, plans, diagrams, artifacts and per-implementation reports.
 
 ## Requirements
@@ -42,7 +42,7 @@ handshake; untrusted workspaces run gopls with `GOTOOLCHAIN=local`.
 ## macOS app (spike)
 
 ```bash
-cd ui-macos
+cd ui/macos
 ./scripts/test.sh                      # Swift tests (works with the Command Line Tools only)
 ./scripts/make-app.sh                  # builds dist/Gobi.app with gobid bundled, signed ad hoc
 open dist/Gobi.app                                   # Welcome window: Open… a folder, or pick a recent project
@@ -50,7 +50,7 @@ open dist/Gobi.app --args Fixtures/broken/main.go   # a single file
 swift build -c release --product gobi-bench && .build/release/gobi-bench    # editor measurements
 ```
 
-Findings and numbers: `docs/architect/ui-macos-spike.md`. Open work and instructions: `docs/implement/ui-macos-fixes.md`.
+Layers and their rules: `docs/architect/layers.md`. Findings and numbers: `docs/architect/ui-macos-spike.md`. Open work and instructions: `docs/implement/ui-macos-fixes.md`.
 
 ```bash
 swift build -c release --product gobi-check

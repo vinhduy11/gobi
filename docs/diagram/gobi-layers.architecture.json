@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Gobi layers",
+    "subtitle": "UI layers on the left, gobid layers on the right; arrows point to what a layer depends on. Windows and Linux are planned for the next version",
+    "output": "gobi-layers.html"
+  },
+  "components": [
+    {
+      "id": "app",
+      "type": "frontend",
+      "label": "GobiApp",
+      "sublabel": "Layer 4 \u00b7 app shell",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "editor",
+      "type": "frontend",
+      "label": "GobiEditor",
+      "sublabel": "Layer 3 \u00b7 AppKit editor",
+      "pos": [
+        40,
+        140
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "client",
+      "type": "messagebus",
+      "label": "GobiClient",
+      "sublabel": "Layer 2 \u00b7 talks to gobid",
+      "pos": [
+        40,
+        240
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "model",
+      "type": "cloud",
+      "label": "GobiModel",
+      "sublabel": "Layer 1 \u00b7 pure logic, no imports",
+      "pos": [
+        40,
+        340
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "cmd",
+      "type": "backend",
+      "label": "cmd/gobid",
+      "sublabel": "Layer 4 \u00b7 entry point",
+      "pos": [
+        560,
+        40
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "daemon",
+      "type": "backend",
+      "label": "daemon",
+      "sublabel": "Layer 3 \u00b7 wires it together",
+      "pos": [
+        560,
+        140
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "ipc",
+      "type": "messagebus",
+      "label": "ipc",
+      "sublabel": "Layer 2 \u00b7 socket, handshake",
+      "pos": [
+        560,
+        240
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "services",
+      "type": "backend",
+      "label": "services",
+      "sublabel": "Layer 1 \u00b7 lsp, langsvc, project, pty, toolchain",
+      "pos": [
+        800,
+        140
+      ],
+      "size": [
+        290,
+        70
+      ]
+    },
+    {
+      "id": "foundation",
+      "type": "cloud",
+      "label": "foundation",
+      "sublabel": "Layer 0 \u00b7 wire, rpc, textlines",
+      "pos": [
+        800,
+        300
+      ],
+      "size": [
+        290,
+        60
+      ]
+    },
+    {
+      "id": "tools",
+      "type": "external",
+      "label": "Your tools",
+      "sublabel": "gopls, go, git, dlv, shell",
+      "pos": [
+        1150,
+        140
+      ],
+      "size": [
+        160,
+        70
+      ]
+    },
+    {
+      "id": "win",
+      "type": "external",
+      "label": "ui/windows",
+      "sublabel": "Layers 1 to 4 \u00b7 next version",
+      "pos": [
+        40,
+        490
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "linux",
+      "type": "external",
+      "label": "ui/linux",
+      "sublabel": "Layers 1 to 4 \u00b7 next version",
+      "pos": [
+        40,
+        590
+      ],
+      "size": [
+        180,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "UI process \u00b7 Swift \u00b7 ui/macos",
+      "wraps": [
+        "app",
+        "editor",
+        "client",
+        "model"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "gobid \u00b7 Go \u00b7 core",
+      "wraps": [
+        "cmd",
+        "daemon",
+        "ipc",
+        "services",
+        "foundation"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Planned \u00b7 next version, not built yet",
+      "wraps": [
+        "win",
+        "linux"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "app",
+      "to": "editor",
+      "label": "",
+      "variant": "default"
+    },
+    {
+      "from": "editor",
+      "to": "client",
+      "label": "",
+      "variant": "default"
+    },
+    {
+      "from": "client",
+      "to": "model",
+      "label": "",
+      "variant": "default"
+    },
+    {
+      "from": "client",
+      "to": "ipc",
+      "label": "unix socket",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "cmd",
+      "to": "daemon",
+      "label": "",
+      "variant": "default"
+    },
+    {
+      "from": "daemon",
+      "to": "ipc",
+      "label": "",
+      "variant": "default"
+    },
+    {
+      "from": "daemon",
+      "to": "services",
+      "label": "serves",
+      "variant": "default",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "services",
+      "to": "foundation",
+      "label": "",
+      "variant": "default"
+    },
+    {
+      "from": "ipc",
+      "to": "foundation",
+      "label": "",
+      "variant": "default",
+      "fromSide": "right",
+      "toSide": "left",
+      "route": "orthogonal-h"
+    },
+    {
+      "from": "services",
+      "to": "tools",
+      "label": "spawns",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "win",
+      "to": "ipc",
+      "label": "named pipe (planned)",
+      "variant": "dashed",
+      "fromSide": "right",
+      "via": [
+        [
+          600,
+          520
+        ],
+        [
+          600,
+          335
+        ],
+        [
+          650,
+          335
+        ]
+      ],
+      "labelAt": [
+        600,
+        430
+      ],
+      "toSide": "bottom"
+    },
+    {
+      "from": "linux",
+      "to": "ipc",
+      "label": "unix socket (planned)",
+      "variant": "dashed",
+      "fromSide": "right",
+      "via": [
+        [
+          720,
+          620
+        ],
+        [
+          720,
+          335
+        ],
+        [
+          650,
+          335
+        ]
+      ],
+      "labelAt": [
+        720,
+        480
+      ],
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Rule for both sides",
+      "items": [
+        "A layer imports only layers below it",
+        "Checked by scripts/check-layers.sh (Swift) and internal/layers (Go)",
+        "Services never import each other or the transport"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "What crosses the socket",
+      "items": [
+        "Handshake and control: protobuf wire format",
+        "LSP: JSON-RPC, passed through to gopls",
+        "pty and later channels: binary"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Windows and Linux (next version)",
+      "items": [
+        "ui/windows and ui/linux sit beside ui/macos",
+        "Each rebuilds layers 1 to 4 for its platform",
+        "Core adds a named pipe transport and ConPTY, one file each; Linux uses the existing socket and pty"
+      ]
+    }
+  ]
+}
