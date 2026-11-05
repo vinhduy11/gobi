@@ -32,10 +32,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func openDocument(_ sender: Any?) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.message = "Choose a folder, a go.mod or go.work, or a single file"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        openChosen(url)
+        panel.allowsMultipleSelection = true
+        panel.message = "Choose a folder, a go.mod or go.work, or files (several files open as tabs)"
+        guard panel.runModal() == .OK else { return }
+        openChosen(panel.urls)
+    }
+
+    /// Files inside the front project open as tabs there; anything else is opened as a project or on its own.
+    private func openChosen(_ urls: [URL]) {
+        var rest = urls
+        if let project = frontProject {
+            let inside = urls.filter { ProjectFolder.projectRoot(for: $0) == nil && project.contains($0) }
+            if !inside.isEmpty {
+                project.openFiles(inside)
+                rest.removeAll { url in inside.contains(url) }
+            }
+        }
+        for url in rest { openChosen(url) }
     }
 
     /// A folder, go.mod or go.work opens a project window; any other file opens on its own.
@@ -114,10 +127,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             var isFolder: ObjCBool = false
             return FileManager.default.fileExists(atPath: controller.root.appendingPathComponent(name).path, isDirectory: &isFolder) && !isFolder.boolValue && name.hasSuffix(".go")
         }
-        if let first {
-            let url = controller.root.appendingPathComponent(first)
-            check("opening \(first) shows an editor", controller.openFile(url) && controller.currentPane?.editor.document.fileURL == url)
+        let goFiles = names.filter { $0.hasSuffix(".go") }.prefix(2).map { controller.root.appendingPathComponent($0) }
+        if let url = goFiles.first {
+            check("opening \(url.lastPathComponent) shows an editor", controller.openFile(url) && controller.currentPane?.editor.document.fileURL == url)
             check("the same file opens again from its kept pane", controller.openFile(url))
+            check("one tab for the file opened twice", controller.tabs.paths == [url.path] && controller.tabTitles == [url.lastPathComponent])
+            if goFiles.count == 2 {
+                check("opening several files at once gives each a tab", controller.openFiles(goFiles) == 2 && controller.tabs.paths.count == 2 && controller.tabs.active == goFiles[1].path)
+                controller.closeTab(goFiles[1].path)
+            }
+            if goFiles.count == 2 {
+                controller.openFile(goFiles[1])
+                check("a second file adds a tab and activates it", controller.tabs.paths.count == 2 && controller.tabs.active == goFiles[1].path)
+                controller.selectNextTab()
+                check("next tab wraps to the first file", controller.tabs.active == url.path)
+            }
+            // Editing marks the tab; saving is only exercised with --allow-writes (it rewrites the file).
+            if let pane = controller.currentPane, !pane.editor.document.isReadOnlyByLineLength {
+                pane.textView.insertText("x", replacementRange: NSRange(location: 0, length: 0))
+                check("typing marks the tab unsaved", controller.tabs.isDirty(url.path))
+                if CommandLine.arguments.contains("--allow-writes") {
+                    check("saving writes the file and clears the mark", pane.save() && !controller.tabs.isDirty(url.path) && (try? String(contentsOf: url, encoding: .utf8)) == pane.textView.string)
+                    pane.textView.insertText("", replacementRange: NSRange(location: 0, length: 1))
+                    pane.save()
+                } else {
+                    pane.editor.document.isEdited = false   // leave the user's file alone
+                }
+            }
+            check("closing a clean tab removes it", controller.closeTab(url.path) && !controller.tabs.paths.contains(url.path))
         } else {
             print("  note no .go file at the top of the folder; skipped the open-file checks")
         }
@@ -153,9 +190,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
+    // MARK: tabs and saving
+
+    private var frontProject: ProjectWindowController? { NSApp.keyWindow?.windowController as? ProjectWindowController }
+
+    @objc func saveFile(_ sender: Any?) {
+        if let project = frontProject { project.saveCurrent() }
+        else if let single = NSApp.keyWindow?.windowController as? EditorWindowController { single.pane.save() }
+    }
+
+    /// ⌘W closes the active tab of a project window; any other window closes itself.
+    @objc func closeTab(_ sender: Any?) {
+        if let project = frontProject, project.currentPane != nil { project.closeCurrentTab() }
+        else { NSApp.keyWindow?.performClose(nil) }
+    }
+
+    @objc func nextTab(_ sender: Any?) { frontProject?.selectNextTab() }
+    @objc func previousTab(_ sender: Any?) { frontProject?.selectPreviousTab() }
+
     // MARK: find
 
-    private var frontEditor: EditorView? { (NSApp.keyWindow?.windowController as? EditorWindowController)?.editor }
+    private var frontEditor: EditorView? {
+        if let project = frontProject { return project.currentPane?.editor }
+        return (NSApp.keyWindow?.windowController as? EditorWindowController)?.editor
+    }
 
     @objc func showFind(_ sender: Any?) { frontEditor?.showFindBar() }
     @objc func findNext(_ sender: Any?) { frontEditor?.findNext() }
@@ -186,7 +244,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(fileItem)
         let fileMenu = NSMenu(title: "File")
         fileMenu.addItem(withTitle: "Open…", action: #selector(openDocument(_:)), keyEquivalent: "o")
-        fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        fileMenu.addItem(withTitle: "Save", action: #selector(saveFile(_:)), keyEquivalent: "s")
+        fileMenu.addItem(.separator())
+        fileMenu.addItem(withTitle: "Close Tab", action: #selector(closeTab(_:)), keyEquivalent: "w")
+        let closeWindow = fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        closeWindow.keyEquivalentModifierMask = [.command, .shift]
+        fileMenu.addItem(.separator())
+        let nextTab = fileMenu.addItem(withTitle: "Show Next Tab", action: #selector(nextTab(_:)), keyEquivalent: "]")
+        nextTab.keyEquivalentModifierMask = [.command, .shift]
+        let previousTab = fileMenu.addItem(withTitle: "Show Previous Tab", action: #selector(previousTab(_:)), keyEquivalent: "[")
+        previousTab.keyEquivalentModifierMask = [.command, .shift]
         fileItem.submenu = fileMenu
 
         let editItem = NSMenuItem()

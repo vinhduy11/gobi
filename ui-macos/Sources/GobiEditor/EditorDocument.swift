@@ -24,6 +24,11 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
     /// True once the file has had a line over the limit (opened or typed). Sticky until the file is reopened.
     public private(set) var hasOverlongLine: Bool
     public var client: LSPClient?
+    /// True while the text differs from what was last read from or written to disk (undoing back to it stays true).
+    public var isEdited = false {
+        didSet { if oldValue != isEdited { onEditedChanged?(isEdited) } }
+    }
+    public var onEditedChanged: ((Bool) -> Void)?
     /// Called after an edit with the lines whose tokens changed, including lines below the edit.
     var onSyntaxChanged: ((_ editedLines: Range<Int>, _ changedLines: Range<Int>) -> Void)?
     private var syncKind: Int { client?.syncKind ?? 1 }
@@ -75,6 +80,7 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
 
     public func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions, range editedRange: NSRange, changeInLength delta: Int) {
         guard editedMask.contains(.editedCharacters) else { return }
+        isEdited = true
         let oldRange = editedRange.location ..< editedRange.location + editedRange.length - delta
         let inserted = (textStorage.string as NSString).substring(with: editedRange)
         let insertedUnits = Array(inserted.utf16)

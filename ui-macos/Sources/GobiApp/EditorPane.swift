@@ -45,6 +45,19 @@ final class EditorPane: NSViewController {
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
+    /// Writes the text to the file as UTF-8. Returns false (and says why in the status line) when it cannot.
+    @discardableResult
+    func save() -> Bool {
+        do {
+            try textView.string.write(to: editorFile.fileURL, atomically: true, encoding: .utf8)
+            editorFile.isEdited = false
+            return true
+        } catch {
+            setStatus("Cannot save \(editorFile.fileURL.lastPathComponent): \(error.localizedDescription)")
+            return false
+        }
+    }
+
     // MARK: server connection
 
     /// Connects to gobid on a background thread so the window shows immediately.

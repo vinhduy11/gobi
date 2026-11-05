@@ -38,6 +38,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 - `ui-macos/`: IDE shell. Welcome window (Open…, recent projects), project window with a file explorer beside the editor, workspace trust dialog (Trust and Open / Open in Restricted Mode / Cancel, optional parent folder), project kind (workspace, module, folder) in the title, trust passed to gobid. File > Open (⌘O) takes a folder, go.mod, go.work or a single file. `GobiApp FOLDER --selftest` checks the explorer and opening a file. Pure model (`ProjectKind`, `FileTree`, `RecentProjects`, `TrustList`) with tests.
 
+- `ui-macos/`: editor tabs in the project window (open, switch, close with ⌘W, next/previous with ⇧⌘] and ⇧⌘[, middle-click closes), unsaved-changes dot and window edited mark, File > Save (⌘S), save prompts on closing a tab or window. Pure `TabStrip` model with tests; project self-test checks tabs, dirty state and save (`--allow-writes`). Several files open at once as tabs: select them in the explorer (shift/command-click) or choose them in File > Open.
+
 ### Fixed
 - `ui-macos/` and `core/`: a lone `\r` is a line break in `LineIndex`, `lsp` text sync and `langsvc` positions, as the protocol defines.
 - `ui-macos/`: `GobiApp --selftest` and `gobi-check` run quietly (no window, focus change or Dock icon); `--visible` shows the window.

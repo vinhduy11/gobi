@@ -30,7 +30,7 @@ final class FileNode {
 }
 
 /// A project window: explorer on the left, the open file's editor on the right, a status line below.
-final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource, NSOutlineViewDelegate {
+final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource, NSOutlineViewDelegate, NSWindowDelegate {
     let root: URL
     let kind: ProjectKind
     let isTrusted: Bool
@@ -38,8 +38,11 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private let outline = NSOutlineView()
     private let content = NSView()
     private let statusLabel = NSTextField(labelWithString: "")
-    private var panes: [URL: EditorPane] = [:]
+    private var panes: [String: EditorPane] = [:]
     private(set) var currentPane: EditorPane?
+    private(set) var tabs = TabStrip()
+    var tabTitles: [String] { tabBar.titles }
+    private let tabBar = TabBarView()
     var explorerRowCount: Int { outline.numberOfRows }
 
     init(root: URL, kind: ProjectKind, isTrusted: Bool) {
@@ -54,6 +57,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         window?.title = root.lastPathComponent
         window?.subtitle = Self.describe(kind: kind, trusted: isTrusted)
         window?.setFrameAutosaveName("GobiProject")
+        window?.delegate = self
         buildLayout()
         window?.center()
     }
@@ -71,6 +75,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         outline.outlineTableColumn = column
         outline.headerView = nil
         outline.style = .sourceList
+        outline.allowsMultipleSelection = true
         outline.dataSource = self
         outline.delegate = self
         outline.setAccessibilityLabel("Project files")
@@ -87,8 +92,16 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         split.isVertical = true
         split.dividerStyle = .thin
         content.translatesAutoresizingMaskIntoConstraints = false
+        tabBar.onSelect = { [weak self] path in self?.activate(path) }
+        tabBar.onClose = { [weak self] path in self?.closeTab(path) }
+        let editorColumn = NSStackView(views: [tabBar, content])
+        editorColumn.orientation = .vertical
+        editorColumn.spacing = 0
+        editorColumn.alignment = .leading
+        tabBar.trailingAnchor.constraint(equalTo: editorColumn.trailingAnchor).isActive = true
+        content.trailingAnchor.constraint(equalTo: editorColumn.trailingAnchor).isActive = true
         split.addArrangedSubview(sidebar)
-        split.addArrangedSubview(content)
+        split.addArrangedSubview(editorColumn)
         split.setHoldingPriority(.defaultHigh, forSubviewAt: 0)
         sidebar.widthAnchor.constraint(equalToConstant: 260).isActive = true
 
@@ -103,20 +116,48 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
 
     // MARK: opening files
 
-    /// Shows `url` in the editor area, reading it once and keeping its pane so switching back keeps edits and position.
+    /// Opens `url` in a tab (or switches to its tab), reading it once and keeping its pane so switching back keeps
+    /// edits and position.
     @discardableResult
     func openFile(_ url: URL) -> Bool {
-        if let pane = panes[url] { show(pane); return true }
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else {
-            statusLabel.stringValue = "\(url.lastPathComponent) is not readable as UTF-8 text"
-            return false
+        let path = url.path
+        if panes[path] == nil {
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else {
+                statusLabel.stringValue = "\(url.lastPathComponent) is not readable as UTF-8 text"
+                return false
+            }
+            let pane = EditorPane(fileURL: url, text: text)
+            pane.trusted = isTrusted
+            pane.editorFile.onEditedChanged = { [weak self] edited in
+                self?.tabs.setDirty(path, edited)
+                self?.tabBar.reload(self?.tabs ?? TabStrip())
+                self?.window?.isDocumentEdited = !(self?.tabs.dirtyPaths.isEmpty ?? true)
+            }
+            panes[path] = pane
+            tabs.open(path)
+            show(pane)
+            pane.connect()
+        } else {
+            tabs.open(path)
+            show(panes[path]!)
         }
-        let pane = EditorPane(fileURL: url, text: text)
-        pane.trusted = isTrusted
-        panes[url] = pane
-        show(pane)
-        pane.connect()
+        tabBar.reload(tabs)
         return true
+    }
+
+    /// Opens each file in its own tab; the last one ends up active. Files that cannot be read are skipped.
+    @discardableResult
+    func openFiles(_ urls: [URL]) -> Int {
+        urls.filter { openFile($0) }.count
+    }
+
+    func contains(_ url: URL) -> Bool { url.path.hasPrefix(root.path + "/") }
+
+    private func activate(_ path: String) {
+        guard let pane = panes[path] else { return }
+        tabs.select(path)
+        show(pane)
+        tabBar.reload(tabs)
     }
 
     private func show(_ pane: EditorPane) {
@@ -130,6 +171,63 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         ])
         window?.title = pane.editor.document.fileURL.lastPathComponent
         window?.makeFirstResponder(pane.textView)
+    }
+
+    // MARK: tabs, saving
+
+    func selectNextTab() { tabs.selectNext(); if let path = tabs.active { activate(path) } }
+    func selectPreviousTab() { tabs.selectPrevious(); if let path = tabs.active { activate(path) } }
+    func closeCurrentTab() { if let path = tabs.active { closeTab(path) } }
+
+    @discardableResult
+    func saveCurrent() -> Bool { currentPane?.save() ?? true }
+
+    /// Closes a tab; one with unsaved edits asks first. Returns false when the user cancels or a save fails.
+    @discardableResult
+    func closeTab(_ path: String) -> Bool {
+        guard let pane = panes[path] else { return true }
+        if tabs.isDirty(path) {
+            switch askToSave(pane.editor.document.fileURL.lastPathComponent) {
+            case .save: if !pane.save() { return false }
+            case .discard: break
+            case .cancel: return false
+            }
+        }
+        pane.editorFile.client?.didClose(uri: pane.editorFile.uri)
+        panes[path] = nil
+        tabs.close(path)
+        pane.view.removeFromSuperview()
+        if let next = tabs.active, let nextPane = panes[next] {
+            show(nextPane)
+        } else {
+            currentPane = nil
+            window?.title = root.lastPathComponent
+        }
+        tabBar.reload(tabs)
+        window?.isDocumentEdited = !tabs.dirtyPaths.isEmpty
+        return true
+    }
+
+    private enum SaveAnswer { case save, discard, cancel }
+
+    private func askToSave(_ name: String) -> SaveAnswer {
+        let alert = NSAlert()
+        alert.messageText = "Do you want to save the changes to “\(name)”?"
+        alert.informativeText = "Your changes will be lost if you don’t save them."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Don’t Save")
+        alert.addButton(withTitle: "Cancel")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: return .save
+        case .alertSecondButtonReturn: return .discard
+        default: return .cancel
+        }
+    }
+
+    /// Closing the window asks about each tab with unsaved edits.
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        for path in tabs.dirtyPaths where !closeTab(path) { return false }
+        return true
     }
 
     // MARK: outline
@@ -170,7 +268,8 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
-        guard let node = outline.item(atRow: outline.selectedRow) as? FileNode, !node.isDirectory else { return }
-        openFile(node.url)
+        // Every selected file gets a tab, so shift- or command-clicking several files opens them all.
+        let selected = outline.selectedRowIndexes.compactMap { outline.item(atRow: $0) as? FileNode }.filter { !$0.isDirectory }
+        openFiles(selected.map(\.url))
     }
 }

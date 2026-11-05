@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Editor tabs and saving</title>
+<style>body{font:15px/1.5 -apple-system,sans-serif;max-width:820px;margin:32px auto;padding:0 16px}code{background:#f2f2f4;padding:1px 4px;border-radius:4px}</style></head><body>
+<h1>Editor tabs and saving</h1>
+<h2>Specs</h2><p>The project window showed one file at a time and could not save. Add tabs, an unsaved mark, Save, and prompts that stop edits from being lost.</p>
+<h2>Actions</h2><ul>
+<li><code>GobiClient/TabStrip.swift</code> (open, select, close with right-then-left neighbour, wrap-around next/previous, dirty marks) with 8 tests written first.</li>
+<li><code>TabBarView</code>; <code>ProjectWindowController</code> keeps one pane per tab, asks to save on closing a dirty tab or the window.</li>
+<li><code>EditorDocument.isEdited</code>, <code>EditorPane.save()</code>, File menu: Save, Close Tab, Close Window (⇧⌘W), next/previous tab.</li>
+<li>Project self-test covers tabs, dirty state and, with <code>--allow-writes</code>, saving.</li></ul>
+<h2>Tradeoffs</h2><ul>
+<li>The unsaved mark stays after undoing back to the saved text; comparing against the disk text would cost a full compare per edit.</li>
+<li>Closing a tab drops its pane (undo history and scroll position go with it); the cost of keeping closed panes alive is not worth it.</li>
+<li>Files changed on disk by another program are not noticed yet.</li></ul>
+</body></html>
