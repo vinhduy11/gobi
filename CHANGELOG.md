@@ -34,7 +34,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
   it stay at 3.7 ms instead of 205 ms); `gobi-check` verification harness; `scripts/make-fixtures.py`; instructions for the
   remaining editor fixes in `docs/implement/ui-macos-fixes.md`.
 
+- `ui-macos/`: find in file (own find bar, Edit > Find, Find Next, Find Previous, Use Selection for Find); files with a line over 550,000 characters open read-only with a notice; the scroller thumb now moves the text while dragging (throttled live jumps); `gobi-check scrollthrough`; mockups for the find bar and the read-only notice.
+
 ### Fixed
+- `ui-macos/` and `core/`: a lone `\r` is a line break in `LineIndex`, `lsp` text sync and `langsvc` positions, as the protocol defines.
+- `ui-macos/`: `GobiApp --selftest` and `gobi-check` run quietly (no window, focus change or Dock icon); `--visible` shows the window.
 - `ui-macos/`: syntax colours no longer go stale or sit at the wrong offset after an edit (closing `/* */`, typing in
   front of a keyword, replacing the text). TextKit ran the colouring validator while it was still synchronising the edit
   and then shifted the colours just written by the edit's length; the editor now recolours the changed lines in the

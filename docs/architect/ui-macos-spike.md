@@ -231,3 +231,11 @@ viewport heights) still scroll live. Option 2 (releasing layout) was not needed,
 - `gobi-check find FILE total func`: `NSTextFinder` selects the first occurrence instead of the next match after the caret (selection stays {0, 0}), so both "nextMatch" checks FAIL. The find bar shows and the search string is set through the find pasteboard, as the harness already did. Tried `--own-finder` (a separate `NSTextFinder` with the text view as client): the process crashed (exit 139) right after "own NSTextFinder client set: false". Not resolved. The harness reports these as FAIL, which is the honest state.
 - `gobi-check momentum FILE`: not retried in this round; the earlier result (synthetic phased events never move the view in four delivery paths) stands and is still inconclusive.
 - A real trackpad and a real find bar pass are still needed by hand.
+
+### Round 3: find, scrolling, long lines, lone CR
+
+- **Lone CR.** Line breaks are `\n`, `\r\n` and a lone `\r` in both the Swift `LineIndex` and the Go side (`internal/textlines`). An edit can join a CR and an LF into one break or split one, so `LineIndex.replace` re-reads one unit on each side; a 4,000-step randomized test with `\r` in the alphabet always equals a rebuild.
+- **Scroller drag.** Jumps are throttled to one per 0.12 s while the thumb moves and the last one is applied on release: 15 jumps in a 1.65 s drag, keystrokes after 3.6 ms, memory +50 MB. Quirk: releasing at 30% can leave the thumb at about 25%.
+- **Continuous scrolling.** Wheel-like steps through 99k lines do not slow later typing (2.5 to 3 ms), so no layout trim was built. Real trackpad momentum events cannot be synthesized; check by hand.
+- **Long lines.** Edit cost grows with the characters in the edited paragraph (about 0.1 ms per 1,000 characters; the wrap width makes no difference): 100k 15 ms, 250k 30 ms, 500k 55 ms (89 ms with paint), 1M about 100 ms. Files with a line over 550,000 characters open read-only with a notice.
+- **Find.** `NSTextFinder` could not be driven from code (selection stayed at the first match), so Gobi has its own find bar: `NSString.range(of:)` from the selection, wrap at the ends, selection and scroll by text position. 1.3 ms median per step on the 100k-line file, no slowdown for typing afterwards.

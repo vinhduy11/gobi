@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Editor: find, scrolling, long lines, lone CR</title>
+<style>body{font:15px/1.5 -apple-system,sans-serif;max-width:820px;margin:32px auto;padding:0 16px}h2{margin-top:28px}code{background:#f2f2f4;padding:1px 4px;border-radius:4px}</style></head><body>
+<h1>Editor: find, scrolling, long lines, lone CR</h1>
+<h2>Specs</h2>
+<p>Close five open items: find in file, trackpad momentum scrolling, 151 ms per key on very long lines (target 100 ms), a lone <code>\r</code> not counted as a line break, and the scroller thumb only moving the text on release. Later request: GUI checks must not pop up windows.</p>
+<h2>Actions</h2>
+<ul>
+<li><code>LineIndex</code> (Swift) and <code>internal/textlines</code> (Go): <code>\n</code>, <code>\r\n</code>, <code>\r</code>; <code>replace</code> returns a <code>LineChange</code>; randomized tests against a rebuild.</li>
+<li><code>EditorClipView</code>: throttled live jumps while dragging; <code>gobi-check scrollthrough</code> for continuous scrolling.</li>
+<li><code>EditorDocument.editableLineLimit</code> (550,000): read-only with a status notice; fixtures and <code>gobi-check longline</code>.</li>
+<li><code>FindBar</code>, Edit &gt; Find menu items, <code>EditorView</code> find API, reworked <code>gobi-check find</code>.</li>
+<li>Quiet mode: accessory activation policy, invisible window, no activation; <code>--visible</code> opts in.</li>
+<li>Mockup board "Find in file and read-only notice".</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>Own find bar instead of <code>NSTextFinder</code>: the standard one could not be verified from code; ours is simpler to test, but has no regex, case option or match count yet.</li>
+<li>Read-only above 550,000 characters instead of a custom view: a custom text engine for huge lines is far more work for a rare case.</li>
+<li>Live drag is throttled, so the thumb can settle a few percent off the release point.</li>
+<li>Real trackpad momentum is checked by hand; it cannot be synthesized.</li>
+</ul>
+</body></html>

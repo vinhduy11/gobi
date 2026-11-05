@@ -53,7 +53,7 @@ Findings and numbers: `docs/architect/ui-macos-spike.md`. Open work and instruct
 
 ```bash
 swift build -c release --product gobi-check
-.build/release/gobi-check cliff|drag|ax|longline|highlight FILE     # verification harness (modes in its header)
+.build/release/gobi-check cliff|drag|ax|longline|find|scrollthrough|highlight FILE   # verification harness (modes in its header); quiet, add --visible to watch
 python3 scripts/make-fixtures.py OUT_DIR                            # 100k-line and long-line test files
 ```
 

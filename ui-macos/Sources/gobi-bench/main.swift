@@ -96,7 +96,7 @@ row("LineIndex build", format(milliseconds { lineIndex = LineIndex(utf16: utf16)
 var editTimes: [Double] = []
 for step in 0 ..< 200 {
     let at = utf16.count / 2 + step
-    editTimes.append(milliseconds { lineIndex.replace(range: at ..< at, with: [0x78]) })
+    editTimes.append(milliseconds { lineIndex.replace(range: at ..< at, with: [0x78], before: 0x78, after: 0x78) })
 }
 row("LineIndex replace (200 edits, median / max)", "\(format(percentile(editTimes, 0.5))) / \(format(editTimes.max()!))")
 

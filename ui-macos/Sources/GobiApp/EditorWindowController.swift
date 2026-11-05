@@ -32,6 +32,7 @@ final class EditorWindowController: NSWindowController {
         problemsScroll.heightAnchor.constraint(equalToConstant: 130).isActive = true
 
         statusLabel.font = NSFont.systemFont(ofSize: 11)
+        statusLabel.lineBreakMode = .byTruncatingTail
         statusLabel.textColor = .secondaryLabelColor
 
         let stack = NSStackView(views: [editor.view, problemsScroll, statusLabel])
@@ -80,7 +81,14 @@ final class EditorWindowController: NSWindowController {
         }
     }
 
-    private func setStatus(_ text: String) { statusLabel.stringValue = text }
+    /// What the user needs to know about the file's longest line: read-only, or colours off.
+    private var lineLimitNotice: String {
+        if editorFile.isReadOnlyByLineLength { return ", read-only: a line is over \(EditorDocument.editableLineLimit) characters" }
+        if editorFile.hasOverlongLine { return ", colours off for a line over \(EditorDocument.overlongLineLimit) characters" }
+        return ""
+    }
+
+    private func setStatus(_ text: String) { statusLabel.stringValue = text + lineLimitNotice }
 
     // MARK: diagnostics
 
@@ -98,8 +106,7 @@ final class EditorWindowController: NSWindowController {
             return "\(name):\(diagnostic.start.line + 1):\(diagnostic.start.character + 1) \(severity): \(diagnostic.message)"
         }
         problemsView.string = lines.isEmpty ? "No problems" : lines.joined(separator: "\n")
-        let notice = editorFile.hasOverlongLine ? ", colours off for a line over \(EditorDocument.overlongLineLimit) characters" : ""
-        setStatus("\(diagnostics.count) problem\(diagnostics.count == 1 ? "" : "s")\(notice)")
+        setStatus("\(diagnostics.count) problem\(diagnostics.count == 1 ? "" : "s")")
     }
 
     private func applyUnderlines(_ diagnostics: [LSPDiagnostic]) {
@@ -136,6 +143,17 @@ final class EditorWindowController: NSWindowController {
 
             check("TextKit 2 is active", textView.textLayoutManager != nil)
             check("diagnostics arrived", diagnosticCount != nil, "count=\(diagnosticCount.map(String.init) ?? "none")")
+
+            if editorFile.isReadOnlyByLineLength {
+                // A file with a line over the limit opens read-only: no colours, no typing, a notice in the status line.
+                check("the document is read-only", !textView.isEditable)
+                let lengthBefore = (textView.string as NSString).length
+                textView.insertText("x", replacementRange: NSRange(location: NSNotFound, length: 0))
+                check("typing changes nothing", (textView.string as NSString).length == lengthBefore)
+                check("the status line says it is read-only", statusLabel.stringValue.contains("read-only"), statusLabel.stringValue)
+                finish(passed)
+                return
+            }
 
             // Highlighting and gutter: lay out the first screen, look at the attributes, paint to a bitmap.
             layOutViewport()

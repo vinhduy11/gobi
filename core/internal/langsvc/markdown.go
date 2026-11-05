@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 
+	"gobi/core/internal/textlines"
+
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
@@ -25,10 +27,7 @@ type mdSymbol struct {
 // headings lists ATX and setext headings outside fenced code blocks.
 // ponytail: a setext heading takes only the line directly above its underline, not a multi-line paragraph.
 func headings(text string) []heading {
-	lines := strings.Split(text, "\n")
-	for index := range lines {
-		lines[index] = strings.TrimSuffix(lines[index], "\r")
-	}
+	lines := textlines.Lines(text)
 
 	var found []heading
 	var fenceChar byte

@@ -5,8 +5,9 @@ package langsvc
 
 import (
 	"sort"
-	"strings"
 	"unicode/utf8"
+
+	"gobi/core/internal/textlines"
 )
 
 type position struct {
@@ -21,29 +22,24 @@ type lspRange struct {
 
 // lineIndex converts byte offsets into LSP positions, whose columns count UTF-16 code units.
 type lineIndex struct {
-	text       string
-	lineStarts []int
+	text         string
+	lineStarts   []int
+	breakLengths []int // length of the break just before each line; 0 for the first
 }
 
 func newLineIndex(text string) *lineIndex {
-	starts := []int{0}
-	for offset := 0; offset < len(text); {
-		newline := strings.IndexByte(text[offset:], '\n')
-		if newline < 0 {
-			break
-		}
-		offset += newline + 1
-		starts = append(starts, offset)
-	}
-	return &lineIndex{text: text, lineStarts: starts}
+	starts, breakLengths := textlines.Starts(text)
+	return &lineIndex{text: text, lineStarts: starts, breakLengths: breakLengths}
 }
 
 func (index *lineIndex) positionAt(offset int) position {
 	offset = max(0, min(offset, len(index.text)))
 	line := sort.Search(len(index.lineStarts), func(candidate int) bool { return index.lineStarts[candidate] > offset }) - 1
+	// Between the CR and the LF of a "\r\n" the offset is still the end of the line before it.
+	limit := min(offset, index.lineEnd(line))
 	units := 0
-	for scan := index.lineStarts[line]; scan < offset; {
-		r, size := utf8.DecodeRuneInString(index.text[scan:offset])
+	for scan := index.lineStarts[line]; scan < limit; {
+		r, size := utf8.DecodeRuneInString(index.text[scan:limit])
 		if r >= 0x10000 {
 			units += 2
 		} else {
@@ -63,11 +59,7 @@ func (index *lineIndex) lineEnd(line int) int {
 	if line+1 >= len(index.lineStarts) {
 		return len(index.text)
 	}
-	end := index.lineStarts[line+1] - 1
-	if end > index.lineStarts[line] && index.text[end-1] == '\r' {
-		end--
-	}
-	return end
+	return index.lineStarts[line+1] - index.breakLengths[line+1]
 }
 
 func (index *lineIndex) lineCount() int {

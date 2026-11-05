@@ -1,4 +1,5 @@
 import AppKit
+import GobiEditor
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controllers: [EditorWindowController] = []
@@ -14,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         installMenu()
         // Paths on the command line reach us through application(_:openFile:), which AppKit calls for each one.
         if controllers.isEmpty && !selfTest { openDocument(nil) }
-        NSApp.activate(ignoringOtherApps: true)
+        if NSApp.activationPolicy() == .regular { NSApp.activate(ignoringOtherApps: true) }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
@@ -52,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let controller = EditorWindowController(fileURL: url, text: text)
         controllers.append(controller)
+        if NSApp.activationPolicy() != .regular { controller.window?.alphaValue = 0; controller.window?.ignoresMouseEvents = true }
         controller.showWindow(nil)
         controller.connect()
         if selfTest {
@@ -61,6 +63,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         return true
+    }
+
+    // MARK: find
+
+    private var frontEditor: EditorView? { (NSApp.keyWindow?.windowController as? EditorWindowController)?.editor }
+
+    @objc func showFind(_ sender: Any?) { frontEditor?.showFindBar() }
+    @objc func findNext(_ sender: Any?) { frontEditor?.findNext() }
+    @objc func findPrevious(_ sender: Any?) { frontEditor?.findPrevious() }
+    @objc func useSelectionForFind(_ sender: Any?) {
+        guard let editor = frontEditor else { return }
+        let text = editor.textView.string as NSString
+        let selected = editor.textView.selectedRange()
+        if selected.length > 0 { editor.setSearchString(text.substring(with: selected)) }
     }
 
     // MARK: menu
@@ -96,6 +112,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenu.addItem(.separator())
+        editMenu.addItem(withTitle: "Find…", action: #selector(showFind(_:)), keyEquivalent: "f")
+        editMenu.addItem(withTitle: "Find Next", action: #selector(findNext(_:)), keyEquivalent: "g")
+        let previous = editMenu.addItem(withTitle: "Find Previous", action: #selector(findPrevious(_:)), keyEquivalent: "g")
+        previous.keyEquivalentModifierMask = [.command, .shift]
+        editMenu.addItem(withTitle: "Use Selection for Find", action: #selector(useSelectionForFind(_:)), keyEquivalent: "e")
         editItem.submenu = editMenu
 
         NSApp.mainMenu = mainMenu

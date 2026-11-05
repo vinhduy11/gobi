@@ -143,9 +143,12 @@ what you measured and what remains unverified. Leave merging to the owner.
 | T1 underline keeps colour | DONE | `DiagnosticUnderlines`; highlight check and self-test check pass |
 | T5 self-test hang | DONE | exits 1 in 0.6 s |
 | T6 paint measurement | DONE | `flushPendingPaint()`; gutter draws 50 for 50 keystrokes |
-| T9 hygiene | PARTIAL | pending-request leak fixed (unit tests). separator colour checks pass since the T2 fix (they failed for the T2 cause); lone CR vs LSP line counting not revisited |
+| T9 hygiene | PARTIAL | pending-request leak fixed (unit tests). separator colour checks pass since the T2 fix (they failed for the T2 cause); lone CR fixed in round 3 (see below) |
 | T2 stale colours | DONE | `EditorContentStorage` + `SyntaxHighlighter.recolourAfterEdit`; `gobi-check highlight` 34 ok, 0 FAIL (was 10 FAIL); cause in the spike doc |
 | T4 accessibility | DONE (VoiceOver pass still needed) | `EditorTextView`; all line queries under 0.01 ms |
-| T7 very long lines | PARTIAL | colouring skipped above 20,000 characters (13 s to 151 ms); the 100 ms target is not met, the remaining cost is TextKit layout of one paragraph |
-| T3 scroller | DONE for the target numbers | deferred jump on drag end; keystrokes after drag 2.1 ms, memory +26 MB |
-| T8 find and momentum | BLOCKED (inconclusive) | find: NSTextFinder picks the first match; own-finder variant crashes; momentum not retried |
+| T7 very long lines | DONE | colouring skipped above 20,000 characters; files with a line over 550,000 characters open read-only with a notice (`EditorDocument.editableLineLimit`); up to the limit a keystroke costs under 100 ms with paint |
+| T3 scroller | DONE | live jumps throttled to one per 0.12 s while the thumb moves, last one on release; 15 jumps in a 1.65 s drag, keystrokes after 3.6 ms, memory +50 MB. Known quirk: the thumb can settle at 25% when released at 30% (TextKit estimates unlaid heights differently) |
+| T8 find | DONE | the standard `NSTextFinder` bar could not be driven (selection stayed at the first match), so Gobi has its own bar (`GobiEditor/FindBar.swift`, Edit > Find items); `gobi-check find` 14 ok, 0 FAIL, 1.3 ms median per step |
+| T8 momentum | NOT AUTOMATABLE | real momentum events cannot be synthesized; wheel-like scrolling through 99k lines measured safe (`gobi-check scrollthrough`: keystrokes 2.5 to 3 ms). Manual check: two-finger flick across a 100k-line file, then type |
+| Lone CR | DONE | `LineIndex` and the Go side treat `\n`, `\r\n` and `\r` as breaks; randomized tests against a rebuild |
+| Quiet GUI checks | DONE | `GobiApp --selftest` and `gobi-check` run without a window, focus change or Dock icon; `--visible` shows them |

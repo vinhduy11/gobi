@@ -3,8 +3,9 @@ package lsp
 
 import (
 	"sort"
-	"strings"
 	"unicode/utf8"
+
+	"gobi/core/internal/textlines"
 )
 
 type position struct {
@@ -40,19 +41,16 @@ func applyChange(text string, edit contentChange) string {
 func offsetOf(text string, at position) int {
 	lineStart := 0
 	for skipped := 0; skipped < at.Line; skipped++ {
-		newline := strings.IndexByte(text[lineStart:], '\n')
-		if newline < 0 {
+		breakAt, breakLength := textlines.FindBreak(text, lineStart)
+		if breakAt < 0 {
 			return len(text)
 		}
-		lineStart += newline + 1
+		lineStart = breakAt + breakLength
 	}
 
 	lineEnd := len(text)
-	if newline := strings.IndexByte(text[lineStart:], '\n'); newline >= 0 {
-		lineEnd = lineStart + newline
-		if lineEnd > lineStart && text[lineEnd-1] == '\r' {
-			lineEnd--
-		}
+	if breakAt, _ := textlines.FindBreak(text, lineStart); breakAt >= 0 {
+		lineEnd = breakAt
 	}
 
 	offset, units := lineStart, 0

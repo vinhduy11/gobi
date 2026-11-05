@@ -9,10 +9,14 @@ final class EditorClipView: NSClipView {
     var jumpToFraction: ((Double) -> Bool)?
     /// scrollRangeToVisible scrolls through this view too; without the flag the remapped jump would remap itself forever.
     private var remapping = false
-    /// While the user drags the scroller, big jumps are only remembered (as a fraction of the document) and applied once
-    /// when the drag ends. Every place a drag stops keeps its layout, which made later edits slower (see the spike doc).
-    public var defersLargeJumps = false
-    private var deferredFraction: Double?
+    /// While the thumb is being dragged, big jumps are applied at most once per `liveJumpInterval` and the newest one is
+    /// always applied when the drag ends. Every place the text stops keeps its layout, so applying a jump on every drag tick
+    /// (about 60 a second) left later edits slower (see the spike doc); a few jumps a second keep the text following the thumb.
+    var isLiveScrolling = false
+    static let liveJumpInterval: TimeInterval = 0.12
+    private var pendingFraction: Double?
+    private var lastAppliedJump = Date.distantPast
+    private var flushTimer: Timer?
     private(set) var scrollCalls = 0
     private(set) var remappedJumps = 0
     private(set) var boundsOriginSets = 0
@@ -27,8 +31,8 @@ final class EditorClipView: NSClipView {
         let travel = abs(newOrigin.y - bounds.origin.y)
         if !remapping, travel > bounds.height * 6, let jump = jumpToFraction, let documentHeight = documentView?.frame.height, documentHeight > bounds.height {
             let fraction = Double(max(0, min(1, newOrigin.y / (documentHeight - bounds.height))))
-            if defersLargeJumps {
-                deferredFraction = fraction
+            if isLiveScrolling {
+                requestLiveJump(fraction)
                 return
             }
             remapping = true
@@ -41,10 +45,26 @@ final class EditorClipView: NSClipView {
         super.scroll(to: newOrigin)
     }
 
-    /// Applies the jump that was deferred during the drag, if any.
-    func applyDeferredJump() {
-        guard let fraction = deferredFraction, let jump = jumpToFraction else { return }
-        deferredFraction = nil
+    private func requestLiveJump(_ fraction: Double) {
+        pendingFraction = fraction
+        let wait = Self.liveJumpInterval - Date().timeIntervalSince(lastAppliedJump)
+        if wait <= 0 {
+            applyPendingJump()
+        } else if flushTimer == nil {
+            // The thumb may stop moving before the interval is over; still show where it was left.
+            let timer = Timer(timeInterval: wait, repeats: false) { [weak self] _ in self?.applyPendingJump() }
+            RunLoop.main.add(timer, forMode: .common)
+            flushTimer = timer
+        }
+    }
+
+    /// Applies the newest requested jump, if any.
+    func applyPendingJump() {
+        flushTimer?.invalidate()
+        flushTimer = nil
+        guard let fraction = pendingFraction, let jump = jumpToFraction else { return }
+        pendingFraction = nil
+        lastAppliedJump = Date()
         remapping = true
         defer { remapping = false }
         if jump(fraction) { remappedJumps += 1 }
@@ -88,6 +108,7 @@ public final class EditorView {
     public var mapsLargeJumpsToLines = true
     private var highlighter: SyntaxHighlighter?
     private var gutter: LineNumberGutter?
+    private var findBar: FindBar?
 
     /// How scrolling reached the clip view: calls to scroll(to:), jumps remapped to text positions, direct origin changes.
     public var scrollStatistics: (scrollCalls: Int, remappedJumps: Int, boundsOriginSets: Int) {
@@ -99,14 +120,14 @@ public final class EditorView {
     public var gutterLastDrawMilliseconds: Double { gutter?.lastDrawMilliseconds ?? 0 }
     public var gutterFrame: NSRect? { gutter?.frame }
 
-    public init(fileURL: URL, text: String, highlight: Bool = true, lineNumbers: Bool = true) {
+    public init(fileURL: URL, text: String, highlight: Bool = true, lineNumbers: Bool = true, wrapWidth: CGFloat = EditorView.editorWidth) {
         document = EditorDocument(fileURL: fileURL, text: text)
         let contentStorage = EditorContentStorage()
         let layoutManager = NSTextLayoutManager()
         contentStorage.addTextLayoutManager(layoutManager)
-        let container = NSTextContainer(size: NSSize(width: Self.editorWidth, height: 0))
+        let container = NSTextContainer(size: NSSize(width: wrapWidth, height: 0))
         layoutManager.textContainer = container
-        let editorTextView = EditorTextView(frame: NSRect(x: 0, y: 0, width: Self.editorWidth, height: 0), textContainer: container)
+        let editorTextView = EditorTextView(frame: NSRect(x: 0, y: 0, width: wrapWidth, height: 0), textContainer: container)
         editorTextView.document = document
         editorTextView.minSize = NSSize(width: 0, height: 0)
         editorTextView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
@@ -121,11 +142,11 @@ public final class EditorView {
         scrollView.contentView = clipView
         clipView.documentView = textView
         NotificationCenter.default.addObserver(forName: NSScrollView.willStartLiveScrollNotification, object: scrollView, queue: nil) { [weak clipView] _ in
-            clipView?.defersLargeJumps = true
+            clipView?.isLiveScrolling = true
         }
         NotificationCenter.default.addObserver(forName: NSScrollView.didEndLiveScrollNotification, object: scrollView, queue: nil) { [weak clipView] _ in
-            clipView?.defersLargeJumps = false
-            clipView?.applyDeferredJump()
+            clipView?.isLiveScrolling = false
+            clipView?.applyPendingJump()
         }
 
         textView.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
@@ -135,11 +156,12 @@ public final class EditorView {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isRichText = false
         textView.allowsUndo = true
+        textView.isEditable = !document.isReadOnlyByLineLength
         textView.textContainerInset = NSSize(width: 4, height: 6)
         textView.isHorizontallyResizable = false
         textView.textContainer?.widthTracksTextView = true
         textView.autoresizingMask = []
-        textView.setFrameSize(NSSize(width: Self.editorWidth, height: textView.frame.height))
+        textView.setFrameSize(NSSize(width: wrapWidth, height: textView.frame.height))
         scrollView.hasHorizontalScroller = true
 
         clipView.jumpToFraction = { [weak self] fraction in
@@ -174,7 +196,29 @@ public final class EditorView {
             scrollView.topAnchor.constraint(equalTo: stack.topAnchor).isActive = true
             scrollView.bottomAnchor.constraint(equalTo: stack.bottomAnchor).isActive = true
         }
+
+        let bar = FindBar(textView: textView)
+        let column = NSStackView(views: [bar, view])
+        column.orientation = .vertical
+        column.spacing = 0
+        column.distribution = .fill
+        column.alignment = .leading
+        bar.trailingAnchor.constraint(equalTo: column.trailingAnchor).isActive = true
+        view.trailingAnchor.constraint(equalTo: column.trailingAnchor).isActive = true
+        findBar = bar
+        view = column
     }
+
+    // MARK: find in file
+
+    public func showFindBar() { findBar?.show() }
+    public func findNext() { findBar?.find(forward: true) }
+    public func findPrevious() { findBar?.find(forward: false) }
+    /// Sets the search text without showing the bar (the "Use Selection for Find" command and the harness).
+    public func setSearchString(_ text: String) { findBar?.setSearchString(text) }
+    public var isFindBarVisible: Bool { !(findBar?.isHidden ?? true) }
+    @discardableResult
+    public func find(forward: Bool) -> NSRange? { findBar?.find(forward: forward) }
 
     /// Writes what the editor looks like to a PNG, painted on the CPU into a bitmap. Returns the painting time in ms.
     @discardableResult

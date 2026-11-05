@@ -2,12 +2,14 @@
 //
 //   gobi-check drag FILE [--type-first] [--legacy]     real NSScroller knob drag through the tracking loop
 //   gobi-check momentum FILE                           trackpad-style phased scroll events over the whole file
-//   gobi-check longline FILE [--snapshot PNG]          open / keystroke / gutter / highlight on long lines
+//   gobi-check longline FILE [--width POINTS] [--count N] [--snapshot PNG]          open / keystroke / gutter / highlight on long lines
 //   every mode accepts --no-highlight and --no-gutter to switch those features off (to find what costs time)
-//   gobi-check find FILE NEEDLE_NEAR_END NEEDLE_MANY   NSTextFinder through the text view's find bar
+//   gobi-check find FILE NEEDLE_NEAR_END NEEDLE_MANY   Gobi's find bar: next/previous/wrap against an independent scan
+//   windows are invisible and never take focus; add --visible to watch
 //   gobi-check ax FILE                                 NSAccessibility surface of the text view and gutter
 //   gobi-check paint FILE                              window paint cost with alpha 1 / alpha 0 / ordered out
 //   gobi-check highlight FILE [--png-dir DIR]          highlighter and document bookkeeping checks (PNGs of the edits)
+//   gobi-check scrollthrough FILE [--stages 1000,5000,20000]   scroll steadily down the file; keystroke cost and memory at each stage
 //   gobi-check cliff FILE [--no-fix]                  root-cause experiment for the scroll-jump slowdown and its remedies
 //   gobi-check fuzz                                    SyntaxIndex/LineIndex fuzz with large multi-line edits
 
@@ -91,17 +93,17 @@ func fuzz() {
         var units = Array("package p\n/* c */\nfunc f() { s := `a\nb` // t\n\treturn \"x\" }\n```\n# h\n{\"k\": [1, true]}\n'x'\n".utf16)
         var index = LineIndex(utf16: units)
         var syntax = SyntaxIndex(language: language, lineCount: index.lineCount) { Array(units[index.lineRange($0)]) }
-        let alphabet = Array("/*`\"'\n\n\n #-{}:,x1 \\".utf16)
+        let alphabet = Array("/*`\"'\n\n\n\r #-{}:,x1 \\".utf16)
         for step in 0 ..< 3000 {
             let start = Int.random(in: 0 ... units.count, using: &generator)
             let end = Int.random(in: start ... min(units.count, start + (step % 50 == 0 ? 400 : 12)), using: &generator)
             let inserted = (0 ..< Int.random(in: 0 ... 50, using: &generator)).map { _ in alphabet.randomElement(using: &generator)! }
-            let firstLine = index.position(at: start).line
-            let oldLineCount = index.position(at: end).line - firstLine + 1
-            let newLineCount = inserted.filter { $0 == 0x0A }.count + 1
             let before = (0 ..< syntax.lineCount).map { syntax.tokens(line: $0) }
+            let unitBefore: UInt16? = start > 0 ? units[start - 1] : nil
+            let unitAfter: UInt16? = end < units.count ? units[end] : nil
             units.replaceSubrange(start ..< end, with: inserted)
-            index.replace(range: start ..< end, with: inserted)
+            let change = index.replace(range: start ..< end, with: inserted, before: unitBefore, after: unitAfter)
+            let (firstLine, oldLineCount, newLineCount) = (change.firstLine, change.oldLineCount, change.newLineCount)
             let changed = syntax.update(firstLine: firstLine, oldLineCount: oldLineCount, newLineCount: newLineCount) { Array(units[index.lineRange($0)]) }
             let rebuilt = SyntaxIndex(language: language, lineCount: index.lineCount) { Array(units[index.lineRange($0)]) }
             if syntax != rebuilt {
@@ -132,13 +134,15 @@ if mode == "help" || filePath.isEmpty { print("usage: see header"); exit(2) }
 // MARK: the editor in a visible window
 
 let application = NSApplication.shared
-application.setActivationPolicy(.regular)
+// Quiet by default: no Dock icon, no focus change, an invisible window. --visible shows it.
+let visible = CommandLine.arguments.contains("--visible")
+application.setActivationPolicy(visible ? .regular : .accessory)
 
 let fileURL = URL(fileURLWithPath: filePath)
 let fileText = try! String(contentsOf: fileURL, encoding: .utf8)
 let memoryBefore = residentMegabytes()
 var editor: EditorView!
-let openMilliseconds = milliseconds { editor = EditorView(fileURL: fileURL, text: fileText, highlight: !hasFlag("--no-highlight"), lineNumbers: !hasFlag("--no-gutter")) }
+let openMilliseconds = milliseconds { editor = EditorView(fileURL: fileURL, text: fileText, highlight: !hasFlag("--no-highlight"), lineNumbers: !hasFlag("--no-gutter"), wrapWidth: CGFloat(Double(option("--width") ?? "") ?? Double(EditorView.editorWidth))) }
 if hasFlag("--no-fix") { editor.mapsLargeJumpsToLines = false }   // baseline: the stock behaviour
 let textView = editor.textView
 let layout = textView.textLayoutManager!
@@ -150,9 +154,10 @@ let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 980, height: 720), 
 window.contentView = editor.view
 window.title = "gobi-check \(mode)"
 window.center()
+if !visible { window.alphaValue = 0; window.ignoresMouseEvents = true }
 window.makeKeyAndOrderFront(nil)
 window.makeFirstResponder(textView)
-application.activate(ignoringOtherApps: true)
+if visible { application.activate(ignoringOtherApps: true) }
 
 func layOutViewport() {
     textView.layoutSubtreeIfNeeded()
@@ -290,13 +295,15 @@ func dragCheck() {
     let total = milliseconds { scroller.mouseDown(with: mouseEvent(.leftMouseDown, at: knobCenter(fraction: 0), number: 1)) }
     NotificationCenter.default.removeObserver(observer)
     print(String(format: "  drag: mouseDown returned after %.0f ms, %d timer ticks, %d clip bounds changes, clip y now %.0f (%.1f%% of the document), scroller value %.3f", total, fireTimes.count, boundsChanges, clip.bounds.origin.y, fraction(ofY: clip.bounds.origin.y) * 100, scroller.doubleValue))
-    check("the drag moved the view (one jump when the drag ends)", boundsChanges >= 1 && clip.bounds.origin.y > 1000)
+    check("the drag moved the view", boundsChanges >= 1 && clip.bounds.origin.y > 1000)
     var gaps: [Double] = []
     for index in 1 ..< fireTimes.count {
         let gap = fireTimes[index].timeIntervalSince(fireTimes[index - 1]) * 1000
         gaps.append(gap)
         if gap > 50 { print(String(format: "  slow   step %d: %.0f ms between ticks, view was at %.1f%% -> %.1f%%", index, gap, fraction(ofY: clipYAtFire[index - 1]) * 100, fraction(ofY: clipYAtFire[index]) * 100)) }
     }
+    let positionsDuringDrag = Set(clipYAtFire.map { Int($0) }).count
+    check("the text followed the thumb during the drag (distinct view positions: \(positionsDuringDrag), jumps applied: \(editor.scrollStatistics.remappedJumps))", positionsDuringDrag >= 5)
     report("time between drag ticks (nominal 16 ms; the excess is the step's layout + paint)", gaps)
     print("  scroll statistics (scroll(to:) calls, remapped jumps, setBoundsOrigin calls): \(editor.scrollStatistics)")
     print(String(format: "  window paint right after the drag: %.2f ms", milliseconds { flushPendingPaint() }))
@@ -363,6 +370,50 @@ func cliffCheck() {
     print(String(format: "  remedy invalidateLayout(whole document) took %.0f ms", invalidated))
     memory("after invalidateLayout")
     report("30 keystrokes after invalidateLayout", typing(count: 30, paint: false))
+}
+
+/// Continuous scrolling lays out every paragraph it passes. This scrolls steadily down the file with pixel scroll events (the
+/// form that reaches the scroll view here; events with trackpad phases do not move the view, see `momentum`) and reports, at
+/// each stage, the per-step time, the memory and the cost of typing, to see whether lines scrolled past slow later edits.
+func topLine() -> Int {
+    guard let viewport = layout.textViewportLayoutController.viewportRange else { return 0 }
+    return document.lineIndex.position(at: layout.offset(from: layout.documentRange.location, to: viewport.location)).line
+}
+
+func scrollThroughCheck() {
+    header()
+    let stages = (option("--stages") ?? "1000,5000,20000").split(separator: ",").compactMap { Int($0) }
+    clip.scroll(to: .zero)
+    scrollView.reflectScrolledClipView(clip)
+    layOutViewport()
+    let fresh = typing(count: 30, at: 0, paint: false)
+    report("30 keystrokes at the top, fresh", fresh)
+    let freshMedian = percentile(fresh, 0.5)
+    var stepTimes: [Double] = []
+    var stage = 0
+    while stage < stages.count {
+        guard let cgEvent = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: -60, wheel2: 0, wheel3: 0),
+              let event = NSEvent(cgEvent: cgEvent) else { print("  FAIL cannot make scroll events"); return }
+        let before = clip.bounds.origin.y
+        // A real scroll event ends a run-loop turn and drains autoreleased objects; a tight loop would not.
+        stepTimes.append(autoreleasepool {
+            milliseconds {
+                scrollView.scrollWheel(with: event)
+                layOutViewport()
+                flushPendingPaint()
+            }
+        })
+        if clip.bounds.origin.y <= before { print("  FAIL the view stopped moving at line \(topLine())"); return }
+        guard topLine() >= stages[stage] else { continue }
+        print(String(format: "  stage  line %d reached, memory %.0f MB (+%.0f MB since before the editor)", topLine(), residentMegabytes(), residentMegabytes() - memoryBefore))
+        report("  scroll steps since the last stage (\(stepTimes.count) steps)", stepTimes)
+        stepTimes = []
+        let typed = typing(count: 30, at: document.lineIndex.lineRange(topLine()).lowerBound, paint: false)
+        report("  30 keystrokes after scrolling past \(stages[stage]) lines", typed)
+        let ratio = percentile(typed, 0.5) / max(freshMedian, 0.01)
+        check("typing after \(stages[stage]) lines scrolled stays within 2 times a fresh start", ratio <= 2, String(format: "%.1f times", ratio))
+        stage += 1
+    }
 }
 
 // MARK: B. trackpad momentum scrolling
@@ -459,7 +510,7 @@ func momentumCheck() {
         if elapsed > 16 { hitches.append((fraction(ofY: before), elapsed)) }
     }
     let started = Date()
-    while clip.bounds.origin.y < bottom - 1 && samples.count < 60_000 {
+    while clip.bounds.origin.y < bottom - 1 && samples.count < 3_000 {
         gestures += 1
         feed(0, 1, 0)                                     // began
         for step in 1 ... 8 { feed(Double(step) * 20, 2, 0) }   // changed, finger moving
@@ -503,7 +554,20 @@ func longLineCheck() {
         }
     }
     print("  viewport: \(fragmentsInViewport) paragraphs, \(lineFragmentsInViewport) visual lines, widest paragraph \(Int(widestFragment)) pt, text view width \(Int(textView.frame.width)), container width \(Int(textView.textContainer?.size.width ?? 0))")
-    check("paragraphs wrap inside the 3000 pt view", widestFragment <= 3000)
+    check("paragraphs wrap inside the \(Int(textView.frame.width)) pt view", widestFragment <= textView.frame.width)
+    if document.isReadOnlyByLineLength {
+        check("a line over \(EditorDocument.editableLineLimit) units makes the document read-only", !textView.isEditable, "longest line \(longestRange.count) units")
+        let lengthBefore = (textView.string as NSString).length
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+        textView.insertText("x", replacementRange: NSRange(location: NSNotFound, length: 0))
+        check("typing into a read-only document changes nothing", (textView.string as NSString).length == lengthBefore)
+        textView.scrollRangeToVisible(NSRange(location: longestRange.lowerBound, length: 0))
+        layOutViewport()
+        flushPendingPaint()
+        if let path = option("--snapshot") { editor.snapshot(to: URL(fileURLWithPath: path)); print("  image  wrote \(path)") }
+        return
+    }
+    check("a line within the limit keeps the document editable", textView.isEditable, "longest line \(longestRange.count) units")
     let keys = Int(option("--count") ?? "") ?? (longestRange.count > 100_000 ? 3 : 30)
     let endSamples = typing(count: keys, at: longestRange.upperBound, paint: false)
     report("\(keys) keystrokes at the END of the longest line (layout only)", endSamples)
@@ -549,12 +613,6 @@ func longLineCheck() {
 
 // MARK: D. find
 
-func finderAction(_ action: NSTextFinder.Action) {
-    let menuItem = NSMenuItem()
-    menuItem.tag = action.rawValue
-    textView.performTextFinderAction(menuItem)
-}
-
 func matchIsVisible(_ range: NSRange) -> Bool {
     let screenRect = textView.firstRect(forCharacterRange: range, actualRange: nil)
     guard screenRect.size != .zero else { return false }
@@ -566,56 +624,53 @@ func findCheck() {
     header()
     let needleNearEnd = arguments.count > 3 ? arguments[3] : "total"
     let needleMany = arguments.count > 4 ? arguments[4] : "func"
-    textView.usesFindBar = true
-    textView.isIncrementalSearchingEnabled = true
     let text = textView.string as NSString
-    let expected = text.range(of: needleNearEnd)
-    let manyCount = text.components(separatedBy: needleMany).count - 1
-    print("  needle \"\(needleNearEnd)\" first at \(expected.location) (line \(document.lineIndex.position(at: expected.location).line + 1)); needle \"\(needleMany)\" occurs \(manyCount) times")
-    guard expected.location != NSNotFound else { print("  FAIL needle not in file"); return }
-
-    // Own finder, used when the text view's built-in one cannot be driven from code.
-    let ownFinder = NSTextFinder()
-    ownFinder.client = (textView as AnyObject) as? NSTextFinderClient
-    print("  own NSTextFinder client set: \(ownFinder.client != nil)")
-    ownFinder.findBarContainer = scrollView
-    ownFinder.isIncrementalSearchingEnabled = true
-    let useOwn = hasFlag("--own-finder")
-    func act(_ action: NSTextFinder.Action) { useOwn ? ownFinder.performAction(action) : finderAction(action) }
+    func occurrences(_ needle: String) -> [NSRange] {
+        var found: [NSRange] = []
+        var from = 0
+        while from < text.length {
+            let match = text.range(of: needle, options: .caseInsensitive, range: NSRange(location: from, length: text.length - from))
+            if match.location == NSNotFound { break }
+            found.append(match)
+            from = match.upperBound
+        }
+        return found
+    }
 
     func search(_ needle: String, label: String) {
-        let range = text.range(of: needle)
+        let expected = occurrences(needle)
+        guard let first = expected.first else { print("  FAIL \(label): needle not in file"); return }
         textView.setSelectedRange(NSRange(location: 0, length: 0))
         textView.scrollRangeToVisible(NSRange(location: 0, length: 0))
         layOutViewport()
         flushPendingPaint()
-        let show = milliseconds { act(.showFindInterface) }
-        spin(0.2)
-        NSPasteboard(name: .find).clearContents()
-        NSPasteboard(name: .find).setString(needle, forType: .string)
-        textView.setSelectedRange(range)
-        act(.setSearchString)
-        textView.setSelectedRange(NSRange(location: 0, length: 0))
-        textView.scrollRangeToVisible(NSRange(location: 0, length: 0))
-        layOutViewport()
-        let stallAfterShow = longestStall(seconds: 1.5)
-        print(String(format: "  %@: showFindInterface %.1f ms, find bar visible %@, longest main-thread stall in the 1.5 s after setting the search string: %.0f ms", label, show, scrollView.isFindBarVisible ? "yes" : "no", stallAfterShow))
-        let next = milliseconds {
-            act(.nextMatch)
-            layOutViewport()
-            flushPendingPaint()
+        let show = milliseconds { editor.showFindBar() }
+        editor.setSearchString(needle)
+        print(String(format: "  %@: %d matches, first at %d (line %d), showFindBar %.1f ms, bar visible %@", label, expected.count, first.location, document.lineIndex.position(at: first.location).line + 1, show, editor.isFindBarVisible ? "yes" : "no"))
+        var times: [Double] = []
+        var firstMatch: NSRange?
+        times.append(milliseconds { firstMatch = editor.find(forward: true); layOutViewport(); flushPendingPaint() })
+        check("\(label): next selects the first occurrence", firstMatch == first && textView.selectedRange() == first)
+        check("\(label): the match is on screen", matchIsVisible(textView.selectedRange()))
+        // Walk through up to 40 matches and compare each with the independent scan; then one more step must wrap.
+        let steps = min(expected.count, 40)
+        var allCorrect = true
+        for index in 1 ..< max(steps, 1) {
+            var got: NSRange?
+            times.append(milliseconds { got = editor.find(forward: true); layOutViewport(); flushPendingPaint() })
+            if got != expected[index] { allCorrect = false }
         }
-        let selected = textView.selectedRange()
-        let stall = longestStall(seconds: 1.5)
-        print(String(format: "  %@: nextMatch %.1f ms -> selection %@ (expected %@), match visible %@, longest stall in the 1.5 s after: %.0f ms", label, next, NSStringFromRange(selected), NSStringFromRange(range), matchIsVisible(selected) ? "yes" : "no", stall))
-        check("\(label): nextMatch selected the first occurrence", NSEqualRanges(selected, range))
-        var repeated: [Double] = []
-        for _ in 0 ..< 10 { repeated.append(milliseconds { act(.nextMatch); layOutViewport(); flushPendingPaint() }) }
-        report("\(label): 10 more nextMatch (layout + paint)", repeated)
-        print("  \(label): selection after 11 nextMatch \(NSStringFromRange(textView.selectedRange()))")
+        check("\(label): \(steps) next steps follow the independent scan", allCorrect)
+        report("\(label): next (find + layout + paint)", times)
+        // Wrap: from the last match, next goes to the first; previous from the first goes to the last.
+        textView.setSelectedRange(expected[expected.count - 1])
+        check("\(label): next after the last match wraps to the first", editor.find(forward: true) == first)
+        check("\(label): previous before the first match wraps to the last", editor.find(forward: false) == expected[expected.count - 1])
+        if expected.count > 1 {
+            textView.setSelectedRange(expected[1])
+            check("\(label): previous steps back one match", editor.find(forward: false) == first)
+        }
         report("\(label): 50 keystrokes at the match (layout only)", typing(count: 50, at: textView.selectedRange().location, paint: false))
-        let hide = milliseconds { act(.hideFindInterface) }
-        print(String(format: "  %@: hideFindInterface %.1f ms", label, hide))
     }
     search(needleNearEnd, label: "near-end needle")
     search(needleMany, label: "many-matches needle")
@@ -758,7 +813,7 @@ func paintCheck() {
     window.alphaValue = 0
     spin(0.1)
     round("alpha 0 (what gobi-bench uses)")
-    window.alphaValue = 1
+    window.alphaValue = visible ? 1 : 0
     window.orderOut(nil)
     spin(0.1)
     round("ordered out")
@@ -953,6 +1008,7 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
     case "drag": dragCheck()
     case "jump": jumpCheck()
     case "cliff": cliffCheck()
+    case "scrollthrough": scrollThroughCheck()
     case "momentum": momentumCheck()
     case "longline": longLineCheck()
     case "find": findCheck()
