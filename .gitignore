@@ -1,0 +1,12 @@
+.DS_Store
+/bin/
+*.sock
+*.test
+*.out
+*.pprof
+coverage.*
+.env
+.env.*
+!.env.example
+.build/
+*.xcodeproj/xcuserdata/
