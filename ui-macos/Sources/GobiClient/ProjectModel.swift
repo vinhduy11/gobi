@@ -55,6 +55,11 @@ public struct RecentProjects: Equatable, Codable, Sendable {
     }
 
     public mutating func remove(path: String) { items.removeAll { $0.path == path } }
+
+    /// The newest project whose folder still exists, for reopening at launch.
+    public func mostRecent(whereExists exists: (String) -> Bool) -> RecentProject? {
+        items.first { exists($0.path) }
+    }
 }
 
 /// Folders the user trusted. Trusting a folder trusts everything inside it (this is how "trust projects in the parent

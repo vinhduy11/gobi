@@ -18,7 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         installMenu()
         // Paths on the command line reach us through application(_:openFile:), which AppKit calls for each one.
-        if controllers.isEmpty && projects.isEmpty && !selfTest { showWelcome() }
+        if controllers.isEmpty && projects.isEmpty && !selfTest { openLastProjectOrWelcome() }
         if NSApp.activationPolicy() == .regular { NSApp.activate(ignoringOtherApps: true) }
     }
 
@@ -73,6 +73,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openProject(URL(fileURLWithPath: info.root))
     }
 
+    /// At launch the newest recent project reopens; with none, or with Option held, the Welcome window shows.
+    /// A project that is not trusted reopens in Restricted Mode without asking again.
+    private func openLastProjectOrWelcome() {
+        let skip = NSEvent.modifierFlags.contains(.option)
+        let last = ProjectStore.shared.recents.mostRecent { FileManager.default.fileExists(atPath: $0) }
+        if !skip, let last, openProject(URL(fileURLWithPath: last.path), askAboutTrust: false) { return }
+        showWelcome()
+    }
+
     private func showWelcome() {
         let controller = welcome ?? WelcomeWindowController()
         controller.onOpenFolder = { [weak self] in self?.openDocument(nil) }
@@ -86,7 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @discardableResult
-    private func openProject(_ root: URL) -> Bool {
+    private func openProject(_ root: URL, askAboutTrust: Bool = true) -> Bool {
         if let existing = projects.first(where: { $0.root == root }) {
             existing.showWindow(nil)
             return true
@@ -97,10 +106,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return false
         }
         var trust = ProjectStore.shared.trust
-        if !trust.isTrusted(path: root.path), !selfTest, let answer = askTrust(root) {
+        if !trust.isTrusted(path: root.path), askAboutTrust, !selfTest, let answer = askTrust(root) {
             if answer.trusted { trust.trust(path: answer.parentToo ? root.deletingLastPathComponent().path : root.path) }
             ProjectStore.shared.trust = trust
-        } else if !trust.isTrusted(path: root.path), !selfTest {
+        } else if !trust.isTrusted(path: root.path), askAboutTrust, !selfTest {
             return false   // Cancel
         }
         let kind = ProjectFolder.kind(of: root)

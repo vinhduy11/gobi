@@ -43,6 +43,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 - `ui-macos/`: New Project (⇧⌘N), Clone Repository (⇧⌘K) and Import Existing Code dialogs, also on the Welcome window; they call gobid's `project/*` requests through `ControlClient`. A project you create is trusted automatically; a clone or import still asks. Form checks in `ProjectForm` with tests; `gobi-check project DIR` exercises the requests against a real gobid. Mockup board for the Clone and Import dialogs.
 
+- `ui-macos/`: at launch the newest recent project reopens (in Restricted Mode, without a question, when it was never trusted). The Welcome window shows when there is no recent project or Option is held while opening the app.
+
 ### Fixed
 - `ui-macos/` and `core/`: a lone `\r` is a line break in `LineIndex`, `lsp` text sync and `langsvc` positions, as the protocol defines.
 - `ui-macos/`: `GobiApp --selftest` and `gobi-check` run quietly (no window, focus change or Dock icon); `--visible` shows the window.

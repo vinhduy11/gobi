@@ -81,3 +81,25 @@ struct TrustListTests {
         #expect(!TrustList().isTrusted(path: "/work/hello"))
     }
 }
+
+@Suite("Project to reopen at launch")
+struct LaunchProjectTests {
+    @Test func theNewestExistingProjectIsChosen() {
+        var recents = RecentProjects(limit: 5)
+        recents.add(path: "/old", kind: .module)
+        recents.add(path: "/gone", kind: .module)
+        recents.add(path: "/newest-missing", kind: .module)
+        let found = recents.mostRecent(whereExists: { $0 != "/newest-missing" && $0 != "/gone" })
+        #expect(found?.path == "/old")
+    }
+
+    @Test func noRecentsGivesNothing() {
+        #expect(RecentProjects().mostRecent(whereExists: { _ in true }) == nil)
+    }
+
+    @Test func whenNothingExistsAnymoreThereIsNothingToOpen() {
+        var recents = RecentProjects()
+        recents.add(path: "/a", kind: .folder)
+        #expect(recents.mostRecent(whereExists:) { _ in false } == nil)
+    }
+}
