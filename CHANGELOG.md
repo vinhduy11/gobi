@@ -20,5 +20,19 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Handshake `language` field and per-language servers in the registry and daemon; unsupported languages are refused.
 - Mockups: JSON editing, Markdown preview, menu bar, Settings (Editor, Languages).
 
+- `ui-macos/`: Swift package with a TextKit 2 editor window that shows diagnostics from gobid for Go, JSON and
+  Markdown files; LSP client, frame decoder and incremental line index; `gobi-probe`, `gobi-bench`, `make-app.sh`.
+- Spike findings in `docs/architect/ui-macos-spike.md`: layout setup that keeps a 100k-line file at 15 ms to open and
+  1.7 ms per keystroke.
+
+- `ui-macos/`: syntax colouring for Go, JSON and Markdown (per-line lexers, incremental `SyntaxIndex`, lazy TextKit 2
+  rendering attributes), a line-number gutter, shared `GobiEditor` library, mouse, scroll, paint and typing checks in
+  `GobiApp --selftest`, and `--snapshot` PNGs. Measured and written up in `docs/architect/ui-macos-spike.md`, including
+  the scroller-jump performance cliff and its fix.
+
+- `ui-macos/`: `EditorClipView` maps large scroll jumps to text positions (a 880 ms jump becomes 4 ms and keystrokes after
+  it stay at 3.7 ms instead of 205 ms); `gobi-check` verification harness; `scripts/make-fixtures.py`; instructions for the
+  remaining editor fixes in `docs/implement/ui-macos-fixes.md`.
+
 ### Changed
 - `gobid` with no arguments now serves instead of printing usage.

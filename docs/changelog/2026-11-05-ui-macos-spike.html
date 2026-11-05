@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gobi macOS editor spike: implementation report</title>
+<style>
+  :root { --bg:#fff; --text:#1d1d1f; --muted:#5c5c61; --line:#d6d6da; --code:#f5f5f7; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1e1e1e; --text:#f2f2f7; --muted:#a8a8ae; --line:#454549; --code:#2a2a2c; } }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:26px; margin:0 0 4px; } h2 { font-size:19px; margin:36px 0 8px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p.sub { color:var(--muted); margin:0; } code { background:var(--code); padding:1px 5px; border-radius:4px; font:13px ui-monospace,Menlo,monospace; }
+  table { border-collapse:collapse; width:100%; margin:8px 0; } th,td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+<h1>macOS editor spike</h1>
+<p class="sub">Slice 2 implementation report, 2026-11-05</p>
+
+<h2>Specs</h2>
+<p>Prove the vertical path (open a file, start <code>gobid</code> and the language server, show diagnostics in an AppKit window),
+measure a 100k-line file and Vietnamese input, assemble a signed <code>.app</code>, and decide whether stock TextKit 2
+can carry the editor. Run on the Command Line Tools only. Also requested: load a large Go file and test open, run and load.</p>
+
+<h2>Actions</h2>
+<table>
+<tr><th>Area</th><th>What was done</th></tr>
+<tr><td><code>GobiClient</code></td><td>Frame decoder on <code>[UInt8]</code> (13 tests), incremental UTF-16 line index (9 tests including a 2000-edit randomized equivalence check), unix-socket connection, handshake, LSP client, gobid discovery with on-demand start.</td></tr>
+<tr><td><code>GobiApp</code></td><td>TextKit 2 editor window, problems list, status line, incremental sync to the server, diagnostics as rendering attributes, menu bar, open panel. Same code path for Go, JSON and Markdown.</td></tr>
+<tr><td>Tools</td><td><code>gobi-probe</code> (headless end-to-end), <code>gobi-bench</code> (measurements), <code>--selftest</code> inside the app, <code>scripts/make-app.sh</code> (bundle, Info.plist, bundled gobid, ad-hoc signature, verified), <code>scripts/test.sh</code>.</td></tr>
+<tr><td>Large file</td><td>Generated a 100,012-line, 1.9 MB Go program: <code>go run</code> takes 3.7 s and prints the correct result. Opened a copy with an error on its last line in the app: first diagnostics in 0.64 to 1.85 s, error underlined, 100 mid-file keystrokes at a 2.1 ms median.</td></tr>
+<tr><td>Root cause found</td><td>First numbers (2.3 s to open, 352 ms per keystroke, +724 MB) came from a non-tracking text container, which makes TextKit 2 lay out the whole document. A wide fixed-width view whose container tracks it takes 15 ms to open and 1.7 ms per keystroke at 160 MB. Two experiments in between were invalid (shell argument splitting) and were redone before drawing conclusions.</td></tr>
+<tr><td>Follow-up: colours, gutter, painting, mouse</td><td>Per-line lexers for Go, JSON, Markdown with an incremental index (41 tests, randomized equivalence with a full rebuild), lazy rendering-attribute colouring, a line-number gutter, mouse/scroll/paint/typing checks inside the real window. On a 100k-line file: open 180 ms, keystroke 3.2 ms (3.7 ms with painting), highlighting costs about 1.4 ms per key, every mouse selection correct at 1 ms. Snapshots inspected by eye.</td></tr>
+<tr><td>Problems found and fixed</td><td>AppKit passed the <code>--snapshot</code> path to <code>openFile</code> and an error alert hung the app; <code>NSRulerView</code> covered the first characters of each line, replaced by a sibling gutter view; fixtures without <code>go.mod</code> gave no diagnostics.</td></tr>
+<tr><td>Open risk</td><td>Dragging the scroller by pixel position on a huge file can take 0.6 to 2.9 s once and then slows typing to 100 ms per key. Jumping by text position avoids it (12 ms jumps, 5 ms keys), so the scroller must be mapped to lines before shipping. A fixed line height did not help.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+<tr><th>Decision</th><th>Chosen over</th><th>Why, and the cost</th></tr>
+<tr><td>Stock <code>NSTextView</code> on TextKit 2</td><td>A custom text renderer</td><td>Meets the budgets with margin and keeps native input methods, accessibility and undo. Cost: layout behaviour must be respected (see the finding); syntax highlighting and a gutter are untested.</td></tr>
+<tr><td>3000 pt wide view, lines wrap beyond it</td><td>True unbounded no-wrap</td><td>The unbounded setup is 150 times slower to open. Cost: lines over about 370 characters wrap.</td></tr>
+<tr><td>Frame codec on <code>[UInt8]</code></td><td>Foundation <code>Data</code></td><td>Swift Testing cannot be combined with Foundation on the Command Line Tools. Also faster to test.</td></tr>
+<tr><td>Swift 5 language mode</td><td>Strict concurrency</td><td>Keeps the spike moving; revisit before the real UI slice.</td></tr>
+<tr><td>Ad-hoc signing, placeholder bundle id</td><td>Developer ID and notarization</td><td>Enough to run locally. Distribution comes later.</td></tr>
+<tr><td>Simulated Vietnamese composition</td><td>Manual-only testing</td><td>Catches text and line-index bugs automatically. A real input method is still unverified.</td></tr>
+</table>
+
+<h2>Known gaps</h2>
+<ul>
+  <li>Not measured: GPU compositing and frame pacing, trackpad momentum, a real scroller drag, find, VoiceOver, very long lines.</li>
+  <li>The scroller must be mapped to line numbers before the editor can ship (see the follow-up above).</li>
+  <li>Real Vietnamese input method not tried; manual checklist is in the findings note.</li>
+  <li>A GUI app inherits a minimal PATH, so gopls will not find <code>go</code> when launched from Finder.</li>
+  <li>Marked text is sent to the server edit by edit (seven messages for one word).</li>
+  <li>Diagnostics are applied to the current text without a document-version check.</li>
+</ul>
+</main>
+</body>
+</html>

@@ -39,6 +39,18 @@ errors, formatting and outline; Markdown outline and an HTML preview request. No
 `gobid` allows one instance per socket directory. A workspace is untrusted unless the client says otherwise in the
 handshake; untrusted workspaces run gopls with `GOTOOLCHAIN=local`.
 
+## macOS app (spike)
+
+```bash
+cd ui-macos
+./scripts/test.sh                      # Swift tests (works with the Command Line Tools only)
+./scripts/make-app.sh                  # builds dist/Gobi.app with gobid bundled, signed ad hoc
+open dist/Gobi.app --args Fixtures/broken/main.go
+swift build -c release --product gobi-bench && .build/release/gobi-bench    # editor measurements
+```
+
+Findings and numbers: `docs/architect/ui-macos-spike.md`.
+
 ## Status
 
 Slice 1 (core bootstrap) is implemented: framing codec, tool check, unix-socket transport with handshake, gopls

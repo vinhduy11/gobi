@@ -1,0 +1,7 @@
+{
+  "name": "gobi",
+  "port": 8080,
+  "ratio": -1.5e3,
+  "tags": ["cli", "demo"],
+  "tls": { "enabled": false, "cert": null }
+}

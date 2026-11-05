@@ -218,6 +218,19 @@ stored per workspace root and shown in the status bar.
    that calls `gobi/markdownPreview`, "Format Document" calling `textDocument/formatting`, Outline from
    `textDocument/documentSymbol`.
 
+5. **Slice 2 spike result (implemented):** stock `NSTextView` on TextKit 2 is a go for the editor, provided the text view
+   is a wide fixed-width view whose container tracks its width (15 ms open and 1.7 ms per keystroke on 100k lines; the
+   unbounded no-wrap setup is 150x slower). Details and numbers: `docs/architect/ui-macos-spike.md`. Open items for
+   slice 4: syntax highlighting cost, line-number gutter, painting and mouse behaviour, find, VoiceOver, very long
+   lines, real Vietnamese IME (manual checklist), hold back didChange while marked text is active, document-version
+   check for late diagnostics, and resolve the user's login-shell PATH so gopls finds `go` when launched from Finder.
+
+6. **Slice 2 follow-up (implemented and measured):** syntax colours, line numbers, painting and mouse all work and meet the
+   budgets on a 100k-line file (open 180 ms, keystroke 3.2 ms, mouse about 1 ms). One blocker found: dragging the scroller by
+   pixel offset can take seconds and leaves typing at 100 ms per key; the fix (map the scroller to line numbers and scroll
+   by text position) must be built in slice 4. Still to check there: GPU compositing and frame pacing, trackpad momentum,
+   find in file, VoiceOver, very long lines, real input method.
+
 ## Deferred (decide later, from Codex review 2)
 Editor architecture + test explorer/coverage + `go generate`/`mod tidy` tasks; rename/refactor/code actions UX;
 multi-module/go.work semantics and whether one gopls stays valid; cgo/cross-compile build contexts; debugger on macOS
