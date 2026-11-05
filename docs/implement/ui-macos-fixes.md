@@ -143,8 +143,8 @@ what you measured and what remains unverified. Leave merging to the owner.
 | T1 underline keeps colour | DONE | `DiagnosticUnderlines`; highlight check and self-test check pass |
 | T5 self-test hang | DONE | exits 1 in 0.6 s |
 | T6 paint measurement | DONE | `flushPendingPaint()`; gutter draws 50 for 50 keystrokes |
-| T9 hygiene | PARTIAL | pending-request leak fixed (unit tests). Separator checks still FAIL; see the spike doc for the findings and the LineIndex decision |
-| T2 stale colours | PARTIAL | bug reproduced, cause not found; the validator/refresh experiments are recorded in the spike doc |
+| T9 hygiene | PARTIAL | pending-request leak fixed (unit tests). separator colour checks pass since the T2 fix (they failed for the T2 cause); lone CR vs LSP line counting not revisited |
+| T2 stale colours | DONE | `EditorContentStorage` + `SyntaxHighlighter.recolourAfterEdit`; `gobi-check highlight` 34 ok, 0 FAIL (was 10 FAIL); cause in the spike doc |
 | T4 accessibility | DONE (VoiceOver pass still needed) | `EditorTextView`; all line queries under 0.01 ms |
 | T7 very long lines | PARTIAL | colouring skipped above 20,000 characters (13 s to 151 ms); the 100 ms target is not met, the remaining cost is TextKit layout of one paragraph |
 | T3 scroller | DONE for the target numbers | deferred jump on drag end; keystrokes after drag 2.1 ms, memory +26 MB |

@@ -35,6 +35,12 @@ All notable changes to this project are documented here. Format: [Keep a Changel
   remaining editor fixes in `docs/implement/ui-macos-fixes.md`.
 
 ### Fixed
+- `ui-macos/`: syntax colours no longer go stale or sit at the wrong offset after an edit (closing `/* */`, typing in
+  front of a keyword, replacing the text). TextKit ran the colouring validator while it was still synchronising the edit
+  and then shifted the colours just written by the edit's length; the editor now recolours the changed lines in the
+  viewport once the edit is fully processed (`EditorContentStorage`, `SyntaxHighlighter.recolourAfterEdit`).
+- `ui-macos/`: `gobi-check highlight` read a neighbouring run's colour for uncoloured text; it now checks the run that
+  contains the offset, checks that token colours line up with the tokens, and writes PNGs of the editor with `--png-dir`.
 - `ui-macos/`: a diagnostic underline no longer removes the syntax colour of the text under it (underlines now add and
   remove only their own rendering attributes through the shared `DiagnosticUnderlines`).
 - `ui-macos/`: paint measurements (self-test, `gobi-bench`, `gobi-check`) use `flushPendingPaint()` (`CATransaction.flush`)

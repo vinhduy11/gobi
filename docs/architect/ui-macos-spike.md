@@ -171,15 +171,43 @@ long lines, and a real input method.
 
 The paint rows in the sections above that say "plus painting" were layout-only numbers. The paint rows with the flush are the ones to use.
 | T9a pending LSP request left behind after timeout | `requestAndWait` removed nothing on timeout; late response wrote into a captured variable | `PendingReplies` (unit tests: timed-out entry removed, late reply finds nothing); `requestAndWait` removes its entry on timeout |
-| T9b separators: LineIndex vs TextKit | `gobi-check highlight` section (e): U+2028, lone CR, CRLF and LF-only control all FAIL | still FAIL, see the findings below |
+| T9b separators: LineIndex vs TextKit | `gobi-check highlight` section (e): U+2028, lone CR, CRLF and LF-only control all FAIL | pass after the T2 fix (same cause, not the separators); see the findings below |
 
-### T2 and T9b findings (not fixed in this round)
+### T2 findings: stale colours (fixed) and T9b separators
 
-- Reproduced with `gobi-check highlight Fixtures/syntax/sample.go`: FAIL `/*` colour right after the keystroke, FAIL line 2 back to keyword after `*/`, FAIL `xvar` after typing in front of `var` (short and 3000-character lines), FAIL U+2028, lone CR, CRLF and LF-only.
-- The LF-only control fails the same way as the separator cases, so the line-separator hypothesis is not the cause. U+2028 and lone CR are a secondary issue (LSP counts a lone CR as a line break, LineIndex does not).
-- Instrumented `SyntaxHighlighter.colour`: the validator runs several times per edit and for some fragments it uses token lists from an earlier state of the text. A fragment validated with the keyword token at offset 7 still reads back with no keyword colour after the edit, so the stored rendering attribute is lost or overwritten after the validator ran. Not yet explained.
-- Tried, no net gain: invalidating the edited lines synchronously in the text storage delegate (fixed one check, changed others, reverted); invalidating the whole document before the separator checks (no change, reverted).
-- Next step: check whether `addRenderingAttribute` calls made inside the validator are dropped when TextKit re-lays out the same fragment (try applying the colour through a fresh `NSTextLayoutFragment` pass, or colour the viewport from `textViewportLayoutController` delegate instead of the validator).
+- **Visible on screen, not a harness artifact.** `gobi-check highlight FILE --png-dir DIR` writes PNGs of the editor after
+  the edits, with and without a settle step (`CATransaction.flush()` and a 50 ms run-loop spin). Before the fix, after
+  `/*` then `*/` the line below (`package sample`) was drawn plain instead of keyword-coloured, and after typing `x` in
+  front of `var short = 5 // short` the `5` was black and the comment colour started one character late. Settling did
+  not change either picture.
+- **Cause.** Instrumenting the validator with a call stack showed it runs inside `NSTextStorage.endEditing` ->
+  `NSTextContentStorage.synchronizeTextLayoutManagers` -> `NSTextLayoutManager._fixSelectionAfterChange...` ->
+  `ensureLayoutForRange` (for the caret), with `SyntaxIndex` already updated. The colours it writes there are then moved
+  by the edit's length when the layout manager adjusts its stored rendering attributes for the edit: after inserting one
+  character the number and comment runs sat at 14 and 16 instead of 13 and 15; after `/*` (two characters) they were two
+  units late. For a replaced range (setting the whole text) they were dropped. The paragraph then counts as validated,
+  so TextKit does not call the validator again.
+- **Invalidation alone does not help:** `invalidateRenderingAttributes(for:)` followed by `layoutViewport()` removed the
+  colours of a paragraph that stays laid out and did not call the validator again (runs empty afterwards). This is why
+  the earlier experiments (invalidating in the text storage delegate, which runs before the synchronisation) gave no gain.
+- **Fix.** `EditorContentStorage` (an `NSTextContentStorage` subclass, now built explicitly with its layout manager and
+  container in `EditorView`) calls back after `processEditing`, or after the outermost `performEditingTransaction` when
+  the edit happens inside one (typing does). `SyntaxHighlighter.recolourAfterEdit` invalidates the changed lines (edited
+  lines plus the lines below whose tokens changed) and colours the ones laid out in the viewport directly. This replaces
+  the asynchronous invalidation of the lines below.
+- **Harness bug.** `colour(atOffset:)` returns the next coloured run when nothing is stored at the offset, so "is plain"
+  checks could read a neighbour's colour. Those checks now use `colourContaining`, and a new check verifies that each
+  token is coloured at its first unit and the unit before it is not.
+- **Results.** `gobi-check highlight Fixtures/syntax/sample.go`: 10 FAIL before (with the corrected reader), 0 FAIL and
+  34 ok after, including the `*/` case, `xvar` on short and 3000-character lines, and the U+2028, lone CR, CRLF and LF
+  separator cases, which failed for the same reason (the text was replaced and the validator's colours were dropped), not
+  because of the separators. 100k lines (`gobi-bench`, release): keystroke median 3.47 to 3.54 ms with the fix, 3.77 ms
+  without; memory 339 MB in both. Self-test on 100k lines passes in both orders (keystrokes 3.6 ms, scroll-first 4.9 ms).
+- **Open.** A `beginEditing`/`endEditing` batch on the text storage (only the harness does this) makes TextKit log
+  "enumerate while editing" during the recolour; the colours after such a batch are not checked. The earlier finding that a
+  lone CR counts as a line break for LSP and not for `LineIndex` (T9b) is a separate issue and was not revisited. A real keyboard session was not tried;
+  the evidence is the harness PNGs.
+
 | T4 accessibility line queries (100k lines, `gobi-check ax`) | caret line 7.9 s at top, 18.4 s with the caret at 95%; line for index 210 ms; range for line 84 ms; keystroke after the queries 220 ms median; memory at end 963 MB | `EditorTextView` answers from `LineIndex`: caret line 0.00 ms (both places), line for index 0.0 ms, range for line 0.0 ms; keystroke after the queries 3.75 ms median; memory at end 122 MB |
 
 T4 notes: `accessibilityRange(forLine:)` now returns the line without its terminator (TextKit's answer included it); this is a

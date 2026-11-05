@@ -7,7 +7,7 @@
 //   gobi-check find FILE NEEDLE_NEAR_END NEEDLE_MANY   NSTextFinder through the text view's find bar
 //   gobi-check ax FILE                                 NSAccessibility surface of the text view and gutter
 //   gobi-check paint FILE                              window paint cost with alpha 1 / alpha 0 / ordered out
-//   gobi-check highlight FILE                          highlighter and document bookkeeping checks
+//   gobi-check highlight FILE [--png-dir DIR]          highlighter and document bookkeeping checks (PNGs of the edits)
 //   gobi-check cliff FILE [--no-fix]                  root-cause experiment for the scroll-jump slowdown and its remedies
 //   gobi-check fuzz                                    SyntaxIndex/LineIndex fuzz with large multi-line edits
 
@@ -186,6 +186,35 @@ func renderingAttributes(atOffset offset: Int) -> [NSAttributedString.Key: Any]?
     return found
 }
 func colour(atOffset offset: Int) -> NSColor? { renderingAttributes(atOffset: offset)?[.foregroundColor] as? NSColor }
+/// The colour of the run that contains `offset`, or nil when no coloured run contains it. (enumerateRenderingAttributes
+/// may start at a later run when nothing is stored at `offset`, so `colour(atOffset:)` alone can read a neighbour's colour.)
+func colourContaining(_ offset: Int) -> NSColor? {
+    guard let location = layout.location(layout.documentRange.location, offsetBy: offset) else { return nil }
+    var found: NSColor?
+    layout.enumerateRenderingAttributes(from: location, reverse: false) { manager, attributes, runRange in
+        let start = manager.offset(from: manager.documentRange.location, to: runRange.location)
+        let end = manager.offset(from: manager.documentRange.location, to: runRange.endLocation)
+        if start <= offset && offset < end { found = attributes[.foregroundColor] as? NSColor }
+        return false
+    }
+    return found
+}
+/// Every token of `line` is coloured at its first unit and the unit before it (when no token covers it) is not: catches
+/// colours that sit at the wrong offset after an edit.
+func coloursLineUp(line: Int) -> (Bool, String) {
+    let lineStart = document.lineIndex.lineRange(line).lowerBound
+    let tokens = document.syntaxIndex.tokens(line: line)
+    var misplaced: [String] = []
+    for token in tokens {
+        let start = lineStart + Int(token.start)
+        if colourContaining(start) == nil { misplaced.append("\(start) uncoloured") }
+        let before = Int(token.start) - 1
+        if before >= 0, !tokens.contains(where: { Int($0.start) <= before && before < Int($0.start) + Int($0.length) }), colourContaining(lineStart + before) != nil {
+            misplaced.append("\(lineStart + before) coloured")
+        }
+    }
+    return (misplaced.isEmpty, misplaced.joined(separator: ", "))
+}
 func same(_ first: NSColor?, _ second: NSColor?) -> Bool {
     guard let first, let second else { return false }
     return first === second || first == second
@@ -766,6 +795,17 @@ func runs(over range: Range<Int>, keyword: NSColor?, comment: NSColor?) -> Strin
     return parts.joined(separator: " ")
 }
 
+/// With `--png-dir DIR`, writes what the editor shows now to DIR/NAME.png; `settle` first does what the run loop does
+/// between events (flush the Core Animation transaction, spin briefly), so the picture is what the user would see.
+func pictureOfEditor(_ name: String, settle: Bool) {
+    guard let directory = option("--png-dir") else { return }
+    if settle {
+        CATransaction.flush()
+        spin(0.05)
+    }
+    editor.snapshot(to: URL(fileURLWithPath: directory).appendingPathComponent("\(name)\(settle ? "-settled" : "").png"))
+}
+
 func highlightCheck() {
     header()
     layOutViewport()
@@ -816,10 +856,15 @@ func highlightCheck() {
     print("  after a paint: line 2 runs [\(runs(over: line2After, keyword: keywordColour, comment: commentColour))], paragraphs coloured \(editor.paragraphsColoured)")
     check("`/*` itself has the comment colour right after the keystroke", same(colour(atOffset: line1After.lowerBound), commentColour))
     check("line 2 has the comment colour after the async refresh", same(belowAfterRefresh, commentColour), "immediately \(same(belowImmediately, commentColour) ? "comment" : same(belowImmediately, keywordColour) ? "still keyword" : "plain/other"), after refresh \(same(belowAfterRefresh, commentColour) ? "comment" : same(belowAfterRefresh, keywordColour) ? "still keyword" : "plain/other"), after paint \(same(belowAfterPaint, commentColour) ? "comment" : same(belowAfterPaint, keywordColour) ? "still keyword" : "plain/other")")
+    pictureOfEditor("b1-open-comment", settle: true)
     textView.insertText("*/", replacementRange: NSRange(location: NSNotFound, length: 0))
     layOutViewport()
+    pictureOfEditor("b2-close-comment", settle: false)
+    pictureOfEditor("b2-close-comment", settle: true)
     spin(0.1)
     layOutViewport()
+    let lineUpAfterClose = coloursLineUp(line: 1)
+    check("line 1 colours sit on the tokens after `*/`", lineUpAfterClose.0, lineUpAfterClose.1)
     check("line 2 is back to the keyword colour after `*/`", same(colour(atOffset: document.lineIndex.lineRange(2).lowerBound), keywordColour), "runs [\(runs(over: document.lineIndex.lineRange(2), keyword: keywordColour, comment: commentColour))]")
     rebuiltIndexesMatch("after the comment edits")
 
@@ -888,14 +933,18 @@ func highlightCheck() {
         textView.insertText("x", replacementRange: NSRange(location: NSNotFound, length: 0))
         layOutViewport()
         let afterLayout = runs(over: varOffset ..< varOffset + 6, keyword: keywordColour, comment: commentColour)
+        pictureOfEditor("f-\(prefix.isEmpty ? "short" : "long")-xvar", settle: false)
+        pictureOfEditor("f-\(prefix.isEmpty ? "short" : "long")-xvar", settle: true)
         flushPendingPaint()
         CATransaction.flush()
         spin(0.05)
         let afterPaint = runs(over: varOffset ..< varOffset + 6, keyword: keywordColour, comment: commentColour)
-        check("\(label): `xvar` is plain after typing `x` in front of `var`", colour(atOffset: varOffset + 1) == nil, "tokens \(document.syntaxIndex.tokens(line: 0).prefix(3)), runs after layout [\(afterLayout)], after paint [\(afterPaint)]")
+        check("\(label): `xvar` is plain after typing `x` in front of `var`", colourContaining(varOffset + 1) == nil, "tokens \(document.syntaxIndex.tokens(line: 0).prefix(3)), runs after layout [\(afterLayout)], after paint [\(afterPaint)]")
         textView.insertText("y", replacementRange: NSRange(location: NSNotFound, length: 0))
         layOutViewport()
-        check("\(label): still plain after a second keystroke", colour(atOffset: varOffset + 2) == nil, "runs [\(runs(over: varOffset ..< varOffset + 7, keyword: keywordColour, comment: commentColour))]")
+        let lineUp = coloursLineUp(line: 0)
+        check("\(label): token colours sit on the tokens after the edit", lineUp.0, lineUp.1)
+        check("\(label): still plain after a second keystroke", colourContaining(varOffset + 2) == nil, "runs [\(runs(over: varOffset ..< varOffset + 7, keyword: keywordColour, comment: commentColour))]")
     }
 }
 

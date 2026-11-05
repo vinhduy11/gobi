@@ -39,19 +39,48 @@ final class SyntaxHighlighter {
         }
     }
 
-    /// Lines the edit did not touch but whose colours changed (below an opened comment, for example) are not laid
-    /// out again by TextKit, so ask for their attributes to be recomputed.
+    /// Lines whose colours the last edit may have changed, recoloured once TextKit has finished processing that edit.
+    private var pendingLines: Range<Int>?
+
+    /// TextKit calls the validator for the caret's paragraph while it is still synchronising an edit (fixing the
+    /// selection), and only afterwards shifts the stored rendering attributes by the edit's length, so the colours just
+    /// written land `changeInLength` units too far (or vanish, for a replaced range) and the paragraph counts as validated.
+    /// Remember the lines here; `recolourAfterEdit` repaints them once the edit is fully processed.
     private func refresh(edited: Range<Int>, changed: Range<Int>) {
-        guard changed.upperBound > edited.upperBound else { return }
-        let below = edited.upperBound ..< changed.upperBound
-        DispatchQueue.main.async { [weak self] in
-            guard let self, let layout = self.textView?.textLayoutManager else { return }
-            let startOffset = self.document.lineIndex.lineRange(below.lowerBound).lowerBound
-            let endOffset = self.document.lineIndex.lineRange(below.upperBound - 1).upperBound
-            guard let from = layout.location(layout.documentRange.location, offsetBy: startOffset),
-                  let to = layout.location(layout.documentRange.location, offsetBy: endOffset),
-                  let range = NSTextRange(location: from, end: to) else { return }
-            layout.invalidateRenderingAttributes(for: range)
+        let lower = min(edited.lowerBound, changed.lowerBound, pendingLines?.lowerBound ?? .max)
+        let upper = max(edited.upperBound, changed.upperBound, pendingLines?.upperBound ?? 0)
+        pendingLines = lower ..< upper
+    }
+
+    /// Called by EditorContentStorage after an edit has been synchronised with the layout manager. Invalidates the
+    /// changed lines (so paragraphs laid out later are validated again) and colours the ones already laid out in the
+    /// viewport directly: invalidation alone does not make TextKit re-run the validator for a paragraph that stays laid out.
+    func recolourAfterEdit() {
+        guard let lines = pendingLines, let layout = textView?.textLayoutManager else { return }
+        pendingLines = nil
+        let lastLine = min(lines.upperBound, document.lineIndex.lineCount) - 1
+        guard lastLine >= lines.lowerBound else { return }
+        let documentStart = layout.documentRange.location
+        let startOffset = document.lineIndex.lineRange(lines.lowerBound).lowerBound
+        var endOffset = document.lineIndex.lineRange(lastLine).upperBound
+        guard let from = layout.location(documentStart, offsetBy: startOffset),
+              let to = layout.location(documentStart, offsetBy: endOffset),
+              let range = NSTextRange(location: from, end: to) else { return }
+        layout.invalidateRenderingAttributes(for: range)
+        var line = lines.lowerBound
+        if let viewport = layout.textViewportLayoutController.viewportRange {
+            endOffset = min(endOffset, layout.offset(from: documentStart, to: viewport.endLocation))
+            line = max(line, document.lineIndex.position(at: layout.offset(from: documentStart, to: viewport.location)).line)
+        }
+        // One lookup per line rather than enumerateTextLayoutFragments: enumerating here made TextKit log "enumerate
+        // while editing" in the self-test. (A beginEditing/endEditing batch on the text
+        // storage, which only the harness does, still logs it.)
+        while line <= lastLine, document.lineIndex.lineRange(line).lowerBound <= endOffset {
+            if let location = layout.location(documentStart, offsetBy: document.lineIndex.lineRange(line).lowerBound),
+               let fragment = layout.textLayoutFragment(for: location) {
+                colour(fragment, in: layout)
+            }
+            line += 1
         }
     }
 }

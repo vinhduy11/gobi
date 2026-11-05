@@ -51,6 +51,26 @@ final class EditorClipView: NSClipView {
     }
 }
 
+/// Text content storage that reports when an edit has been fully processed, including the synchronisation with the
+/// layout manager that shifts rendering attributes; see SyntaxHighlighter.recolourAfterEdit. Inside an editing
+/// transaction (typing goes through one) the report waits for the transaction to end, when the text is consistent again.
+final class EditorContentStorage: NSTextContentStorage {
+    var afterEditing: (() -> Void)?
+    private var editWaitsForTransaction = false
+
+    override func processEditing(for textStorage: NSTextStorage, edited editMask: NSTextStorageEditActions, range newCharRange: NSRange, changeInLength delta: Int, invalidatedRange invalidatedCharRange: NSRange) {
+        super.processEditing(for: textStorage, edited: editMask, range: newCharRange, changeInLength: delta, invalidatedRange: invalidatedCharRange)
+        if hasEditingTransaction { editWaitsForTransaction = true } else { afterEditing?() }
+    }
+
+    override func performEditingTransaction(_ transaction: () -> Void) {
+        super.performEditingTransaction(transaction)
+        guard !hasEditingTransaction, editWaitsForTransaction else { return }
+        editWaitsForTransaction = false
+        afterEditing?()
+    }
+}
+
 /// The editor itself: a TextKit 2 text view in a scroll view with a line-number gutter and syntax colours.
 /// Shared by the app and the benchmarks so both measure the same setup.
 public final class EditorView {
@@ -81,7 +101,12 @@ public final class EditorView {
 
     public init(fileURL: URL, text: String, highlight: Bool = true, lineNumbers: Bool = true) {
         document = EditorDocument(fileURL: fileURL, text: text)
-        let editorTextView = EditorTextView(frame: NSRect(x: 0, y: 0, width: Self.editorWidth, height: 0))
+        let contentStorage = EditorContentStorage()
+        let layoutManager = NSTextLayoutManager()
+        contentStorage.addTextLayoutManager(layoutManager)
+        let container = NSTextContainer(size: NSSize(width: Self.editorWidth, height: 0))
+        layoutManager.textContainer = container
+        let editorTextView = EditorTextView(frame: NSRect(x: 0, y: 0, width: Self.editorWidth, height: 0), textContainer: container)
         editorTextView.document = document
         editorTextView.minSize = NSSize(width: 0, height: 0)
         editorTextView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
@@ -126,6 +151,7 @@ public final class EditorView {
 
         if highlight { highlighter = SyntaxHighlighter(textView: textView, document: document) }
         highlighter?.install()
+        contentStorage.afterEditing = { [weak self] in self?.highlighter?.recolourAfterEdit() }
 
         let loadStarted = Date()
         textView.string = text
