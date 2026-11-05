@@ -3,11 +3,12 @@ import GobiClient
 import GobiModel
 import GobiEditor
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var controllers: [EditorWindowController] = []
     private var projects: [ProjectWindowController] = []
     private var welcome: WelcomeWindowController?
     private let dialogs = ProjectDialogs()
+    private var pendingProjectSelfTest: ProjectWindowController?
 
     private let selfTest = CommandLine.arguments.contains("--selftest")
     private let snapshotPath: String? = {
@@ -18,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         installMenu()
+        if let pending = pendingProjectSelfTest { runProjectSelfTest(pending) }
         // Paths on the command line reach us through application(_:openFile:), which AppKit calls for each one.
         if controllers.isEmpty && projects.isEmpty && !selfTest { openLastProjectOrWelcome() }
         if NSApp.activationPolicy() == .regular { NSApp.activate(ignoringOtherApps: true) }
@@ -25,10 +27,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
-    func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+    /// Several files at once (dropped on the Dock icon, or `open -a Gobi a.go b.go`) open as tabs of one project.
+    func application(_ sender: NSApplication, openFiles filenames: [String]) {
         // AppKit also offers option values that look like paths (the --snapshot target); those are not documents.
-        if filename == snapshotPath { return true }
-        return openChosen(URL(fileURLWithPath: filename))
+        let urls = filenames.filter { $0 != snapshotPath }.map { URL(fileURLWithPath: $0) }
+        openChosen(urls)
+        sender.reply(toOpenOrPrint: .success)
     }
 
     @objc func openDocument(_ sender: Any?) {
@@ -43,14 +47,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Files inside the front project open as tabs there; anything else is opened as a project or on its own.
     private func openChosen(_ urls: [URL]) {
         var rest = urls
-        if let project = frontProject {
-            let inside = urls.filter { ProjectFolder.projectRoot(for: $0) == nil && project.contains($0) }
-            if !inside.isEmpty {
-                project.openFiles(inside)
-                rest.removeAll { url in inside.contains(url) }
-            }
+        // A file goes to the front project when it is inside it, else to another open project or a recent one that holds it.
+        while let file = rest.first(where: { ProjectFolder.projectRoot(for: $0) == nil }) {
+            guard let project = projectHolding(file) else { break }
+            let inside = rest.filter { ProjectFolder.projectRoot(for: $0) == nil && project.contains($0) }
+            project.openFiles(inside)
+            project.showWindow(nil)
+            rest.removeAll { url in inside.contains(url) }
         }
         for url in rest { openChosen(url) }
+    }
+
+    private func projectHolding(_ file: URL) -> ProjectWindowController? {
+        if let front = frontProject, front.contains(file) { return front }
+        if let open = projects.first(where: { $0.contains(file) }) { return open }
+        let recent = ProjectStore.shared.recents.items.first { file.path.hasPrefix($0.path + "/") && FileManager.default.fileExists(atPath: $0.path) }
+        guard let recent, openProject(URL(fileURLWithPath: recent.path), askAboutTrust: false) else { return nil }
+        return projects.first { $0.root.path == recent.path }
     }
 
     /// A folder, go.mod or go.work opens a project window; any other file opens on its own.
@@ -120,7 +133,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         welcome?.close()
         if NSApp.activationPolicy() != .regular { controller.window?.alphaValue = 0; controller.window?.ignoresMouseEvents = true }
         controller.showWindow(nil)
-        if selfTest { runProjectSelfTest(controller) }
+        if selfTest {
+            // AppKit hands over command-line files before the launch finishes, and the menu is built when it does.
+            if NSApp.mainMenu != nil { runProjectSelfTest(controller) } else { pendingProjectSelfTest = controller }
+        }
         return true
     }
 
@@ -150,6 +166,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let names = ((try? FileManager.default.contentsOfDirectory(atPath: controller.root.path)) ?? []).sorted()
         check("project kind is \(controller.kind)", controller.kind == ProjectKind.detect(entryNames: names))
+        let recentMenu = NSApp.mainMenu?.items.compactMap { $0.submenu }.flatMap { $0.items }.first { $0.title == "Open Recent" }?.submenu
+        recentMenu.map { menuNeedsUpdate($0) }
+        check("Open Recent lists this project first", recentMenu?.items.first?.title == controller.root.lastPathComponent)
+        check("Open Recent ends with Clear Menu", recentMenu?.items.last?.title == "Clear Menu")
         check("the status text keeps 14 points or more from the window edge (\(controller.statusTextInset))", controller.statusTextInset >= 14)
         check("the explorer lists the folder (\(controller.explorerRowCount) rows)", controller.explorerRowCount > 0)
         let first = names.first { name in
@@ -167,6 +187,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             if goFiles.count == 2 {
                 controller.openFile(goFiles[1])
+                let projectCount = projects.count
+                openChosen(goFiles)   // what dropping both files on the Dock icon does
+                check("opening several files from outside opens tabs in the same project, not new windows", projects.count == projectCount && controller.tabs.paths.count == 2)
+                let frames = controller.tabFrames
+                check("every tab is drawn with a real size inside the bar (\(frames.map { "\(Int($0.width))x\(Int($0.height))" }))", frames.count == 2 && frames.allSatisfy { $0.width > 40 && $0.height > 12 && $0.maxX <= controller.tabBarSize.width + 1 })
+                if let snapshotPath { controller.snapshotWindow(to: snapshotPath) }
                 check("a second file adds a tab and activates it", controller.tabs.paths.count == 2 && controller.tabs.active == goFiles[1].path)
                 controller.selectNextTab()
                 check("next tab wraps to the first file", controller.tabs.active == url.path)
@@ -217,6 +243,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         return true
+    }
+
+    // MARK: open recent
+
+    /// Rebuilt each time the submenu opens, so it always matches the stored list.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu.title == "Open Recent" else { return }
+        menu.removeAllItems()
+        let entries = ProjectStore.shared.recents.menuItems(limit: 10)
+        for entry in entries {
+            let item = menu.addItem(withTitle: entry.title, action: #selector(openRecent(_:)), keyEquivalent: "")
+            item.representedObject = entry.path
+            item.toolTip = (entry.path as NSString).abbreviatingWithTildeInPath
+        }
+        if entries.isEmpty { menu.addItem(withTitle: "No Recent Projects", action: nil, keyEquivalent: "").isEnabled = false }
+        menu.addItem(.separator())
+        let clear = menu.addItem(withTitle: "Clear Menu", action: #selector(clearRecents(_:)), keyEquivalent: "")
+        clear.isEnabled = !entries.isEmpty
+    }
+
+    @objc func openRecent(_ sender: NSMenuItem) {
+        guard let path = sender.representedObject as? String else { return }
+        openProject(URL(fileURLWithPath: path))
+    }
+
+    @objc func clearRecents(_ sender: Any?) {
+        var recents = ProjectStore.shared.recents
+        recents.clear()
+        ProjectStore.shared.recents = recents
+        welcome?.reload()
     }
 
     // MARK: tabs and saving
@@ -275,6 +331,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let newItem = fileMenu.addItem(withTitle: "New Project…", action: #selector(newProject(_:)), keyEquivalent: "n")
         newItem.keyEquivalentModifierMask = [.command, .shift]
         fileMenu.addItem(withTitle: "Open…", action: #selector(openDocument(_:)), keyEquivalent: "o")
+        let recentItem = fileMenu.addItem(withTitle: "Open Recent", action: nil, keyEquivalent: "")
+        let recentMenu = NSMenu(title: "Open Recent")
+        recentMenu.delegate = self
+        recentItem.submenu = recentMenu
         let cloneItem = fileMenu.addItem(withTitle: "Clone Repository…", action: #selector(cloneRepository(_:)), keyEquivalent: "k")
         cloneItem.keyEquivalentModifierMask = [.command, .shift]
         fileMenu.addItem(withTitle: "Import Existing Code…", action: #selector(importCode(_:)), keyEquivalent: "")

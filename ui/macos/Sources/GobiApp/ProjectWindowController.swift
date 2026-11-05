@@ -43,6 +43,18 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private(set) var currentPane: EditorPane?
     private(set) var tabs = TabStrip()
     var tabTitles: [String] { tabBar.titles }
+    /// Where the tabs are drawn, in the tab bar's coordinates, and the bar's own size.
+    var tabFrames: [NSRect] { tabBar.itemFrames }
+    var tabBarSize: NSSize { tabBar.bounds.size }
+
+    /// Paints the window's content into a PNG (used by `--snapshot` in the project self-test).
+    func snapshotWindow(to path: String) {
+        guard let view = window?.contentView else { return }
+        view.layoutSubtreeIfNeeded()
+        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        if let png = bitmap.representation(using: .png, properties: [:]) { try? png.write(to: URL(fileURLWithPath: path)) }
+    }
     private let tabBar = TabBarView()
     var explorerRowCount: Int { outline.numberOfRows }
     /// Distance in points from the window's left edge to the status text.

@@ -56,6 +56,29 @@ public struct RecentProjects: Equatable, Codable, Sendable {
 
     public mutating func remove(path: String) { items.removeAll { $0.path == path } }
 
+    public mutating func clear() { items.removeAll() }
+
+    public struct MenuItem: Equatable {
+        public var path: String
+        public var title: String
+    }
+
+    /// Entries for File > Open Recent, newest first. A folder name used by more than one entry gets its parent folder
+    /// appended so the entries can be told apart.
+    public func menuItems(limit: Int) -> [MenuItem] {
+        let shown = Array(items.prefix(limit))
+        func name(_ path: String) -> String { path.split(separator: "/").last.map(String.init) ?? path }
+        func parent(_ path: String) -> String {
+            let parts = path.split(separator: "/")
+            return parts.count >= 2 ? String(parts[parts.count - 2]) : ""
+        }
+        return shown.map { item in
+            let sameName = shown.filter { name($0.path) == name(item.path) }.count > 1
+            let title = sameName && !parent(item.path).isEmpty ? "\(name(item.path)) — \(parent(item.path))" : name(item.path)
+            return MenuItem(path: item.path, title: title)
+        }
+    }
+
     /// The newest project whose folder still exists, for reopening at launch.
     public func mostRecent(whereExists exists: (String) -> Bool) -> RecentProject? {
         items.first { exists($0.path) }

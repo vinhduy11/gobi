@@ -18,6 +18,7 @@ private final class TabItemView: NSView {
         layer?.cornerRadius = 6
         label.stringValue = (isDirty ? "● " : "") + title
         label.font = NSFont.systemFont(ofSize: 12, weight: isActive ? .semibold : .regular)
+        label.textColor = isActive ? .labelColor : .secondaryLabelColor
         label.lineBreakMode = .byTruncatingMiddle
         closeButton.bezelStyle = .inline
         closeButton.isBordered = false
@@ -58,12 +59,25 @@ final class TabBarView: NSView {
     private let scroll = NSScrollView()
     private(set) var titles: [String] = []
 
+    /// Frames of the tab items in the bar's own coordinates, after layout. Empty when no tab is drawn.
+    var itemFrames: [NSRect] {
+        layoutSubtreeIfNeeded()
+        return stack.arrangedSubviews.map { convert($0.bounds, from: $0) }
+    }
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         stack.orientation = .horizontal
         stack.spacing = 2
         stack.edgeInsets = NSEdgeInsets(top: 3, left: 6, bottom: 3, right: 6)
+        // A stack used as a document view has no size unless it is pinned: the tabs set its width, the bar its height.
+        stack.translatesAutoresizingMaskIntoConstraints = false
         scroll.documentView = stack
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: scroll.contentView.leadingAnchor),
+            stack.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: scroll.contentView.bottomAnchor),
+        ])
         scroll.hasHorizontalScroller = false
         scroll.drawsBackground = false
         scroll.translatesAutoresizingMaskIntoConstraints = false
@@ -78,6 +92,14 @@ final class TabBarView: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
+
+    /// A strip of its own: the window colour with a hairline under it, so inactive tabs stay readable in both appearances.
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.windowBackgroundColor.setFill()
+        bounds.fill()
+        NSColor.separatorColor.setFill()
+        NSRect(x: 0, y: 0, width: bounds.width, height: 1).fill()
+    }
 
     func reload(_ tabs: TabStrip) {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }

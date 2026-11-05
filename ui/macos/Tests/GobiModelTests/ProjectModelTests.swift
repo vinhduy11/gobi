@@ -103,3 +103,29 @@ struct LaunchProjectTests {
         #expect(recents.mostRecent(whereExists:) { _ in false } == nil)
     }
 }
+
+@Suite("Recent projects menu")
+struct RecentMenuTests {
+    @Test func clearingEmptiesTheList() {
+        var recents = RecentProjects()
+        recents.add(path: "/a", kind: .module)
+        recents.add(path: "/b", kind: .folder)
+        recents.clear()
+        #expect(recents.items.isEmpty)
+    }
+
+    @Test func theMenuShowsTheNewestFirstAndAtMostTheGivenCount() {
+        var recents = RecentProjects(limit: 10)
+        for name in ["/a", "/b", "/c", "/d"] { recents.add(path: name, kind: .module) }
+        #expect(recents.menuItems(limit: 3).map(\.path) == ["/d", "/c", "/b"])
+    }
+
+    @Test func projectsWithTheSameFolderNameGetTheirParentFolderToTellThemApart() {
+        var recents = RecentProjects()
+        recents.add(path: "/work/one/app", kind: .module)
+        recents.add(path: "/work/two/app", kind: .module)
+        recents.add(path: "/work/solo", kind: .module)
+        let titles = recents.menuItems(limit: 10).map(\.title)
+        #expect(titles == ["solo", "app — two", "app — one"])
+    }
+}

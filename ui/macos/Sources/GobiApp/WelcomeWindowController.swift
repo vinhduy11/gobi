@@ -30,6 +30,11 @@ final class WelcomeWindowController: NSWindowController, NSTableViewDataSource, 
     }
 
     private func build() {
+        let icon = NSImageView(image: NSApp.applicationIconImage)
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        icon.widthAnchor.constraint(equalToConstant: 72).isActive = true
+        icon.heightAnchor.constraint(equalToConstant: 72).isActive = true
+        icon.setAccessibilityLabel("Gobi")
         let title = NSTextField(labelWithString: "Gobi")
         title.font = NSFont.systemFont(ofSize: 34, weight: .bold)
         let subtitle = NSTextField(labelWithString: "A Go IDE on the official toolchain")
@@ -44,7 +49,7 @@ final class WelcomeWindowController: NSWindowController, NSTableViewDataSource, 
         let hint = NSTextField(wrappingLabelWithString: "Choose a folder, a go.mod or a go.work. A folder you have not trusted opens in Restricted Mode.")
         hint.textColor = .secondaryLabelColor
         hint.preferredMaxLayoutWidth = 260
-        let left = NSStackView(views: [title, subtitle, create, open, clone, importCode, hint])
+        let left = NSStackView(views: [icon, title, subtitle, create, open, clone, importCode, hint])
         left.orientation = .vertical
         left.alignment = .leading
         left.spacing = 12

@@ -46,7 +46,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ui-macos/`: at launch the newest recent project reopens (in Restricted Mode, without a question, when it was never trusted). The Welcome window shows when there is no recent project or Option is held while opening the app.
 - `ui/macos/`: app icon (the G as the sun over dunes). `Resources/AppIcon.svg` is the source; `scripts/make-icon.swift` renders the iconset and `make-app.sh` packs it into `Gobi.app`. The other candidates stay in `Resources/icon-candidates/`.
 
+- `ui/macos/`: File > Open Recent (ten newest projects, same-name folders told apart by their parent, Clear Menu); several files dropped on the Dock icon or passed to `open` open as tabs of the project that holds them, reopening a recent project when needed; the Welcome window shows the app icon.
+
 ### Fixed
+- `ui/macos/`: the tabs were never visible. The tab strip was a stack used as a scroll view's document view without constraints, so every tab had size 0 by 0. It is pinned now, has a background of its own with a hairline, and the project self-test checks that each tab is drawn with a real size (and writes a window snapshot with `--snapshot`).
 - `ui-macos/` and `core/`: a lone `\r` is a line break in `LineIndex`, `lsp` text sync and `langsvc` positions, as the protocol defines.
 - `ui-macos/`: `GobiApp --selftest` and `gobi-check` run quietly (no window, focus change or Dock icon); `--visible` shows the window.
 - `ui-macos/`: syntax colours no longer go stale or sit at the wrong offset after an edit (closing `/* */`, typing in
