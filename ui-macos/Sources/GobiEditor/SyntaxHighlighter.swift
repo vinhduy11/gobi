@@ -29,6 +29,7 @@ final class SyntaxHighlighter {
         let startOffset = layout.offset(from: layout.documentRange.location, to: fragmentRange.location)
         let line = document.lineIndex.position(at: startOffset).line
         layout.removeRenderingAttribute(.foregroundColor, for: fragmentRange)
+        guard document.lineIndex.lineRange(line).count <= EditorDocument.overlongLineLimit else { return }
         paragraphsColoured += 1
         for token in document.syntaxIndex.tokens(line: line) {
             guard let from = layout.location(fragmentRange.location, offsetBy: Int(token.start)),

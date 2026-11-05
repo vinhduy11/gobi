@@ -6,6 +6,14 @@ public struct LSPDiagnostic: Equatable, Sendable {
     public var severity: Int
     public var message: String
     public var source: String?
+
+    public init(start: LSPPosition, end: LSPPosition, severity: Int, message: String, source: String?) {
+        self.start = start
+        self.end = end
+        self.severity = severity
+        self.message = message
+        self.source = source
+    }
 }
 
 public struct LSPResponseError: Error, CustomStringConvertible, Sendable {
@@ -19,7 +27,7 @@ public final class LSPClient: @unchecked Sendable {
     private let session: GobiSession
     private let lock = NSLock()
     private var nextID = 0
-    private var pending: [Int: (Result<Any?, LSPResponseError>) -> Void] = [:]
+    private var pending = PendingReplies<Result<Any?, LSPResponseError>>()
 
     /// Called on the reader thread for every textDocument/publishDiagnostics.
     public var onDiagnostics: ((String, [LSPDiagnostic]) -> Void)?
@@ -45,29 +53,40 @@ public final class LSPClient: @unchecked Sendable {
 
     // MARK: sending
 
-    public func request(_ method: String, params: Any?, completion: @escaping (Result<Any?, LSPResponseError>) -> Void) {
+    @discardableResult
+    public func request(_ method: String, params: Any?, completion: @escaping (Result<Any?, LSPResponseError>) -> Void) -> Int {
         lock.lock()
         nextID += 1
         let id = nextID
-        pending[id] = completion
+        pending.add(id, completion)
         lock.unlock()
         do {
             try send(["jsonrpc": "2.0", "id": id, "method": method, "params": params ?? NSNull()])
         } catch {
             lock.lock()
-            let failed = pending.removeValue(forKey: id)
+            let failed = pending.take(id)
             lock.unlock()
             failed?(.failure(LSPResponseError(code: -32099, message: "send failed: \(error)")))
         }
+        return id
     }
 
-    /// Blocks the calling thread until the response arrives. Not for the main thread.
+    /// Blocks the calling thread until the response arrives. Not for the main thread. On timeout the pending entry is
+    /// removed, so a response that comes later is dropped.
     public func requestAndWait(_ method: String, params: Any?, timeout: TimeInterval = 15) throws -> Any? {
         let done = DispatchSemaphore(value: 0)
-        nonisolated(unsafe) var outcome: Result<Any?, LSPResponseError> = .failure(LSPResponseError(code: -32098, message: "timed out"))
-        request(method, params: params) { outcome = $0; done.signal() }
-        _ = done.wait(timeout: .now() + timeout)
-        return try outcome.get()
+        let reply = ReplySlot()
+        let id = request(method, params: params) { outcome in
+            reply.fill(outcome)
+            done.signal()
+        }
+        if done.wait(timeout: .now() + timeout) == .timedOut {
+            lock.lock()
+            _ = pending.take(id)
+            lock.unlock()
+            throw LSPResponseError(code: -32098, message: "timed out")
+        }
+        return try reply.outcome().get()
     }
 
     public func notify(_ method: String, params: Any?) {
@@ -135,7 +154,7 @@ public final class LSPClient: @unchecked Sendable {
         case (nil, let id?):
             guard let number = id as? Int else { return }
             lock.lock()
-            let completion = pending.removeValue(forKey: number)
+            let completion = pending.take(number)
             lock.unlock()
             if let failure = message["error"] as? [String: Any] {
                 completion?(.failure(LSPResponseError(code: failure["code"] as? Int ?? -32603, message: failure["message"] as? String ?? "error")))
@@ -158,10 +177,9 @@ public final class LSPClient: @unchecked Sendable {
 
     private func failPending() {
         lock.lock()
-        let waiting = pending
-        pending.removeAll()
+        let waiting = pending.takeAll()
         lock.unlock()
-        for completion in waiting.values { completion(.failure(LSPResponseError(code: -32099, message: "connection closed"))) }
+        for completion in waiting { completion(.failure(LSPResponseError(code: -32099, message: "connection closed"))) }
     }
 
     static func diagnostics(from raw: Any?) -> [LSPDiagnostic] {
@@ -176,5 +194,23 @@ public final class LSPClient: @unchecked Sendable {
     private static func position(_ raw: Any?) -> LSPPosition? {
         guard let fields = raw as? [String: Any], let line = fields["line"] as? Int, let character = fields["character"] as? Int else { return nil }
         return LSPPosition(line: line, character: character)
+    }
+}
+
+/// Carries one response from the reader thread to the thread waiting in requestAndWait.
+private final class ReplySlot: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Result<Any?, LSPResponseError>?
+
+    func fill(_ outcome: Result<Any?, LSPResponseError>) {
+        lock.lock()
+        value = outcome
+        lock.unlock()
+    }
+
+    func outcome() -> Result<Any?, LSPResponseError> {
+        lock.lock()
+        defer { lock.unlock() }
+        return value ?? .failure(LSPResponseError(code: -32098, message: "timed out"))
     }
 }

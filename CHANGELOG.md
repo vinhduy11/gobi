@@ -34,5 +34,21 @@ All notable changes to this project are documented here. Format: [Keep a Changel
   it stay at 3.7 ms instead of 205 ms); `gobi-check` verification harness; `scripts/make-fixtures.py`; instructions for the
   remaining editor fixes in `docs/implement/ui-macos-fixes.md`.
 
+### Fixed
+- `ui-macos/`: a diagnostic underline no longer removes the syntax colour of the text under it (underlines now add and
+  remove only their own rendering attributes through the shared `DiagnosticUnderlines`).
+- `ui-macos/`: paint measurements (self-test, `gobi-bench`, `gobi-check`) use `flushPendingPaint()` (`CATransaction.flush`)
+  instead of `displayIfNeeded()`, which paints nothing here; the self-test checks the gutter is painted per keystroke.
+- `ui-macos/`: an LSP request that times out no longer leaves its pending entry behind; a late response is dropped.
+- `ui-macos/`: VoiceOver line queries (insertion-point line, line for index, range for line) are answered from `LineIndex`
+  by `EditorTextView`; the 100k-line file went from 7.9 s to under 0.01 ms for the caret line, and keystrokes after the
+  queries from 220 ms to 3.8 ms.
+- `ui-macos/`: lines over 20,000 characters are not syntax coloured (their keystroke cost drops from about 13 s to about 150 ms
+  on a 1 MB line), and the status line says so.
+- `ui-macos/`: dragging the scroller thumb no longer lays out every place the drag passes. Big jumps are deferred until the
+  drag ends and applied once (trade-off: the text does not follow the thumb while dragging). Keystrokes after a full drag of
+  a 100k-line file go from 10.4 ms to 2.1 ms, and memory growth from +139 MB to +26 MB.
+- `ui-macos/`: `GobiApp FILE --selftest` exits with code 1 at once when FILE cannot be read, instead of waiting forever.
+
 ### Changed
 - `gobid` with no arguments now serves instead of printing usage.

@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else {
             if selfTest {
                 print("cannot read \(url.path)")   // a modal alert would hang a scripted run
+                exit(1)
             } else {
                 let alert = NSAlert()
                 alert.messageText = "Cannot open \(url.lastPathComponent)"

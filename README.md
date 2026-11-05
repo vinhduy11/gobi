@@ -49,7 +49,13 @@ open dist/Gobi.app --args Fixtures/broken/main.go
 swift build -c release --product gobi-bench && .build/release/gobi-bench    # editor measurements
 ```
 
-Findings and numbers: `docs/architect/ui-macos-spike.md`.
+Findings and numbers: `docs/architect/ui-macos-spike.md`. Open work and instructions: `docs/implement/ui-macos-fixes.md`.
+
+```bash
+swift build -c release --product gobi-check
+.build/release/gobi-check cliff|drag|ax|longline|highlight FILE     # verification harness (modes in its header)
+python3 scripts/make-fixtures.py OUT_DIR                            # 100k-line and long-line test files
+```
 
 ## Status
 

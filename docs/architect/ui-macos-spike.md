@@ -160,3 +160,46 @@ painting). GPU compositing, frame
 pacing on ProMotion displays and trackpad momentum scrolling are not measured. The scroller is exercised by position
 jumps, not by a real drag. Also untested: selection by mouse across a very large range, find in file, VoiceOver, very
 long lines, and a real input method.
+
+## Fix log (tasks from `docs/implement/ui-macos-fixes.md`)
+
+| Task | Before | After |
+|---|---|---|
+| T1 diagnostic underline keeps syntax colour | `gobi-check highlight` check "setRenderingAttributes for an underline keeps the keyword colour": FAIL, runs `[0+4:plain+underline]` | ok, runs `[0+4:keyword+underline]`; app self-test check "an underline on the first token keeps its colour" ok |
+| T5 self-test on a missing file | `GobiApp missing.go --selftest` prints "cannot read" and waits (killed by the 10 s alarm) | exits with code 1 in 0.6 s |
+| T6 paint numbers | `displayIfNeeded()` used for paint; self-test gutter draws 0 for 50 keystrokes | `flushPendingPaint()` (CATransaction.flush); gutter draws 50 for 50 keystrokes; 100k bench: keystroke + paint median 5.38 ms (p95 6.15 ms), paint of the whole editor (CPU) 4.3 ms earlier run, layout-only keystroke 3.83 ms median |
+
+The paint rows in the sections above that say "plus painting" were layout-only numbers. The paint rows with the flush are the ones to use.
+| T9a pending LSP request left behind after timeout | `requestAndWait` removed nothing on timeout; late response wrote into a captured variable | `PendingReplies` (unit tests: timed-out entry removed, late reply finds nothing); `requestAndWait` removes its entry on timeout |
+| T9b separators: LineIndex vs TextKit | `gobi-check highlight` section (e): U+2028, lone CR, CRLF and LF-only control all FAIL | still FAIL, see the findings below |
+
+### T2 and T9b findings (not fixed in this round)
+
+- Reproduced with `gobi-check highlight Fixtures/syntax/sample.go`: FAIL `/*` colour right after the keystroke, FAIL line 2 back to keyword after `*/`, FAIL `xvar` after typing in front of `var` (short and 3000-character lines), FAIL U+2028, lone CR, CRLF and LF-only.
+- The LF-only control fails the same way as the separator cases, so the line-separator hypothesis is not the cause. U+2028 and lone CR are a secondary issue (LSP counts a lone CR as a line break, LineIndex does not).
+- Instrumented `SyntaxHighlighter.colour`: the validator runs several times per edit and for some fragments it uses token lists from an earlier state of the text. A fragment validated with the keyword token at offset 7 still reads back with no keyword colour after the edit, so the stored rendering attribute is lost or overwritten after the validator ran. Not yet explained.
+- Tried, no net gain: invalidating the edited lines synchronously in the text storage delegate (fixed one check, changed others, reverted); invalidating the whole document before the separator checks (no change, reverted).
+- Next step: check whether `addRenderingAttribute` calls made inside the validator are dropped when TextKit re-lays out the same fragment (try applying the colour through a fresh `NSTextLayoutFragment` pass, or colour the viewport from `textViewportLayoutController` delegate instead of the validator).
+| T4 accessibility line queries (100k lines, `gobi-check ax`) | caret line 7.9 s at top, 18.4 s with the caret at 95%; line for index 210 ms; range for line 84 ms; keystroke after the queries 220 ms median; memory at end 963 MB | `EditorTextView` answers from `LineIndex`: caret line 0.00 ms (both places), line for index 0.0 ms, range for line 0.0 ms; keystroke after the queries 3.75 ms median; memory at end 122 MB |
+
+T4 notes: `accessibilityRange(forLine:)` now returns the line without its terminator (TextKit's answer included it); this is a
+deliberate choice, check it with VoiceOver. A real VoiceOver pass is still needed; it cannot be automated here. The editor view is now
+built with a plain `NSScrollView` and `EditorTextView` instead of `NSTextView.scrollableTextView()`; TextKit 2 is still active.
+| T7 1 MB single-line JSON, keystroke at the end (`gobi-check longline`) | 13.7 s median, memory 485 MB after open, 873 MB after typing | highlighting off on that line: 151 ms median (still above the 100 ms target). Lines over 20,000 characters are not coloured (`EditorDocument.overlongLineLimit`) |
+
+T7 findings: with highlighting off the 1 MB line still costs 147 ms per keystroke, so the remaining cost is TextKit laying out one
+paragraph of 3,948 visual lines on each edit, not the colouring. The threshold of 20,000 units is a judgement: 3,800-character Go
+lines are unaffected (open 67 ms, keystroke 3.4 ms in the earlier measurements). Not done: a hard wrap or a non-TextKit view for
+huge lines; that is the next lever if the 100 ms target matters. Lines over the limit keep their text and wrap as before.
+| T3 real scroller drag across the whole 100k-line file (`gobi-check drag`) | 100 remapped jumps while dragging; keystrokes after 10.35 ms median; memory +139 MB (end 322 MB) | one jump when the drag ends; keystrokes after 2.1 ms median (p95 2.4 ms); memory +26 MB (end 138 MB) |
+| T3 self-test, both orders | jumps 12 ms, keystrokes 4.9 ms (earlier) | scroll-first: passes; typing-first: passes; 100 keystrokes 3.6 ms median, scroller jump with paint 14.9 ms median |
+
+T3 trade-off: the text does not move while the thumb is dragged; it jumps to the final place on release. Small steps (within six
+viewport heights) still scroll live. Option 2 (releasing layout) was not needed, so it was not tried. The `cliff` numbers
+(jump 4 ms, keystrokes 3.2 ms after) are unchanged.
+
+### T8 inconclusive checks (best effort)
+
+- `gobi-check find FILE total func`: `NSTextFinder` selects the first occurrence instead of the next match after the caret (selection stays {0, 0}), so both "nextMatch" checks FAIL. The find bar shows and the search string is set through the find pasteboard, as the harness already did. Tried `--own-finder` (a separate `NSTextFinder` with the text view as client): the process crashed (exit 139) right after "own NSTextFinder client set: false". Not resolved. The harness reports these as FAIL, which is the honest state.
+- `gobi-check momentum FILE`: not retried in this round; the earlier result (synthetic phased events never move the view in four delivery paths) stands and is still inconclusive.
+- A real trackpad and a real find bar pass are still needed by hand.

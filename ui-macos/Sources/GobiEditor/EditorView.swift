@@ -9,6 +9,10 @@ final class EditorClipView: NSClipView {
     var jumpToFraction: ((Double) -> Bool)?
     /// scrollRangeToVisible scrolls through this view too; without the flag the remapped jump would remap itself forever.
     private var remapping = false
+    /// While the user drags the scroller, big jumps are only remembered (as a fraction of the document) and applied once
+    /// when the drag ends. Every place a drag stops keeps its layout, which made later edits slower (see the spike doc).
+    public var defersLargeJumps = false
+    private var deferredFraction: Double?
     private(set) var scrollCalls = 0
     private(set) var remappedJumps = 0
     private(set) var boundsOriginSets = 0
@@ -22,14 +26,28 @@ final class EditorClipView: NSClipView {
         scrollCalls += 1
         let travel = abs(newOrigin.y - bounds.origin.y)
         if !remapping, travel > bounds.height * 6, let jump = jumpToFraction, let documentHeight = documentView?.frame.height, documentHeight > bounds.height {
+            let fraction = Double(max(0, min(1, newOrigin.y / (documentHeight - bounds.height))))
+            if defersLargeJumps {
+                deferredFraction = fraction
+                return
+            }
             remapping = true
             defer { remapping = false }
-            if jump(Double(max(0, min(1, newOrigin.y / (documentHeight - bounds.height))))) {
+            if jump(fraction) {
                 remappedJumps += 1
                 return
             }
         }
         super.scroll(to: newOrigin)
+    }
+
+    /// Applies the jump that was deferred during the drag, if any.
+    func applyDeferredJump() {
+        guard let fraction = deferredFraction, let jump = jumpToFraction else { return }
+        deferredFraction = nil
+        remapping = true
+        defer { remapping = false }
+        if jump(fraction) { remappedJumps += 1 }
     }
 }
 
@@ -63,13 +81,27 @@ public final class EditorView {
 
     public init(fileURL: URL, text: String, highlight: Bool = true, lineNumbers: Bool = true) {
         document = EditorDocument(fileURL: fileURL, text: text)
-        scrollView = NSTextView.scrollableTextView()
-        textView = scrollView.documentView as! NSTextView
+        let editorTextView = EditorTextView(frame: NSRect(x: 0, y: 0, width: Self.editorWidth, height: 0))
+        editorTextView.document = document
+        editorTextView.minSize = NSSize(width: 0, height: 0)
+        editorTextView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        editorTextView.isVerticallyResizable = true
+        editorTextView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView = editorTextView
+        scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
         view = scrollView
         let clipView = EditorClipView()
-        clipView.drawsBackground = scrollView.contentView.drawsBackground
+        clipView.drawsBackground = true
         scrollView.contentView = clipView
         clipView.documentView = textView
+        NotificationCenter.default.addObserver(forName: NSScrollView.willStartLiveScrollNotification, object: scrollView, queue: nil) { [weak clipView] _ in
+            clipView?.defersLargeJumps = true
+        }
+        NotificationCenter.default.addObserver(forName: NSScrollView.didEndLiveScrollNotification, object: scrollView, queue: nil) { [weak clipView] _ in
+            clipView?.defersLargeJumps = false
+            clipView?.applyDeferredJump()
+        }
 
         textView.font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
         textView.isAutomaticQuoteSubstitutionEnabled = false

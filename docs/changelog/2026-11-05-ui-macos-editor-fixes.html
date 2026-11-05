@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gobi macOS editor fixes: implementation report</title>
+<style>
+  :root { --bg:#fff; --text:#1d1d1f; --muted:#5c5c61; --line:#d6d6da; --code:#f5f5f7; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1e1e1e; --text:#f2f2f7; --muted:#a8a8ae; --line:#454549; --code:#2a2a2c; } }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:26px; margin:0 0 4px; } h2 { font-size:19px; margin:36px 0 8px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p.sub { color:var(--muted); margin:0; } code { background:var(--code); padding:1px 5px; border-radius:4px; font:13px ui-monospace,Menlo,monospace; }
+  table { border-collapse:collapse; width:100%; margin:8px 0; } th,td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+<h1>macOS editor fixes</h1>
+<p class="sub">Implementation report, 2026-11-05</p>
+
+<h2>Specs</h2>
+<p>Fix what the editor spike and an independent check found, on a 100k-line Go file: a scroll slowdown, diagnostics wiping syntax
+colours, unusable accessibility queries, measurement errors, and very long lines. A smaller model did the list in
+<code>docs/implement/ui-macos-fixes.md</code>; its results were rerun before this report.</p>
+
+<h2>Actions</h2>
+<table>
+<tr><th>Item</th><th>Result (rerun and confirmed unless noted)</th></tr>
+<tr><td>Far scroll jump</td><td><code>EditorClipView</code> maps big jumps to text positions. One far jump: stock 737 ms and 165 ms per keystroke afterwards; fixed 4 ms and 3.1 ms, memory 175 MB vs 118 MB.</td></tr>
+<tr><td>Scroller drag</td><td>A drag now applies one jump when it ends. Keystrokes after a drag 10.4 ms to 2.2 ms, memory growth +139 MB to +26 MB. Trade-off: the text does not follow the thumb while it is dragged.</td></tr>
+<tr><td>Diagnostics vs colours</td><td>Underlines add and remove only their own attributes; a diagnostic on a keyword keeps its colour (self-test check added).</td></tr>
+<tr><td>Accessibility</td><td><code>EditorTextView</code> answers caret line, line for index and range for line from the line index: 7.9 s and 210 ms became 0.0 ms. A real VoiceOver pass is still needed.</td></tr>
+<tr><td>Measurement</td><td>Paint is measured with <code>CATransaction.flush()</code>; <code>displayIfNeeded()</code> paints nothing. Keystroke plus paint about 5.4 ms.</td></tr>
+<tr><td>Self-test</td><td>A missing file exits with code 1 in under a second instead of hanging.</td></tr>
+<tr><td>Long lines</td><td>Lines over 20,000 characters are not coloured and the status bar says so. 1 MB single-line JSON: 13.7 s to 151 ms per keystroke.</td></tr>
+<tr><td>LSP client</td><td>A timed-out request no longer leaves its pending entry (2 tests). 43 Swift tests pass.</td></tr>
+</table>
+
+<h2>Tradeoffs</h2>
+<table>
+<tr><th>Decision</th><th>Chosen over</th><th>Why, and the cost</th></tr>
+<tr><td>Remap large jumps to text positions</td><td>Fixed line height, <code>invalidateLayout</code></td><td>The alternatives were measured and were worse. Cost: the view lands on a line, not an exact pixel.</td></tr>
+<tr><td>Apply a drag when it ends</td><td>Live scrolling with throttling</td><td>Cut post-drag keystrokes from 10 ms to 2 ms. Cost: no live feedback while dragging; throttled live jumps remain an option.</td></tr>
+<tr><td>Skip colouring on very long lines</td><td>Colouring everything</td><td>Colouring was what cost 13 s per key. Cost: long minified lines have no colours.</td></tr>
+<tr><td><code>LineIndex</code> keeps <code>\n</code> as the line break</td><td>Also U+2028 and lone CR</td><td>Matches the LSP for <code>\n</code> and <code>\r\n</code>. A lone CR is a known gap for diagnostic positions.</td></tr>
+</table>
+
+<h2>Known gaps</h2>
+<ul>
+  <li>Stale syntax colours: after typing <code>/*</code> then <code>*/</code>, or typing in front of <code>var</code>, colours can stay wrong. Reproduced, root cause not found, no fix.</li>
+  <li>1 MB single line is 151 ms per keystroke, not under the 100 ms target: TextKit lays out one huge paragraph per edit.</li>
+  <li>Find in file and trackpad momentum could not be driven from code (inconclusive).</li>
+  <li>The line-separator checks in the harness still fail, including the control case, so that hypothesis is ruled out but the failure is unexplained.</li>
+  <li>VoiceOver and a real input method have not been tried.</li>
+</ul>
+</main>
+</body>
+</html>

@@ -11,6 +11,11 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
     public private(set) var syntaxIndex: SyntaxIndex
     public private(set) var version = 1
     public private(set) var changesSent = 0
+    /// A line longer than this (in UTF-16 units) is not syntax coloured: TextKit lays out a paragraph as one unit, and
+    /// colouring it costs about 13 s per keystroke at 1 MB (3800-character Go lines cost 3 ms). Measured on the 1 MB JSON.
+    public static let overlongLineLimit = 20_000
+    /// True once the file has had a line over the limit (opened or typed). Sticky until the file is reopened.
+    public private(set) var hasOverlongLine: Bool
     public var client: LSPClient?
     /// Called after an edit with the lines whose tokens changed, including lines below the edit.
     var onSyntaxChanged: ((_ editedLines: Range<Int>, _ changedLines: Range<Int>) -> Void)?
@@ -24,6 +29,7 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
         let units = Array(text.utf16)
         let index = LineIndex(utf16: units)
         self.lineIndex = index
+        self.hasOverlongLine = (0 ..< index.lineCount).contains { index.lineRange($0).count > Self.overlongLineLimit }
         self.syntaxIndex = SyntaxIndex(language: EditorDocument.syntaxLanguage(for: language), lineCount: index.lineCount) { line in
             Array(units[index.lineRange(line)])
         }
@@ -69,6 +75,7 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
         let end = lineIndex.position(at: oldRange.upperBound)
         lineIndex.replace(range: oldRange, with: insertedUnits)
         version += 1
+        if lineIndex.lineRange(start.line).count > Self.overlongLineLimit { hasOverlongLine = true }
 
         // Lines start..end collapse into one line plus one per newline typed.
         let newLineCount = insertedUnits.reduce(1) { $1 == 0x0A ? $0 + 1 : $0 }

@@ -135,3 +135,17 @@ treats U+2028 and a lone `\r` as paragraph breaks; write a test with such text a
 Run `./scripts/test.sh`, the self-test on `Fixtures/syntax/*` and on the 100k-line file in both scroll orders, the cliff
 and drag commands, and the benchmark. Put the final numbers in the doc, update `CHANGELOG.md`, and report what you changed,
 what you measured and what remains unverified. Leave merging to the owner.
+
+## Status after this round
+
+| Task | Status | Where |
+|---|---|---|
+| T1 underline keeps colour | DONE | `DiagnosticUnderlines`; highlight check and self-test check pass |
+| T5 self-test hang | DONE | exits 1 in 0.6 s |
+| T6 paint measurement | DONE | `flushPendingPaint()`; gutter draws 50 for 50 keystrokes |
+| T9 hygiene | PARTIAL | pending-request leak fixed (unit tests). Separator checks still FAIL; see the spike doc for the findings and the LineIndex decision |
+| T2 stale colours | PARTIAL | bug reproduced, cause not found; the validator/refresh experiments are recorded in the spike doc |
+| T4 accessibility | DONE (VoiceOver pass still needed) | `EditorTextView`; all line queries under 0.01 ms |
+| T7 very long lines | PARTIAL | colouring skipped above 20,000 characters (13 s to 151 ms); the 100 ms target is not met, the remaining cost is TextKit layout of one paragraph |
+| T3 scroller | DONE for the target numbers | deferred jump on drag end; keystrokes after drag 2.1 ms, memory +26 MB |
+| T8 find and momentum | BLOCKED (inconclusive) | find: NSTextFinder picks the first match; own-finder variant crashes; momentum not retried |

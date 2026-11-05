@@ -3,6 +3,7 @@
 //   gobi-check drag FILE [--type-first] [--legacy]     real NSScroller knob drag through the tracking loop
 //   gobi-check momentum FILE                           trackpad-style phased scroll events over the whole file
 //   gobi-check longline FILE [--snapshot PNG]          open / keystroke / gutter / highlight on long lines
+//   every mode accepts --no-highlight and --no-gutter to switch those features off (to find what costs time)
 //   gobi-check find FILE NEEDLE_NEAR_END NEEDLE_MANY   NSTextFinder through the text view's find bar
 //   gobi-check ax FILE                                 NSAccessibility surface of the text view and gutter
 //   gobi-check paint FILE                              window paint cost with alpha 1 / alpha 0 / ordered out
@@ -137,7 +138,7 @@ let fileURL = URL(fileURLWithPath: filePath)
 let fileText = try! String(contentsOf: fileURL, encoding: .utf8)
 let memoryBefore = residentMegabytes()
 var editor: EditorView!
-let openMilliseconds = milliseconds { editor = EditorView(fileURL: fileURL, text: fileText) }
+let openMilliseconds = milliseconds { editor = EditorView(fileURL: fileURL, text: fileText, highlight: !hasFlag("--no-highlight"), lineNumbers: !hasFlag("--no-gutter")) }
 if hasFlag("--no-fix") { editor.mapsLargeJumpsToLines = false }   // baseline: the stock behaviour
 let textView = editor.textView
 let layout = textView.textLayoutManager!
@@ -169,7 +170,7 @@ func typing(count: Int, at location: Int? = nil, paint: Bool) -> [Double] {
         samples.append(milliseconds {
             textView.insertText("x", replacementRange: NSRange(location: NSNotFound, length: 0))
             layOutViewport()
-            if paint { window.displayIfNeeded() }
+            if paint { flushPendingPaint() }
         })
     }
     return samples
@@ -194,7 +195,7 @@ func fraction(ofY yOffset: CGFloat) -> Double { Double(yOffset / max(1, textView
 func header() {
     print("gobi-check \(mode) \(fileURL.lastPathComponent): \(document.lineIndex.lineCount) lines, \((textView.string as NSString).length) UTF-16 units")
     print(String(format: "  open: EditorView init %.1f ms (set text %.1f ms)", openMilliseconds, editor.loadMilliseconds))
-    print(String(format: "  first viewport layout %.2f ms, first window paint %.2f ms", milliseconds { layOutViewport() }, milliseconds { window.displayIfNeeded() }))
+    print(String(format: "  first viewport layout %.2f ms, first window paint %.2f ms", milliseconds { layOutViewport() }, milliseconds { flushPendingPaint() }))
     print(String(format: "  resident memory %.0f MB (+%.0f MB since before the editor)", residentMegabytes(), residentMegabytes() - memoryBefore))
     let storageUnits = Array(textView.string.utf16)
     check("line index built from the file equals one built from the text storage", LineIndex(utf16: storageUnits) == document.lineIndex, "file \(fileText.utf16.count) units, storage \(storageUnits.count) units, lines \(document.lineIndex.lineCount) vs \(LineIndex(utf16: storageUnits).lineCount)")
@@ -209,6 +210,7 @@ func mouseEvent(_ type: NSEvent.EventType, at windowPoint: NSPoint, number: Int)
 }
 
 func dragCheck() {
+    let memoryBeforeDrag = residentMegabytes()
     header()
     if hasFlag("--legacy") { scrollView.scrollerStyle = .legacy }
     if hasFlag("--type-first") {
@@ -216,11 +218,11 @@ func dragCheck() {
         clip.scroll(to: .zero)
         scrollView.reflectScrolledClipView(clip)
         layOutViewport()
-        window.displayIfNeeded()
+        flushPendingPaint()
     }
     guard let scroller = scrollView.verticalScroller else { print("  FAIL no vertical scroller"); return }
     scrollView.tile()
-    window.displayIfNeeded()
+    flushPendingPaint()
     let knob = scroller.rect(for: .knob)
     let slot = scroller.rect(for: .knobSlot)
     print("  scroller style \(scroller.scrollerStyle == .legacy ? "legacy" : "overlay"), flipped \(scroller.isFlipped), knob \(knob), slot \(slot), proportion \(scroller.knobProportion), value \(scroller.doubleValue)")
@@ -259,7 +261,7 @@ func dragCheck() {
     let total = milliseconds { scroller.mouseDown(with: mouseEvent(.leftMouseDown, at: knobCenter(fraction: 0), number: 1)) }
     NotificationCenter.default.removeObserver(observer)
     print(String(format: "  drag: mouseDown returned after %.0f ms, %d timer ticks, %d clip bounds changes, clip y now %.0f (%.1f%% of the document), scroller value %.3f", total, fireTimes.count, boundsChanges, clip.bounds.origin.y, fraction(ofY: clip.bounds.origin.y) * 100, scroller.doubleValue))
-    check("the drag moved the view", boundsChanges > 5 && clip.bounds.origin.y > 1000)
+    check("the drag moved the view (one jump when the drag ends)", boundsChanges >= 1 && clip.bounds.origin.y > 1000)
     var gaps: [Double] = []
     for index in 1 ..< fireTimes.count {
         let gap = fireTimes[index].timeIntervalSince(fireTimes[index - 1]) * 1000
@@ -268,8 +270,12 @@ func dragCheck() {
     }
     report("time between drag ticks (nominal 16 ms; the excess is the step's layout + paint)", gaps)
     print("  scroll statistics (scroll(to:) calls, remapped jumps, setBoundsOrigin calls): \(editor.scrollStatistics)")
-    print(String(format: "  window paint right after the drag: %.2f ms", milliseconds { window.displayIfNeeded() }))
-    report("100 keystrokes mid-file AFTER the drag (layout only)", typing(count: 100, paint: false))
+    print(String(format: "  window paint right after the drag: %.2f ms", milliseconds { flushPendingPaint() }))
+    let afterDrag = typing(count: 100, paint: false)
+    report("100 keystrokes mid-file AFTER the drag (layout only)", afterDrag)
+    let freshStart = 5.0   // about 3.5 ms median on a fresh 100k-line file (see docs/architect/ui-macos-spike.md)
+    check("keystrokes after the drag stay within 1.5 times a fresh start (7.5 ms median)", percentile(afterDrag, 0.5) <= freshStart * 1.5, String(format: "%.2f ms", percentile(afterDrag, 0.5)))
+    check("memory grows by at most 60 MB across the drag", residentMegabytes() - memoryBeforeDrag <= 60, String(format: "%+.0f MB", residentMegabytes() - memoryBeforeDrag))
     report("50 keystrokes mid-file AFTER the drag (layout + paint)", typing(count: 50, paint: true))
     check("keystrokes stay under 16 ms", percentile(typing(count: 20, paint: false), 0.5) < 16)
 }
@@ -291,7 +297,7 @@ func jumpCheck() {
                 scrollView.reflectScrolledClipView(clip)
             }
             layOutViewport()
-            window.displayIfNeeded()
+            flushPendingPaint()
         }
         jumps.append(elapsed)
         if elapsed > 100 { print(String(format: "  slow   jump %d to %.0f%% took %.0f ms", step, target * 100, elapsed)) }
@@ -380,7 +386,7 @@ func momentumCheck() {
             clip.scroll(to: .zero)
             scrollView.reflectScrolledClipView(clip)
             layOutViewport()
-            window.displayIfNeeded()
+            flushPendingPaint()
             for (delta, phase, momentum) in [(0.0, Int64(1), Int64(0)), (40, 2, 0), (40, 2, 0), (0, 4, 0), (40, 0, 1), (40, 0, 2), (0, 0, 3)] {
                 if let event = wheelEvent(delta: delta, phase: phase, momentum: momentum) { deliver(event) }
             }
@@ -405,7 +411,7 @@ func momentumCheck() {
     clip.scroll(to: .zero)
     scrollView.reflectScrolledClipView(clip)
     layOutViewport()
-    window.displayIfNeeded()
+    flushPendingPaint()
     let bottom = textView.frame.height - clip.bounds.height
     var samples: [Double] = []
     var hitches: [(fraction: Double, ms: Double)] = []
@@ -417,7 +423,7 @@ func momentumCheck() {
         let elapsed = milliseconds {
             deliver(event)
             layOutViewport()
-            window.displayIfNeeded()
+            flushPendingPaint()
         }
         scrolledTotal += Double(clip.bounds.origin.y - before)
         samples.append(elapsed)
@@ -470,7 +476,10 @@ func longLineCheck() {
     print("  viewport: \(fragmentsInViewport) paragraphs, \(lineFragmentsInViewport) visual lines, widest paragraph \(Int(widestFragment)) pt, text view width \(Int(textView.frame.width)), container width \(Int(textView.textContainer?.size.width ?? 0))")
     check("paragraphs wrap inside the 3000 pt view", widestFragment <= 3000)
     let keys = Int(option("--count") ?? "") ?? (longestRange.count > 100_000 ? 3 : 30)
-    report("\(keys) keystrokes at the END of the longest line (layout only)", typing(count: keys, at: longestRange.upperBound, paint: false))
+    let endSamples = typing(count: keys, at: longestRange.upperBound, paint: false)
+    report("\(keys) keystrokes at the END of the longest line (layout only)", endSamples)
+    check("keystrokes at the end of the longest line take under 100 ms (median)", percentile(endSamples, 0.5) < 100, String(format: "%.1f ms", percentile(endSamples, 0.5)))
+    check("the document flags a line over its limit", document.hasOverlongLine == (longestRange.count > EditorDocument.overlongLineLimit), "longest line \(longestRange.count) units, limit \(EditorDocument.overlongLineLimit)")
     report("\(keys) keystrokes at the START of the longest line (layout only)", typing(count: keys, at: longestRange.lowerBound, paint: false))
     report("\(keys) keystrokes at the END of the longest line (layout + paint)", typing(count: keys, at: longestRange.upperBound, paint: true))
     report("\(keys) keystrokes mid-file (layout only)", typing(count: keys, paint: false))
@@ -500,7 +509,7 @@ func longLineCheck() {
     }
     textView.scrollRangeToVisible(NSRange(location: longestRange.lowerBound, length: 0))
     layOutViewport()
-    window.displayIfNeeded()
+    flushPendingPaint()
     spin(0.2)
     print(String(format: "  gutter draws %d, last draw %.2f ms", editor.gutterDrawCount, editor.gutterLastDrawMilliseconds))
     if let snapshotPath = option("--snapshot") {
@@ -550,7 +559,7 @@ func findCheck() {
         textView.setSelectedRange(NSRange(location: 0, length: 0))
         textView.scrollRangeToVisible(NSRange(location: 0, length: 0))
         layOutViewport()
-        window.displayIfNeeded()
+        flushPendingPaint()
         let show = milliseconds { act(.showFindInterface) }
         spin(0.2)
         NSPasteboard(name: .find).clearContents()
@@ -565,14 +574,14 @@ func findCheck() {
         let next = milliseconds {
             act(.nextMatch)
             layOutViewport()
-            window.displayIfNeeded()
+            flushPendingPaint()
         }
         let selected = textView.selectedRange()
         let stall = longestStall(seconds: 1.5)
         print(String(format: "  %@: nextMatch %.1f ms -> selection %@ (expected %@), match visible %@, longest stall in the 1.5 s after: %.0f ms", label, next, NSStringFromRange(selected), NSStringFromRange(range), matchIsVisible(selected) ? "yes" : "no", stall))
         check("\(label): nextMatch selected the first occurrence", NSEqualRanges(selected, range))
         var repeated: [Double] = []
-        for _ in 0 ..< 10 { repeated.append(milliseconds { act(.nextMatch); layOutViewport(); window.displayIfNeeded() }) }
+        for _ in 0 ..< 10 { repeated.append(milliseconds { act(.nextMatch); layOutViewport(); flushPendingPaint() }) }
         report("\(label): 10 more nextMatch (layout + paint)", repeated)
         print("  \(label): selection after 11 nextMatch \(NSStringFromRange(textView.selectedRange()))")
         report("\(label): 50 keystrokes at the match (layout only)", typing(count: 50, at: textView.selectedRange().location, paint: false))
@@ -617,14 +626,17 @@ func accessibilityCheck() {
     var caretLine = 0
     let caretTime = milliseconds { caretLine = textView.accessibilityInsertionPointLineNumber() }
     print(String(format: "  accessibilityInsertionPointLineNumber at the top: %d in %.2f ms", caretLine, caretTime))
+    check("the caret line question answers in under 5 ms", caretTime < 5, String(format: "%.2f ms", caretTime))
     let length = (textView.string as NSString).length
     let far = document.lineIndex.lineRange(Int(Double(document.lineIndex.lineCount) * 0.95)).lowerBound
     var lineFor = 0
     let lineForTime = milliseconds { lineFor = textView.accessibilityLine(for: far) }
     print(String(format: "  accessibilityLine(for: offset at 95%%) = %d in %.1f ms (line index says %d)", lineFor, lineForTime, document.lineIndex.position(at: far).line))
+    check("the line for an index matches LineIndex and takes under 5 ms", lineFor == document.lineIndex.position(at: far).line && lineForTime < 5, String(format: "%.1f ms", lineForTime))
     var rangeFor = NSRange()
     let rangeForTime = milliseconds { rangeFor = textView.accessibilityRange(forLine: max(0, lineFor)) }
     print(String(format: "  accessibilityRange(forLine: %d) = %@ in %.1f ms", lineFor, NSStringFromRange(rangeFor), rangeForTime))
+    check("the range for a line matches LineIndex and takes under 5 ms", rangeFor == NSRange(document.lineIndex.lineRange(max(0, lineFor))) && rangeForTime < 5, String(format: "%.1f ms", rangeForTime))
     var stringFor = ""
     let stringForTime = milliseconds { stringFor = textView.accessibilityString(for: NSRange(location: far, length: 40)) ?? "" }
     print(String(format: "  accessibilityString(for: 40 units at 95%%) = %d units in %.2f ms", stringFor.utf16.count, stringForTime))
@@ -637,6 +649,7 @@ func accessibilityCheck() {
     var caretLineFar = 0
     let caretFarTime = milliseconds { caretLineFar = textView.accessibilityInsertionPointLineNumber() }
     print(String(format: "  accessibilityInsertionPointLineNumber with the caret at 95%%: %d in %.1f ms", caretLineFar, caretFarTime))
+    check("the caret line far into the file matches LineIndex and takes under 5 ms", caretLineFar == document.lineIndex.position(at: far).line && caretFarTime < 5, String(format: "%.1f ms", caretFarTime))
     var attributed: NSAttributedString?
     let attributedTime = milliseconds { attributed = textView.accessibilityAttributedString(for: NSRange(location: far, length: 200)) }
     print(String(format: "  accessibilityAttributedString(for: 200 units at 95%%) = %d units in %.1f ms", attributed?.length ?? -1, attributedTime))
@@ -796,7 +809,7 @@ func highlightCheck() {
     layOutViewport()
     print("  after 100 ms + layoutViewport: line 1 runs [\(runs(over: line1After, keyword: keywordColour, comment: commentColour))], line 2 runs [\(runs(over: line2After, keyword: keywordColour, comment: commentColour))], paragraphs coloured \(editor.paragraphsColoured)")
     let belowAfterRefresh = colour(atOffset: line2After.lowerBound)
-    window.displayIfNeeded()
+    flushPendingPaint()
     CATransaction.flush()
     spin(0.05)
     let belowAfterPaint = colour(atOffset: line2After.lowerBound)
@@ -810,17 +823,17 @@ func highlightCheck() {
     check("line 2 is back to the keyword colour after `*/`", same(colour(atOffset: document.lineIndex.lineRange(2).lowerBound), keywordColour), "runs [\(runs(over: document.lineIndex.lineRange(2), keyword: keywordColour, comment: commentColour))]")
     rebuiltIndexesMatch("after the comment edits")
 
-    // (c) A diagnostic underline applied with setRenderingAttributes (as EditorWindowController does) and the syntax colour.
-    if let from = layout.location(layout.documentRange.location, offsetBy: 0), let to = layout.location(from, offsetBy: 4), let range = NSTextRange(location: from, end: to) {
-        layout.setRenderingAttributes([.underlineStyle: NSUnderlineStyle.single.rawValue, .underlineColor: NSColor.systemRed], for: range)
-    }
-    check("setRenderingAttributes for an underline keeps the keyword colour", same(colour(atOffset: 0), keywordColour), "runs [\(runs(over: 0 ..< 5, keyword: keywordColour, comment: commentColour))]")
+    // (c) A diagnostic underline on the keyword at offset 0, applied by the same code the app uses, keeps the keyword colour.
+    let underlined = LSPDiagnostic(start: LSPPosition(line: 0, character: 0), end: LSPPosition(line: 0, character: 4), severity: 1, message: "undefined", source: nil)
+    DiagnosticUnderlines.apply([underlined], to: textView, lineIndex: document.lineIndex)
+    check("a diagnostic underline keeps the keyword colour", same(colour(atOffset: 0), keywordColour), "runs [\(runs(over: 0 ..< 5, keyword: keywordColour, comment: commentColour))]")
+    check("a diagnostic underline is drawn on the keyword", renderingAttributes(atOffset: 0)?[.underlineStyle] != nil, "attributes \(String(describing: renderingAttributes(atOffset: 0)?.keys.map(\.rawValue)))")
     if let from = layout.location(layout.documentRange.location, offsetBy: 0), let to = layout.location(from, offsetBy: 4), let range = NSTextRange(location: from, end: to) {
         layout.invalidateRenderingAttributes(for: range)
     }
     layOutViewport()
     print("  after invalidateRenderingAttributes + layoutViewport: runs [\(runs(over: 0 ..< 5, keyword: keywordColour, comment: commentColour))]")
-    window.displayIfNeeded()
+    flushPendingPaint()
     CATransaction.flush()
     spin(0.05)
     print("  after a paint: runs [\(runs(over: 0 ..< 5, keyword: keywordColour, comment: commentColour))]")
@@ -847,7 +860,7 @@ func highlightCheck() {
     for (label, sample, funcOffset) in [("U+2028 inside a line", "a\u{2028}b\nfunc c\n", 4), ("lone CR", "a\rb\nfunc c\n", 4), ("CRLF endings", "a := 1\r\nfunc c() {}\r\n", 8), ("LF only (control)", "a := 1\nfunc c() {}\n", 7)] {
         textView.string = sample
         layOutViewport()
-        window.displayIfNeeded()
+        flushPendingPaint()
         CATransaction.flush()
         spin(0.05)
         var fragments: [String] = []
@@ -866,7 +879,7 @@ func highlightCheck() {
     for (label, prefix) in [("short line", ""), ("wrapped line (3000 chars before the keyword)", String(repeating: "operand + ", count: 300))] {
         textView.string = "\(prefix)var short = 5 // short\n"
         layOutViewport()
-        window.displayIfNeeded()
+        flushPendingPaint()
         CATransaction.flush()
         spin(0.05)
         let varOffset = prefix.utf16.count
@@ -875,7 +888,7 @@ func highlightCheck() {
         textView.insertText("x", replacementRange: NSRange(location: NSNotFound, length: 0))
         layOutViewport()
         let afterLayout = runs(over: varOffset ..< varOffset + 6, keyword: keywordColour, comment: commentColour)
-        window.displayIfNeeded()
+        flushPendingPaint()
         CATransaction.flush()
         spin(0.05)
         let afterPaint = runs(over: varOffset ..< varOffset + 6, keyword: keywordColour, comment: commentColour)

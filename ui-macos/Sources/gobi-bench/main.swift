@@ -171,16 +171,16 @@ func layOutViewport() {
     layout.textViewportLayoutController.layoutViewport()
 }
 row("first viewport layout", format(milliseconds { layOutViewport() }))
-row("first window paint", format(milliseconds { window.displayIfNeeded() }))
+row("first window paint", format(milliseconds { flushPendingPaint() }))
 row("scroll to the end, lay out and paint", format(milliseconds {
     textView.scrollRangeToVisible(NSRange(location: (textView.string as NSString).length, length: 0))
     layOutViewport()
-    window.displayIfNeeded()
+    flushPendingPaint()
 }))
 row("scroll to the middle, lay out and paint", format(milliseconds {
     textView.scrollRangeToVisible(NSRange(location: (textView.string as NSString).length / 2, length: 0))
     layOutViewport()
-    window.displayIfNeeded()
+    flushPendingPaint()
 }))
 
 let middle = (textView.string as NSString).length / 2
@@ -196,7 +196,7 @@ for _ in 0 ..< 200 {
     withPaint.append(milliseconds {
         textView.insertText("x", replacementRange: NSRange(location: NSNotFound, length: 0))
         layOutViewport()
-        window.displayIfNeeded()
+        flushPendingPaint()
     })
 }
 row("keystroke: edit + indexes + layout (median / p95 / max)", "\(format(percentile(layoutOnly, 0.5))) / \(format(percentile(layoutOnly, 0.95))) / \(format(layoutOnly.max()!))", "keystroke to paint < 16 ms")
@@ -207,7 +207,7 @@ for _ in 0 ..< 50 {
     newlines.append(milliseconds {
         textView.insertText("\n", replacementRange: NSRange(location: NSNotFound, length: 0))
         layOutViewport()
-        window.displayIfNeeded()
+        flushPendingPaint()
     })
 }
 row("Return key: newline + layout + paint (median)", format(percentile(newlines, 0.5)))

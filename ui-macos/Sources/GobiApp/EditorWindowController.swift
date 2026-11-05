@@ -98,27 +98,12 @@ final class EditorWindowController: NSWindowController {
             return "\(name):\(diagnostic.start.line + 1):\(diagnostic.start.character + 1) \(severity): \(diagnostic.message)"
         }
         problemsView.string = lines.isEmpty ? "No problems" : lines.joined(separator: "\n")
-        setStatus("\(diagnostics.count) problem\(diagnostics.count == 1 ? "" : "s")")
+        let notice = editorFile.hasOverlongLine ? ", colours off for a line over \(EditorDocument.overlongLineLimit) characters" : ""
+        setStatus("\(diagnostics.count) problem\(diagnostics.count == 1 ? "" : "s")\(notice)")
     }
 
-    /// Underlines each diagnostic with TextKit 2 rendering attributes, which never touch the text storage.
     private func applyUnderlines(_ diagnostics: [LSPDiagnostic]) {
-        guard let layout = textView.textLayoutManager,
-              let content = layout.textContentManager else { return }
-        layout.removeRenderingAttribute(.underlineStyle, for: layout.documentRange)
-        layout.removeRenderingAttribute(.underlineColor, for: layout.documentRange)
-        let length = (textView.string as NSString).length
-        for diagnostic in diagnostics {
-            let start = editorFile.lineIndex.offset(of: diagnostic.start)
-            var end = editorFile.lineIndex.offset(of: diagnostic.end)
-            if end <= start { end = min(start + 1, length) }
-            guard end > start,
-                  let from = content.location(content.documentRange.location, offsetBy: start),
-                  let to = content.location(from, offsetBy: end - start),
-                  let range = NSTextRange(location: from, end: to) else { continue }
-            let color: NSColor = diagnostic.severity == 1 ? .systemRed : .systemOrange
-            layout.setRenderingAttributes([.underlineStyle: NSUnderlineStyle.single.rawValue, .underlineColor: color], for: range)
-        }
+        DiagnosticUnderlines.apply(diagnostics, to: textView, lineIndex: editorFile.lineIndex)
     }
 
     // MARK: self test
@@ -163,6 +148,8 @@ final class EditorWindowController: NSWindowController {
             }
             let colouredFirst = firstTokenColoured()
             check("first token is coloured, plain text is not", colouredFirst.token && !colouredFirst.plain, "paragraphs coloured so far: \(editor.paragraphsColoured)")
+            let underlined = underlinedFirstToken()
+            check("an underline on the first token keeps its colour and adds the underline", underlined.ok, underlined.detail)
             let snapshotURL = snapshotPath.map { URL(fileURLWithPath: $0) }
             var paint: [Double] = []
             for attempt in 0 ..< 5 { paint.append(editor.snapshot(to: attempt == 0 ? snapshotURL : nil)) }
@@ -174,7 +161,10 @@ final class EditorWindowController: NSWindowController {
             let order = ProcessInfo.processInfo.environment["GOBI_SCROLL_FIRST"] != nil
             if order { scrollChecks(measure: measure) }
             measure("100 keystrokes mid-file (layout only)", typingBenchmark(count: 100, paint: false))
+            let drawsBeforePaintedTyping = editor.gutterDrawCount
             measure("50 keystrokes mid-file (layout + paint window)", typingBenchmark(count: 50, paint: true))
+            let paintedDraws = editor.gutterDrawCount - drawsBeforePaintedTyping
+            check("the gutter is painted about once per keystroke (50 keystrokes, \(paintedDraws) draws)", abs(paintedDraws - 50) <= 5)
             if !order { scrollChecks(measure: measure) }
 
 
@@ -201,6 +191,26 @@ final class EditorWindowController: NSWindowController {
             return false
         }
         return found
+    }
+
+    /// Puts a diagnostic under the first coloured token, checks it keeps its colour and gets an underline, then clears it.
+    private func underlinedFirstToken() -> (ok: Bool, detail: String) {
+        guard let layout = textView.textLayoutManager,
+              let start = layout.location(layout.documentRange.location, offsetBy: 0),
+              let line = (0 ..< min(editorFile.lineIndex.lineCount, 60)).first(where: { !editorFile.syntaxIndex.tokens(line: $0).isEmpty }),
+              let first = editorFile.syntaxIndex.tokens(line: line).first,
+              let tokenLocation = layout.location(start, offsetBy: editorFile.lineIndex.lineRange(line).lowerBound + Int(first.start)) else {
+            return (false, "no coloured token")
+        }
+        let diagnostic = LSPDiagnostic(start: LSPPosition(line: line, character: Int(first.start)),
+                                       end: LSPPosition(line: line, character: Int(first.start + first.length)),
+                                       severity: 1, message: "self-test", source: nil)
+        DiagnosticUnderlines.apply([diagnostic], to: textView, lineIndex: editorFile.lineIndex)
+        let attributes = renderingAttributes(at: tokenLocation, in: layout) ?? [:]
+        DiagnosticUnderlines.apply([], to: textView, lineIndex: editorFile.lineIndex)
+        let coloured = attributes[.foregroundColor] != nil
+        let underlined = attributes[.underlineStyle] != nil
+        return (coloured && underlined, "foreground \(coloured), underline \(underlined)")
     }
 
     /// Whether the first token in the file has a colour and a plain position on the same line does not.
@@ -352,7 +362,7 @@ final class EditorWindowController: NSWindowController {
             let started = Date()
             textView.insertText("x", replacementRange: NSRange(location: NSNotFound, length: 0))
             layOutViewport()
-            if paint { window?.displayIfNeeded() }
+            if paint { flushPendingPaint() }
             samples.append(Date().timeIntervalSince(started) * 1000)
         }
         return samples
