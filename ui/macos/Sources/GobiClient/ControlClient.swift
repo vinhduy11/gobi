@@ -14,14 +14,22 @@ public struct NewProjectRequest: Sendable {
     public var modulePath: String
     public var goVersion: String
     public var gitInit: Bool
+    public var sampleTest: Bool
+    public var scaffold: Bool
+    /// A folder holding a go.work to add the module to; empty for none.
+    public var workDir: String
 
-    public init(template: String, name: String, location: String, modulePath: String = "", goVersion: String = "", gitInit: Bool = true) {
+    public init(template: String, name: String, location: String, modulePath: String = "", goVersion: String = "", gitInit: Bool = true,
+                sampleTest: Bool = false, scaffold: Bool = true, workDir: String = "") {
         self.template = template
         self.name = name
         self.location = location
         self.modulePath = modulePath
         self.goVersion = goVersion
         self.gitInit = gitInit
+        self.sampleTest = sampleTest
+        self.scaffold = scaffold
+        self.workDir = workDir
     }
 }
 
@@ -51,14 +59,24 @@ public final class ControlClient: @unchecked Sendable {
     public func close() { session.close() }
 
     public func newProject(_ request: NewProjectRequest) throws -> ProjectInfo {
-        try call("project/new") {
-            $0.string(1, request.template)
-            $0.string(2, request.name)
-            $0.string(3, request.location)
-            $0.string(4, request.modulePath)
-            $0.string(5, request.goVersion)
-            $0.bool(6, request.gitInit)
-        }
+        try call("project/new") { Self.write(request, into: &$0) }
+    }
+
+    /// The files `newProject` would write for this request, relative to the project folder. Writes nothing.
+    public func preview(_ request: NewProjectRequest) throws -> [String] {
+        try callRaw("project/preview") { Self.write(request, into: &$0) }.result.filter { $0.number == 4 }.map(\.string)
+    }
+
+    private static func write(_ request: NewProjectRequest, into writer: inout WireWriter) {
+        writer.string(1, request.template)
+        writer.string(2, request.name)
+        writer.string(3, request.location)
+        writer.string(4, request.modulePath)
+        writer.string(5, request.goVersion)
+        writer.bool(6, request.gitInit)
+        writer.bool(7, request.sampleTest)
+        writer.bool(8, request.scaffold)
+        writer.string(9, request.workDir)
     }
 
     public func clone(url: String, location: String, name: String = "") throws -> ProjectInfo {
@@ -80,7 +98,7 @@ public final class ControlClient: @unchecked Sendable {
         try call("project/open") { $0.string(1, path) }
     }
 
-    private func call(_ method: String, _ params: (inout WireWriter) -> Void) throws -> ProjectInfo {
+    private func callRaw(_ method: String, _ params: (inout WireWriter) -> Void) throws -> ControlWire.Reply {
         let id = nextID
         nextID += 1
         try session.send(ControlWire.request(id: id, method: method, params: params))
@@ -88,6 +106,11 @@ public final class ControlClient: @unchecked Sendable {
         let reply = try ControlWire.parseReply(payload)
         if let failure = reply.failure { throw ControlError.server(failure) }
         guard reply.id == id else { throw ControlError.badReply }
+        return reply
+    }
+
+    private func call(_ method: String, _ params: (inout WireWriter) -> Void) throws -> ProjectInfo {
+        let reply = try callRaw(method, params)
         var root = "", kind = "", modulePath = ""
         for field in reply.result {
             switch field.number {

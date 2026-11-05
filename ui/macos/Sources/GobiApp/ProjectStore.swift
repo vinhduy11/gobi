@@ -8,6 +8,7 @@ final class ProjectStore {
     private let defaults: UserDefaults
     private let recentsKey = "gobi.recentProjects"
     private let trustKey = "gobi.trustedFolders"
+    private let welcomeKey = "gobi.showWelcomeAtLaunch"
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
@@ -19,6 +20,12 @@ final class ProjectStore {
     var trust: TrustList {
         get { load(trustKey) ?? TrustList() }
         set { save(newValue, trustKey) }
+    }
+
+    /// Off by default: Gobi reopens the newest project instead of showing the Welcome window.
+    var showWelcomeAtLaunch: Bool {
+        get { defaults.bool(forKey: welcomeKey) }
+        set { defaults.set(newValue, forKey: welcomeKey) }
     }
 
     private func load<Value: Decodable>(_ key: String) -> Value? {

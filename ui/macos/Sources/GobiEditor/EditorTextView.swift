@@ -6,6 +6,10 @@ import AppKit
 final class EditorTextView: NSTextView {
     /// The document whose line index answers the questions. EditorView sets it once.
     weak var document: EditorDocument?
+    /// The right-click menu, built by whoever hosts the editor (it needs the project, the tabs and gopls).
+    var contextMenuProvider: ((NSEvent) -> NSMenu?)?
+
+    override func menu(for event: NSEvent) -> NSMenu? { contextMenuProvider?(event) ?? super.menu(for: event) }
 
     override func accessibilityInsertionPointLineNumber() -> Int {
         accessibilityLine(for: selectedRange().location)

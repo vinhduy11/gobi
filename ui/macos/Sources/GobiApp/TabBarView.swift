@@ -7,6 +7,7 @@ private final class TabItemView: NSView {
     let path: String
     var onSelect: ((String) -> Void)?
     var onClose: ((String) -> Void)?
+    var menuProvider: ((String) -> NSMenu?)?
     private let label = NSTextField(labelWithString: "")
     private let closeButton = NSButton()
 
@@ -48,6 +49,8 @@ private final class TabItemView: NSView {
 
     override func otherMouseDown(with event: NSEvent) { onClose?(path) }   // middle click
 
+    override func menu(for event: NSEvent) -> NSMenu? { menuProvider?(path) }
+
     @objc private func closePressed() { onClose?(path) }
 }
 
@@ -55,6 +58,8 @@ private final class TabItemView: NSView {
 final class TabBarView: NSView {
     var onSelect: ((String) -> Void)?
     var onClose: ((String) -> Void)?
+    /// The right-click menu of a tab, by the tab's path.
+    var menuProvider: ((String) -> NSMenu?)?
     private let stack = NSStackView()
     private let scroll = NSScrollView()
     private(set) var titles: [String] = []
@@ -108,6 +113,7 @@ final class TabBarView: NSView {
             let item = TabItemView(path: path, title: (path as NSString).lastPathComponent, isActive: path == tabs.active, isDirty: tabs.isDirty(path))
             item.onSelect = { [weak self] in self?.onSelect?($0) }
             item.onClose = { [weak self] in self?.onClose?($0) }
+            item.menuProvider = { [weak self] in self?.menuProvider?($0) }
             stack.addArrangedSubview(item)
         }
     }

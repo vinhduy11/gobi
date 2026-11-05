@@ -46,7 +46,7 @@ func Run(ctx context.Context, config Config) error {
 		if _, known := config.Servers[languageOf(hello)]; !known {
 			return fmt.Sprintf("language %q is not supported", languageOf(hello))
 		}
-		return ""
+		return terminalAdmit(hello)
 	})
 	server.Handle("lsp", func(session *ipc.Session) {
 		hello := session.Hello
@@ -56,6 +56,7 @@ func Run(ctx context.Context, config Config) error {
 		config.Logger.Info("lsp client detached", "root", workspace.Root, "language", workspace.Language)
 	})
 
+	server.Handle("pty", func(session *ipc.Session) { serveTerminal(session, config.Logger) })
 	server.Handle("control", func(session *ipc.Session) { serveControl(session, config.Logger) })
 
 	served := make(chan error, 1)

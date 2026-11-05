@@ -25,7 +25,8 @@ know, so a newer peer can add fields. Never reuse or renumber a field. Any proto
 ## Control channel
 - Request: 1 id (uint), 2 method (string), 3 params (message).
 - Reply: 1 id (uint), 2 failure message (string, only on failure), 3 result (message).
-- `project/new` params: 1 template, 2 name, 3 location, 4 module path, 5 go version, 6 git init (bool).
+- `project/new` params: 1 template, 2 name, 3 location, 4 module path, 5 go version, 6 git init (bool), 7 sample test (bool), 8 scaffold: README, .gitignore, .env.example (bool), 9 work dir (add the module to the go.work in that folder).
+- `project/preview` params: as `project/new`; result: 1 root, 4 file (repeated, relative to the root). It writes nothing; the list is the one `project/new` would write.
 - `project/clone` params: 1 url, 2 location, 3 folder name.
 - `project/open` params: 1 path. `project/import` params: 1 path, 2 module path.
 - Result of all four: 1 root, 2 kind (`workspace`, `module`, `folder`), 3 module path.
@@ -34,3 +35,9 @@ know, so a newer peer can add fields. Never reuse or renumber a field. Any proto
 ## Tests that guard the layout
 Golden bytes for the protobuf examples, the hello, the reply and a control request are asserted in both Go
 (`internal/wire`, `internal/ipc`, `internal/daemon`) and Swift (`WireTests`). `FuzzParse` covers the Go parser.
+
+## Terminal channel (`pty`)
+- Handshake: `workspace_root` is the folder the shell starts in; `trusted` must be true, otherwise the handshake is refused with a message that says terminals are off in Restricted Mode.
+- Client to server: 1 kind (1 input, 2 resize), 2 data (the bytes typed), 3 columns, 4 rows.
+- Server to client: 1 kind (1 output, 3 exit), 2 data (terminal output, or an error text with exit code 127 when the shell could not start), 5 exit code (128 plus the signal number when the shell was killed).
+- The shell is the daemon user's login shell (`$SHELL`, else `/bin/sh`) with `TERM=xterm-256color`. Closing the connection hangs it up. One shell per connection.

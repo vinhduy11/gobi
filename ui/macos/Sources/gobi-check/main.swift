@@ -12,6 +12,7 @@
 //   gobi-check scrollthrough FILE [--stages 1000,5000,20000]   scroll steadily down the file; keystroke cost and memory at each stage
 //   gobi-check cliff FILE [--no-fix]                  root-cause experiment for the scroll-jump slowdown and its remedies
 //   gobi-check project DIR                             project/new, open, import and clone against a real gobid (writes under DIR)
+//   gobi-check terminal DIR                            a shell on gobid's pty channel started in DIR: output, resize, exit code, trust
 //   gobi-check fuzz                                    SyntaxIndex/LineIndex fuzz with large multi-line edits
 
 import AppKit
@@ -164,6 +165,39 @@ func projectCheck() {
     print(failures == 0 ? "PROJECT CHECK PASSED" : "PROJECT CHECK FAILED")
 }
 
+/// `gobi-check terminal DIR`: a shell on gobid's pty channel, started in DIR.
+func terminalCheck() {
+    var failures = 0
+    func check(_ name: String, _ passed: Bool) {
+        print(passed ? "  ok   \(name)" : "  FAIL \(name)")
+        if !passed { failures += 1 }
+    }
+    let done = DispatchSemaphore(value: 0)
+    var output: [UInt8] = []
+    var exitCode = -2
+    do {
+        let terminal = try TerminalClient(workspaceRoot: filePath, trusted: true)
+        terminal.onOutput = { output.append(contentsOf: $0) }
+        terminal.onExit = { code, _ in exitCode = code; done.signal() }
+        terminal.start()
+        terminal.resize(columns: 120, rows: 40)
+        terminal.send(Array("pwd; echo size=$(stty size); echo result-$((1+2))\nexit 3\n".utf8))
+        check("the shell ends", done.wait(timeout: .now() + 15) == .success)
+        let text = String(decoding: output, as: UTF8.self)
+        check("a command ran (result-3 in the output)", text.contains("result-3"))
+        check("it started in the given folder", text.contains((filePath as NSString).lastPathComponent))
+        check("a resize reached the shell", text.contains("size=40 120"))
+        check("the exit code is 3", exitCode == 3)
+        terminal.close()
+    } catch {
+        print("  FAIL \(error)")
+        failures += 1
+    }
+    check("an untrusted workspace gets no terminal", (try? TerminalClient(workspaceRoot: filePath, trusted: false)) == nil)
+    print(failures == 0 ? "TERMINAL CHECK PASSED" : "TERMINAL CHECK FAILED")
+}
+
+if mode == "terminal" { terminalCheck(); exit(0) }
 if mode == "project" { projectCheck(); exit(0) }
 
 // MARK: the editor in a visible window

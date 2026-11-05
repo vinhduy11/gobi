@@ -13,6 +13,6 @@ let application = NSApplication.shared
 let delegate = AppDelegate()
 application.delegate = delegate
 // A self-test runs quietly: no Dock icon, no focus change, an invisible window. --visible opts back in.
-let quiet = CommandLine.arguments.contains("--selftest") && !CommandLine.arguments.contains("--visible")
+let quiet = (CommandLine.arguments.contains("--selftest") || CommandLine.arguments.contains("--selftest-welcome") || CommandLine.arguments.contains("--selftest-newproject") || CommandLine.arguments.contains("--selftest-trust") || CommandLine.arguments.contains("--selftest-terminal") || CommandLine.arguments.contains("--selftest-codehelp")) && !CommandLine.arguments.contains("--visible")
 application.setActivationPolicy(quiet ? .accessory : .regular)
 application.run()

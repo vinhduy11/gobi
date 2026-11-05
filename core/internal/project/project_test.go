@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -67,7 +68,7 @@ func TestCloneURLIsChecked(t *testing.T) {
 
 func TestTemplatesRenderTheModuleAndName(t *testing.T) {
 	for _, kind := range []string{TemplateCLI, TemplateLibrary, TemplateHTTP, TemplateEmpty} {
-		files, err := Render(kind, "example.com/acme/widget", "widget")
+		files, err := Render(kind, "example.com/acme/widget", "widget", true)
 		if err != nil {
 			t.Fatalf("Render(%q): %v", kind, err)
 		}
@@ -80,15 +81,15 @@ func TestTemplatesRenderTheModuleAndName(t *testing.T) {
 			}
 		}
 	}
-	files, _ := Render(TemplateCLI, "example.com/acme/widget", "widget")
+	files, _ := Render(TemplateCLI, "example.com/acme/widget", "widget", true)
 	if _, ok := files["main.go"]; !ok {
 		t.Errorf("cli template has no main.go: %v", keys(files))
 	}
-	files, _ = Render(TemplateLibrary, "example.com/acme/widget", "widget")
+	files, _ = Render(TemplateLibrary, "example.com/acme/widget", "widget", true)
 	if !strings.Contains(files["widget.go"], "package widget") {
 		t.Errorf("library template should declare package widget: %q", files["widget.go"])
 	}
-	if _, err := Render("nope", "m", "n"); err == nil {
+	if _, err := Render("nope", "m", "n", true); err == nil {
 		t.Error("an unknown template must be an error")
 	}
 }
@@ -147,7 +148,7 @@ func TestCreateRefusesANonEmptyDestination(t *testing.T) {
 func TestCreateWithGitInitUsesMaster(t *testing.T) {
 	requireTool(t, "go")
 	requireTool(t, "git")
-	created, err := Create(NewRequest{Template: TemplateEmpty, Name: "repo", Location: t.TempDir(), ModulePath: "example.com/repo", GitInit: true})
+	created, err := Create(NewRequest{Template: TemplateEmpty, Name: "repo", Location: t.TempDir(), ModulePath: "example.com/repo", GitInit: true, Scaffold: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,5 +252,126 @@ func TestCloneCopiesARepositoryAndRefusesAnExistingFolder(t *testing.T) {
 func TestCloneRefusesAnUnsafeURLBeforeRunningGit(t *testing.T) {
 	if _, err := Clone(context.Background(), CloneRequest{URL: "ext::sh -c touch /tmp/pwned", Location: t.TempDir()}); err == nil {
 		t.Fatal("an ext:: URL must be refused")
+	}
+}
+
+func TestSampleTestIsOptionalAndTheProjectsStillPass(t *testing.T) {
+	requireTool(t, "go")
+	for _, template := range []string{TemplateCLI, TemplateLibrary, TemplateHTTP} {
+		t.Run(template, func(t *testing.T) {
+			without, err := Create(NewRequest{Template: template, Name: "plain", Location: t.TempDir(), ModulePath: "example.com/plain"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if names := testFilesIn(t, without.Root); len(names) != 0 {
+				t.Fatalf("without the option there must be no test file, found %v", names)
+			}
+			with, err := Create(NewRequest{Template: template, Name: "tested", Location: t.TempDir(), ModulePath: "example.com/tested", SampleTest: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(testFilesIn(t, with.Root)) == 0 {
+				t.Fatal("with the option there must be a test file")
+			}
+			for _, root := range []string{without.Root, with.Root} {
+				command := exec.Command("go", "test", "./...")
+				command.Dir = root
+				if output, err := command.CombinedOutput(); err != nil {
+					t.Fatalf("go test in %s: %v\n%s", root, err, output)
+				}
+			}
+		})
+	}
+}
+
+func testFilesIn(t *testing.T, root string) []string {
+	t.Helper()
+	var names []string
+	filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err == nil && !entry.IsDir() && strings.HasSuffix(path, "_test.go") {
+			names = append(names, path)
+		}
+		return nil
+	})
+	return names
+}
+
+func TestScaffoldWritesReadmeGitignoreAndEnvExample(t *testing.T) {
+	requireTool(t, "go")
+	with, err := Create(NewRequest{Template: TemplateEmpty, Name: "scaffolded", Location: t.TempDir(), ModulePath: "example.com/s", Scaffold: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"README.md", ".gitignore", ".env.example"} {
+		if _, err := os.Stat(filepath.Join(with.Root, name)); err != nil {
+			t.Errorf("scaffold should write %s: %v", name, err)
+		}
+	}
+	example, _ := os.ReadFile(filepath.Join(with.Root, ".env.example"))
+	if strings.Contains(string(example), "=") {
+		t.Errorf(".env.example must hold no values: %q", example)
+	}
+	without, err := Create(NewRequest{Template: TemplateEmpty, Name: "bare", Location: t.TempDir(), ModulePath: "example.com/b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"README.md", ".gitignore", ".env.example"} {
+		if _, err := os.Stat(filepath.Join(without.Root, name)); err == nil {
+			t.Errorf("without the scaffold option %s must not exist", name)
+		}
+	}
+}
+
+// Preview and Create share one plan, so the list the dialog shows is what ends up on disk.
+func TestPreviewListsExactlyWhatCreateWrites(t *testing.T) {
+	requireTool(t, "go")
+	for _, template := range []string{TemplateCLI, TemplateLibrary, TemplateHTTP, TemplateEmpty, TemplateWorkspace} {
+		for _, options := range []struct{ sample, scaffold bool }{{false, false}, {true, true}} {
+			request := NewRequest{Template: template, Name: "demo", Location: t.TempDir(), ModulePath: "example.com/demo", SampleTest: options.sample, Scaffold: options.scaffold}
+			planned, err := Preview(request)
+			if err != nil {
+				t.Fatalf("%s: %v", template, err)
+			}
+			created, err := Create(request)
+			if err != nil {
+				t.Fatalf("%s: %v", template, err)
+			}
+			var written []string
+			filepath.WalkDir(created.Root, func(path string, entry os.DirEntry, err error) error {
+				if err == nil && !entry.IsDir() {
+					relative, _ := filepath.Rel(created.Root, path)
+					written = append(written, filepath.ToSlash(relative))
+				}
+				return nil
+			})
+			sort.Strings(written)
+			if strings.Join(planned, ",") != strings.Join(written, ",") {
+				t.Errorf("%s %+v: preview %v, written %v", template, options, planned, written)
+			}
+		}
+	}
+}
+
+func TestCreateCanAddTheModuleToAnExistingWorkspace(t *testing.T) {
+	requireTool(t, "go")
+	work := t.TempDir()
+	command := exec.Command("go", "work", "init")
+	command.Dir = work
+	command.Env = append(os.Environ(), "GOTOOLCHAIN=local")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("go work init: %v\n%s", err, output)
+	}
+	if _, err := Create(NewRequest{Template: TemplateCLI, Name: "added", Location: work, ModulePath: "example.com/added", WorkDir: work}); err != nil {
+		t.Fatal(err)
+	}
+	content, _ := os.ReadFile(filepath.Join(work, "go.work"))
+	if !strings.Contains(string(content), "./added") {
+		t.Fatalf("go.work should list the new module:\n%s", content)
+	}
+	if _, err := Create(NewRequest{Template: TemplateCLI, Name: "elsewhere", Location: t.TempDir(), ModulePath: "example.com/e", WorkDir: work}); err == nil {
+		t.Fatal("a module outside the workspace folder must not be added to it")
+	}
+	if _, err := Create(NewRequest{Template: TemplateCLI, Name: "nowork", Location: t.TempDir(), ModulePath: "example.com/n", WorkDir: t.TempDir()}); err == nil {
+		t.Fatal("a folder without go.work must be refused")
 	}
 }

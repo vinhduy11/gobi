@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi terminal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.win{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid var(--sep)}
+.mono{font:12px/20px ui-monospace,"SF Mono",Menlo,monospace}
+.dot{width:12px;height:12px;border-radius:50%}
+.tb{height:52px;background:var(--bar);border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:8px;padding:0 14px;flex:none}
+.t2{color:var(--text2)}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ptab{padding:0 12px;height:30px;display:flex;align-items:center;color:var(--text2);border-bottom:2px solid transparent}
+.ptab.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+.term{background:var(--term);color:var(--termText)}
+.tt{display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:6px;color:var(--text2)}
+.tt.on{background:var(--accentBg);color:var(--accentT)}
+.ib{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;color:var(--text2)}
+.menu{position:absolute;background:var(--bg);border:1px solid var(--sep);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:4px;min-width:250px}
+.mi{display:flex;justify-content:space-between;gap:24px;padding:4px 10px;border-radius:5px}
+.mi.on{background:var(--accent);color:#fff}
+.sep{height:1px;background:var(--sep);margin:4px 6px}
+.btn{height:28px;padding:0 14px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.g{color:var(--ok)}.b{color:var(--accentT)}.y{color:var(--warn)}.d{color:var(--text2)}
+</style>
+</helmet>
+<div class="win" style="width: 1440px; height: 720px; position: relative; {{vars}}">
+<div class="tb" aria-hidden="true"><div style="display:flex;gap:8px"><div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div></div><span style="font-weight:600;margin-left:16px">hello</span><span class="t2">&#8250; go run ./cmd/hello</span><span style="flex:1"></span><span class="t2">gopls ready &#183; Go 1.26.5</span></div>
+<div style="height:150px;display:flex;border-bottom:1px solid var(--sep);flex:none"><div style="width:200px;border-right:1px solid var(--sep);padding:10px 12px" class="t2">Files<br><br>&#9662; hello<br>&#160;&#160;cmd/hello<br>&#160;&#160;&#160;&#160;main.go<br>&#160;&#160;go.mod</div><div class="mono" style="padding:10px 16px;flex:1"><span class="d">12</span>  func main() {<br><span class="d">13</span>      srv := server.New(":8080", mux)<br><span class="d">14</span>      log.Fatal(srv.Run(ctx))<br><span class="d">15</span>  }</div></div>
+<div style="display:flex;align-items:center;border-bottom:1px solid var(--sep);padding:0 8px;flex:none;background:var(--bar)"><div class="ptab">Problems</div><div class="ptab">Tests</div><div class="ptab on">Terminal</div><div class="ptab">Debug</div><div class="ptab">Profiler</div><div class="ptab">Git</div><div class="ptab">Output</div><span style="flex:1"></span><span class="ib">&#8963;</span></div>
+<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--sep);flex:none"><div class="tt on">zsh &#183; hello</div><div class="tt">zsh &#183; scripts</div><div class="tt">go test</div><span style="flex:1"></span><span class="ib" title="New Terminal"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"></path></svg></span><span class="ib" title="Shell"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"></path></svg></span><span class="ib" title="Split"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5"></rect><path d="M8 3v10"></path></svg></span><span class="ib" title="Kill"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6 4.5V3h4v1.5M5 4.5l.5 8.5h5l.5-8.5"></path></svg></span></div>
+<div class="term mono" style="flex:1;padding:10px 16px;overflow:hidden"><span class="g">duy</span> <span class="b">~/Work/hello</span> <span class="y">(feat/graceful-shutdown)</span> % go test ./...<br>ok &#160;&#160;hello/internal/server &#160;0.412s<br>ok &#160;&#160;hello/cmd/hello &#160;&#160;&#160;&#160;&#160;0.188s<br><span class="g">duy</span> <span class="b">~/Work/hello</span> <span class="y">(feat/graceful-shutdown)</span> % git status -sb<br>## feat/graceful-shutdown...origin/feat/graceful-shutdown [ahead 1]<br> M internal/server/server.go<br>A &#160;internal/server/server_test.go<br><span class="g">duy</span> <span class="b">~/Work/hello</span> <span class="y">(feat/graceful-shutdown)</span> % <span style="background:var(--termText);color:var(--term)">&#160;</span></div>
+<div class="t2" style="display:flex;gap:16px;padding:4px 14px;border-top:1px solid var(--sep);font-size:12px;flex:none;background:var(--bar)"><span>feat/graceful-shutdown &#8593;1</span><span>gopls ready</span><span style="flex:1"></span><span>Terminal: zsh &#183; ~/Work/hello</span><span>UTF-8</span></div>
+<div class="menu" style="right:16px;top:392px" aria-label="New terminal menu"><div class="mi on"><span>New Terminal</span><span>&#8963;&#8679;`</span></div><div class="mi"><span>Split Terminal</span><span>&#8984;\</span></div><div class="mi"><span>Kill Terminal</span><span>&#8963;D</span></div><div class="sep"></div><div class="mi"><span>Clear</span><span>&#8984;K</span></div><div class="mi"><span>Find in Terminal</span><span>&#8984;F</span></div><div class="sep"></div><div class="mi"><span>&#10003; zsh (login shell)</span><span class="t2">/bin/zsh</span></div><div class="mi"><span>bash</span><span class="t2">/bin/bash</span></div><div class="mi"><span>Terminal settings&#8230;</span><span></span></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1440,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#FFFFFF',bar:'#ECECEF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)',term:'#FAFAFB',termText:'#1D1D1F',ok:'#1B7F3B',warn:'#9A6700'};
+    const D = {bg:'#1E1E1E',bar:'#2A2A2C',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)',term:'#141416',termText:'#E6E6EA',ok:'#5AD27A',warn:'#E5B567'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

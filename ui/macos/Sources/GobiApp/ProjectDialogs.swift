@@ -15,31 +15,9 @@ final class ProjectDialogs {
     // MARK: new project
 
     func newProject(completion: @escaping (ProjectInfo, _ trustIt: Bool) -> Void) {
-        let template = NSPopUpButton(frame: .zero, pullsDown: false)
-        template.addItems(withTitles: templates.map(\.title))
-        let name = NSTextField(string: "")
-        let location = NSTextField(string: NSHomeDirectory() + "/Work")
-        let module = NSTextField(string: "")
-        module.placeholderString = "Same as the name"
-        let version = NSPopUpButton(frame: .zero, pullsDown: false)
-        version.addItems(withTitles: goVersions)
-        let git = NSButton(checkboxWithTitle: "Create a git repository (branch master)", target: nil, action: nil)
-        git.state = .on
-        let choose = chooseButton(for: location)
-        let locationRow = NSStackView(views: [location, choose])
-        location.widthAnchor.constraint(greaterThanOrEqualToConstant: 240).isActive = true
-        let form = grid([("Template", template), ("Name", name), ("Location", locationRow), ("Module path", module), ("Go version", version), ("", git)])
-
-        runForm(title: "New Project", message: "Creates a Go module with the selected template.", accept: "Create", form: form, focus: name) { [self] in
-            let projectName = name.stringValue.trimmingCharacters(in: .whitespaces)
-            if let problem = ProjectForm.problem(withName: projectName) ?? ProjectForm.problem(withModulePath: module.stringValue) { return problem }
-            let request = NewProjectRequest(
-                template: templates[template.indexOfSelectedItem].id, name: projectName, location: (location.stringValue as NSString).expandingTildeInPath,
-                modulePath: module.stringValue, goVersion: version.indexOfSelectedItem == 0 ? "" : goVersions[version.indexOfSelectedItem],
-                gitInit: git.state == .on)
-            work("Creating “\(projectName)”…", { try ControlClient.connect().newProject(request) }) { completion($0, true) }
-            return nil
-        }
+        let window = NewProjectWindowController()
+        guard let request = window.runModal() else { return }
+        work("Creating “\(request.name)”…", { try ControlClient.connect().newProject(request) }) { completion($0, true) }
     }
 
     // MARK: clone

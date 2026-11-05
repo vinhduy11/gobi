@@ -47,3 +47,64 @@ public enum ProjectForm {
         return last
     }
 }
+
+extension ProjectForm {
+    /// What the Module path field offers before the user types one: example.com/<name>.
+    public static func suggestedModulePath(forName name: String) -> String {
+        name.isEmpty ? "" : "example.com/" + name
+    }
+
+    public static func commandSummary(modulePath: String) -> String {
+        modulePath.isEmpty
+            ? "Runs go mod init with the project name as the module path."
+            : "Runs go mod init \(modulePath) with the selected toolchain."
+    }
+}
+
+/// One entry of the template list in the New Project dialog.
+public struct ProjectTemplate: Equatable {
+    public var title: String
+    public var group: String
+    public var summary: String
+    /// The template name gobid knows; empty when gobid cannot build it yet.
+    public var coreID: String
+    public var isAvailable: Bool { !coreID.isEmpty }
+}
+
+public enum TemplateCatalog {
+    /// The list and the groups of the New Project mock, in order.
+    public static let all: [ProjectTemplate] = [
+        ProjectTemplate(title: "Command-line tool", group: "Go module", summary: "A main package with a test, ready to run.", coreID: "cli"),
+        ProjectTemplate(title: "Library", group: "Go module", summary: "A package other modules can import, with a test.", coreID: "library"),
+        ProjectTemplate(title: "HTTP service", group: "Go module", summary: "A net/http server with a /healthz route and a test.", coreID: "http"),
+        ProjectTemplate(title: "gRPC service", group: "Go module", summary: "A gRPC server with a health check. Not available yet: it needs generated code and downloaded modules.", coreID: ""),
+        ProjectTemplate(title: "Workspace go.work (multi-module)", group: "Go module", summary: "A go.work file with one module, ready for more.", coreID: "workspace"),
+        ProjectTemplate(title: "Empty module", group: "Other", summary: "Only go.mod, for starting from nothing.", coreID: "empty"),
+        ProjectTemplate(title: "Custom templates…", group: "Other", summary: "Templates from your own folder. Not available yet.", coreID: ""),
+    ]
+}
+
+/// The "Will create" list of the New Project dialog, drawn as an indented tree.
+public enum PreviewTree {
+    public static func lines(root: String, files: [String]) -> [String] {
+        var lines = [root + "/"]
+        lines.append(contentsOf: children(of: files.map { $0.split(separator: "/").map(String.init) }, depth: 1))
+        return lines
+    }
+
+    private static func children(of paths: [[String]], depth: Int) -> [String] {
+        let indent = String(repeating: "  ", count: depth)
+        var folders: [String: [[String]]] = [:]
+        var names: [String] = []
+        for path in paths {
+            if path.count > 1 { folders[path[0], default: []].append(Array(path.dropFirst())) } else if let name = path.first { names.append(name) }
+        }
+        var lines: [String] = []
+        for folder in folders.keys.sorted(by: { $0.lowercased() < $1.lowercased() }) {
+            lines.append(indent + folder + "/")
+            lines.append(contentsOf: children(of: folders[folder] ?? [], depth: depth + 1))
+        }
+        for name in names.sorted(by: { $0.lowercased() < $1.lowercased() }) { lines.append(indent + name) }
+        return lines
+    }
+}

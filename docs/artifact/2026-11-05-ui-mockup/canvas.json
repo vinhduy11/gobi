@@ -106,6 +106,27 @@
       "w": 1640,
       "x": 0,
       "y": 5360
+    },
+    "Terminal.dc.html": {
+      "h": 720,
+      "title": "Terminal panel",
+      "w": 1440,
+      "x": 1700,
+      "y": 4800
+    },
+    "TerminalRestricted.dc.html": {
+      "h": 360,
+      "title": "Terminal in Restricted Mode",
+      "w": 1000,
+      "x": 0,
+      "y": 5760
+    },
+    "ContextMenus.dc.html": {
+      "h": 520,
+      "title": "Context menus (right click)",
+      "w": 1100,
+      "x": 2900,
+      "y": 4800
     }
   },
   "createdOnFiles": {
@@ -141,7 +162,10 @@
     "SettingsEditor.dc.html",
     "SettingsLanguages.dc.html",
     "Find.dc.html",
-    "CloneImport.dc.html"
+    "CloneImport.dc.html",
+    "Terminal.dc.html",
+    "TerminalRestricted.dc.html",
+    "ContextMenus.dc.html"
   ],
   "pages": [],
   "title": "Gobi IDE Mockup"

@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -51,6 +52,9 @@ type NewRequest struct {
 	ModulePath string `json:"module_path"` // defaults to Name
 	GoVersion  string `json:"go_version"`  // "" keeps what `go mod init` writes
 	GitInit    bool   `json:"git_init"`
+	SampleTest bool   `json:"sample_test"` // add a small passing test
+	Scaffold   bool   `json:"scaffold"`    // README.md, .gitignore and .env.example
+	WorkDir    string `json:"work_dir"`    // a folder with go.work to add the new module to; "" for none
 }
 
 // Info says what a project folder is.
@@ -60,87 +64,153 @@ type Info struct {
 	ModulePath string `json:"module_path,omitempty"`
 }
 
-// Create makes a new project folder under Location. It refuses a destination that already has files.
-func Create(request NewRequest) (Info, error) {
+// plan is everything Create will write, worked out from the request without touching the disk. Preview and Create both
+// use it, so the list a dialog shows is the list that ends up on disk.
+type plan struct {
+	root        string
+	moduleDir   string // where go.mod and the template files go
+	modulePath  string
+	kind        string
+	moduleFiles map[string]string // relative to moduleDir
+	rootFiles   map[string]string // relative to root
+	workspace   bool
+}
+
+func makePlan(request NewRequest) (plan, error) {
 	if err := ValidateName(request.Name); err != nil {
-		return Info{}, err
+		return plan{}, err
 	}
 	if !filepath.IsAbs(request.Location) {
-		return Info{}, errors.New("location must be an absolute path")
+		return plan{}, errors.New("location must be an absolute path")
 	}
 	modulePath := request.ModulePath
 	if modulePath == "" {
 		modulePath = request.Name
 	}
 	if !modulePattern.MatchString(modulePath) {
-		return Info{}, fmt.Errorf("module path %q is not valid", modulePath)
+		return plan{}, fmt.Errorf("module path %q is not valid", modulePath)
 	}
 	if request.GoVersion != "" && !goVersionPattern.MatchString(request.GoVersion) {
-		return Info{}, fmt.Errorf("go version %q is not valid", request.GoVersion)
+		return plan{}, fmt.Errorf("go version %q is not valid", request.GoVersion)
 	}
+	workspace := request.Template == TemplateWorkspace
 	moduleTemplate := request.Template
-	if moduleTemplate == TemplateWorkspace {
+	if workspace {
 		moduleTemplate = TemplateCLI
 	}
-	files, err := Render(moduleTemplate, modulePath, request.Name)
-	if err != nil && request.Template != TemplateWorkspace {
-		return Info{}, err
+	files, err := Render(moduleTemplate, modulePath, request.Name, request.SampleTest)
+	if err != nil {
+		return plan{}, err
 	}
-
 	root := filepath.Join(request.Location, request.Name)
-	created, err := prepareEmptyFolder(root)
+	result := plan{root: root, moduleDir: root, modulePath: modulePath, kind: KindModule, moduleFiles: files, rootFiles: map[string]string{}, workspace: workspace}
+	if workspace {
+		result.moduleDir = filepath.Join(root, "app")
+		result.kind = KindWorkspace
+		if request.WorkDir != "" {
+			return plan{}, errors.New("a new workspace cannot also be added to another workspace")
+		}
+	}
+	if request.Scaffold {
+		result.rootFiles["README.md"] = "# " + request.Name + "\n"
+		result.rootFiles[".gitignore"] = ".env\n*.test\n*.out\n/bin/\n"
+		result.rootFiles[".env.example"] = "# Copy this file to .env and fill in the values. .env is ignored by git.\n"
+	}
+	if request.WorkDir != "" {
+		if _, err := os.Stat(filepath.Join(request.WorkDir, "go.work")); err != nil {
+			return plan{}, fmt.Errorf("%s has no go.work", request.WorkDir)
+		}
+		if relative, err := filepath.Rel(request.WorkDir, root); err != nil || strings.HasPrefix(relative, "..") {
+			return plan{}, fmt.Errorf("%s is not inside the workspace folder %s", root, request.WorkDir)
+		}
+	}
+	return result, nil
+}
+
+// Preview lists the files Create would write, relative to the project folder and sorted. A .git folder is not listed.
+func Preview(request NewRequest) ([]string, error) {
+	p, err := makePlan(request)
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	relativeModule, _ := filepath.Rel(p.root, p.moduleDir)
+	prefix := ""
+	if relativeModule != "." {
+		prefix = filepath.ToSlash(relativeModule) + "/"
+	}
+	paths = append(paths, prefix+"go.mod")
+	for path := range p.moduleFiles {
+		paths = append(paths, prefix+path)
+	}
+	for path := range p.rootFiles {
+		paths = append(paths, path)
+	}
+	if p.workspace {
+		paths = append(paths, "go.work")
+	}
+	sort.Strings(paths)
+	return paths, nil
+}
+
+// Create makes a new project folder under Location. It refuses a destination that already has files.
+func Create(request NewRequest) (Info, error) {
+	p, err := makePlan(request)
 	if err != nil {
 		return Info{}, err
 	}
-	info, err := populate(request, root, modulePath, files)
+	created, err := prepareEmptyFolder(p.root)
+	if err != nil {
+		return Info{}, err
+	}
+	info, err := populate(request, p)
 	if err != nil {
 		if created {
-			os.RemoveAll(root) // only a folder this call made; an existing empty one is left in place
+			os.RemoveAll(p.root) // only a folder this call made; an existing empty one is left in place
 		}
 		return Info{}, err
 	}
 	return info, nil
 }
 
-func populate(request NewRequest, root, modulePath string, files map[string]string) (Info, error) {
-	moduleDir := root
-	kind := KindModule
-	if request.Template == TemplateWorkspace {
-		moduleDir = filepath.Join(root, "app")
-		if err := os.MkdirAll(moduleDir, 0o755); err != nil {
-			return Info{}, err
-		}
-		kind = KindWorkspace
-	}
-	if err := goModInit(moduleDir, modulePath, request.GoVersion); err != nil {
+func populate(request NewRequest, p plan) (Info, error) {
+	if err := os.MkdirAll(p.moduleDir, 0o755); err != nil {
 		return Info{}, err
 	}
-	for path, content := range files {
-		if err := writeNew(filepath.Join(moduleDir, path), content); err != nil {
+	if err := goModInit(p.moduleDir, p.modulePath, request.GoVersion); err != nil {
+		return Info{}, err
+	}
+	for path, content := range p.moduleFiles {
+		if err := writeNew(filepath.Join(p.moduleDir, path), content); err != nil {
 			return Info{}, err
 		}
 	}
-	if request.Template == TemplateWorkspace {
-		if err := run(root, "go", "work", "init", "./app"); err != nil {
+	if p.workspace {
+		if err := run(p.root, "go", "work", "init", "./app"); err != nil {
 			return Info{}, err
 		}
 	}
-	if err := writeNew(filepath.Join(root, "README.md"), "# "+request.Name+"\n"); err != nil {
-		return Info{}, err
+	for path, content := range p.rootFiles {
+		if err := writeNew(filepath.Join(p.root, path), content); err != nil {
+			return Info{}, err
+		}
 	}
-	if err := writeNew(filepath.Join(root, ".gitignore"), ".env\n*.test\n*.out\n/bin/\n"); err != nil {
-		return Info{}, err
+	if request.WorkDir != "" {
+		relative, _ := filepath.Rel(request.WorkDir, p.root)
+		if err := run(request.WorkDir, "go", "work", "use", "./"+filepath.ToSlash(relative)); err != nil {
+			return Info{}, err
+		}
 	}
 	if request.GitInit {
-		if err := run(root, "git", "init", "--quiet"); err != nil {
+		if err := run(p.root, "git", "init", "--quiet"); err != nil {
 			return Info{}, err
 		}
 		// `git init -b` needs git 2.28; pointing HEAD works on every version.
-		if err := run(root, "git", "symbolic-ref", "HEAD", "refs/heads/master"); err != nil {
+		if err := run(p.root, "git", "symbolic-ref", "HEAD", "refs/heads/master"); err != nil {
 			return Info{}, err
 		}
 	}
-	return Info{Root: root, Kind: kind, ModulePath: modulePath}, nil
+	return Info{Root: p.root, Kind: p.kind, ModulePath: p.modulePath}, nil
 }
 
 // prepareEmptyFolder makes root if needed and reports whether it created it.

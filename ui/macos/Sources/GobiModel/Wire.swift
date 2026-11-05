@@ -157,3 +157,46 @@ public enum ControlWire {
         return reply
     }
 }
+
+/// The terminal channel messages (core/internal/daemon/terminal.go): to the server 1 kind (1 input, 2 resize), 2 data,
+/// 3 columns, 4 rows; from the server 1 kind (1 output, 3 exit), 2 data, 5 exit code.
+public enum TerminalWire {
+    public enum Event: Equatable {
+        case output([UInt8])
+        case exit(code: Int, message: String)
+        case ignored
+    }
+
+    public static func input(_ bytes: [UInt8]) -> [UInt8] {
+        var writer = WireWriter()
+        writer.uint(1, 1)
+        writer.raw(2, bytes)
+        return writer.bytes
+    }
+
+    public static func resize(columns: Int, rows: Int) -> [UInt8] {
+        var writer = WireWriter()
+        writer.uint(1, 2)
+        writer.uint(3, UInt64(max(columns, 1)))
+        writer.uint(4, UInt64(max(rows, 1)))
+        return writer.bytes
+    }
+
+    public static func parse(_ payload: [UInt8]) throws -> Event {
+        var kind: UInt64 = 0, code: UInt64 = 0
+        var data: [UInt8] = []
+        for field in try WireField.parse(payload) {
+            switch field.number {
+            case 1: kind = field.uint
+            case 2: data = field.bytes
+            case 5: code = field.uint
+            default: break
+            }
+        }
+        switch kind {
+        case 1: return .output(data)
+        case 3: return .exit(code: Int(code), message: String(decoding: data, as: UTF8.self))
+        default: return .ignored
+        }
+    }
+}

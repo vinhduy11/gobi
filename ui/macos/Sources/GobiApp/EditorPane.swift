@@ -20,7 +20,18 @@ final class EditorPane: NSViewController {
     private var firstDiagnosticsAt: Date?
     private var underlineMilliseconds = 0.0
 
-    init(fileURL: URL, text: String) {
+    /// Called with the diagnostics gopls sent for this file, and with each status text (a project window shows them in its
+    /// own bottom panel and status bar instead of the ones built into the pane).
+    var onDiagnostics: (([LSPDiagnostic]) -> Void)?
+    var onStatus: ((String) -> Void)?
+    var onConnected: (() -> Void)?
+    /// Called when the caret moves, with a zero-based line and column.
+    var onCaret: ((Int, Int) -> Void)?
+    private(set) var isConnected = false
+    private var selectionObserver: NSObjectProtocol?
+
+    /// With `embedsPanels` false the pane is just the editor; the host window draws problems and status itself.
+    init(fileURL: URL, text: String, embedsPanels: Bool = true) {
         editor = EditorView(fileURL: fileURL, text: text)
         super.init(nibName: nil, bundle: nil)
 
@@ -43,7 +54,58 @@ final class EditorPane: NSViewController {
         stack.spacing = 4
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 6, right: 0)
         stack.distribution = .fill
-        view = stack
+        view = embedsPanels ? stack : editor.view
+        selectionObserver = NotificationCenter.default.addObserver(forName: NSTextView.didChangeSelectionNotification, object: editor.textView, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            let position = self.editorFile.lineIndex.position(at: self.textView.selectedRange().location)
+            self.onCaret?(position.line, position.character)
+        }
+    }
+
+    deinit { selectionObserver.map(NotificationCenter.default.removeObserver) }
+
+    /// Asks gopls where the symbol at the caret is defined; `found` runs on the main thread with the first answer.
+    func goToDefinition(found: @escaping (SourceLocation?) -> Void) {
+        guard let client = editorFile.client else { found(nil); return }
+        let position = editorFile.lineIndex.position(at: textView.selectedRange().location)
+        client.definition(uri: editorFile.uri, at: position) { locations in DispatchQueue.main.async { found(locations.first) } }
+    }
+
+    /// Formats the file with gopls (gofmt). The edits apply as one undo step, and only if the text has not changed since asking.
+    func formatDocument() {
+        guard let client = editorFile.client, !editorFile.isReadOnlyByLineLength else { return }
+        let version = editorFile.version
+        client.formatting(uri: editorFile.uri, tabSize: 4) { [weak self] edits in
+            DispatchQueue.main.async {
+                guard let self, !edits.isEmpty, self.editorFile.version == version else { return }
+                self.apply(edits, named: "Format Document")
+            }
+        }
+    }
+
+    /// Applies gopls' edits to the text view from the last to the first, as one undo step.
+    func apply(_ edits: [TextEdit], named name: String) {
+        guard let storage = textView.textStorage else { return }
+        let index = editorFile.lineIndex
+        let located = edits.map { edit -> (NSRange, String) in
+            let start = index.offset(of: edit.start)
+            return (NSRange(location: start, length: max(0, index.offset(of: edit.end) - start)), edit.newText)
+        }.sorted { $0.0.location > $1.0.location }
+        textView.undoManager?.beginUndoGrouping()
+        textView.undoManager?.setActionName(name)
+        for (range, text) in located where textView.shouldChangeText(in: range, replacementString: text) {
+            storage.replaceCharacters(in: range, with: text)
+            textView.didChangeText()
+        }
+        textView.undoManager?.endUndoGrouping()
+    }
+
+    /// Moves the caret to a zero-based line and column and brings it into view.
+    func reveal(line: Int, character: Int) {
+        let offset = editorFile.lineIndex.offset(of: LSPPosition(line: line, character: character))
+        textView.setSelectedRange(NSRange(location: offset, length: 0))
+        textView.scrollRangeToVisible(NSRange(location: offset, length: 0))
+        textView.window?.makeFirstResponder(textView)
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -85,6 +147,8 @@ final class EditorPane: NSViewController {
                 DispatchQueue.main.async {
                     editorFile.client = client
                     self?.connectedAt = Date()
+                    self?.isConnected = true
+                    self?.onConnected?()
                     // Anything typed while connecting is covered by sending the current text, not the original.
                     let current = self?.textView.string ?? initialText
                     client.didOpen(uri: editorFile.uri, languageID: editorFile.language, version: editorFile.version, text: current)
@@ -103,7 +167,10 @@ final class EditorPane: NSViewController {
         return ""
     }
 
-    private func setStatus(_ text: String) { statusLabel.stringValue = text + lineLimitNotice }
+    private func setStatus(_ text: String) {
+        statusLabel.stringValue = text + lineLimitNotice
+        onStatus?(text + lineLimitNotice)
+    }
 
     // MARK: diagnostics
 
@@ -121,6 +188,7 @@ final class EditorPane: NSViewController {
             return "\(name):\(diagnostic.start.line + 1):\(diagnostic.start.character + 1) \(severity): \(diagnostic.message)"
         }
         problemsView.string = lines.isEmpty ? "No problems" : lines.joined(separator: "\n")
+        onDiagnostics?(diagnostics)
         setStatus("\(diagnostics.count) problem\(diagnostics.count == 1 ? "" : "s")")
     }
 

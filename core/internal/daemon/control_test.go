@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gobi/core/internal/ipc"
@@ -161,5 +162,49 @@ func TestControlRejectsAJSONRequest(t *testing.T) {
 	}
 	if failure == "" {
 		t.Fatalf("a JSON request must get an error reply, got % x", payload)
+	}
+}
+
+func TestControlPreviewListsTheFilesNewWouldWrite(t *testing.T) {
+	session := controlSession(t)
+	location := t.TempDir()
+	params := func(w *wire.Writer) {
+		w.String(1, "cli")
+		w.String(2, "demo")
+		w.String(3, location)
+		w.String(4, "example.com/demo")
+		w.Bool(7, true)
+		w.Bool(8, true)
+	}
+	// controlCall keeps one field per number, so read the repeated files from a raw reply.
+	var request wire.Writer
+	request.Uint(controlID, 1)
+	request.String(controlMethod, "project/preview")
+	request.Message(controlBody, params)
+	if err := session.Writer.Write(request.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := session.Reader.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fields, _ := wire.Parse(payload)
+	var files []string
+	for _, field := range fields {
+		if field.Number == controlBody {
+			inner, _ := wire.Parse(field.Bytes)
+			for _, innerField := range inner {
+				if innerField.Number == projectFile {
+					files = append(files, string(innerField.Bytes))
+				}
+			}
+		}
+	}
+	want := ".env.example,.gitignore,README.md,go.mod,main.go,main_test.go"
+	if strings.Join(files, ",") != want {
+		t.Fatalf("preview files = %v, want %s", files, want)
+	}
+	if _, err := os.Stat(filepath.Join(location, "demo")); err == nil {
+		t.Fatal("a preview must not create anything")
 	}
 }

@@ -48,7 +48,31 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 - `ui/macos/`: File > Open Recent (ten newest projects, same-name folders told apart by their parent, Clear Menu); several files dropped on the Dock icon or passed to `open` open as tabs of the project that holds them, reopening a recent project when needed; the Welcome window shows the app icon.
 
+- `project/new` options: sample test, scaffold (README, .gitignore, .env.example), add to an existing go.work; `project/preview` lists the files `project/new` would write (shared plan, tested to match the disk). The CLI and HTTP templates now have testable code.
+- `ui/macos/`: the Welcome window follows its mock: sidebar with icon, version and Go status, four action rows with subtitle and shortcut, drop zone for a folder; recent projects with search, go.mod and go.work · n modules badges, Restricted chip and git branch; "Show this window when Gobi launches" (off by default, so the newest project reopens) and "Clear recent…". `GobiApp --selftest-welcome` checks and paints it.
+
+- Mockups: terminal panel (terminal tabs, new, split, kill, shell menu, Terminal menu items) and the Restricted Mode state for it, on the canvas and in `docs/artifact/`.
+
+- `ui/macos/`: New Project window follows its mock: grouped template list with descriptions (gRPC and custom templates are shown but unavailable for now), name, location, module path, Go version, environment (local only until environments exist), the four options and a "Will create" list that gobid computes (`project/preview`). `GobiApp --selftest-newproject` checks it against gobid and paints it.
+
+- `ui/macos/`: the workspace trust question is its own window as in the mock (icon, explanation, what Restricted Mode keeps and turns off, "Also trust projects in ~/…", Cancel, Open in Restricted Mode, Trust and Open). `GobiApp --selftest-trust` checks and paints it.
+
+- `ui/macos/`: the project window gets the mock's regions: breadcrumb under the tabs, a bottom panel with the seven tabs (Problems works, with severity icons, `file:line · source`, click to jump; the others say what comes later; View > Toggle Bottom Panel will use `toggleBottomPanel`), and a status bar with the git branch, gopls state, caret, encoding, line ending and Go version. A file now opens with the caret at its top.
+
+- `internal/pty` and the `pty` channel: a login shell on a pseudo-terminal per connection, started in the project folder, with resize and exit code; refused for a workspace that is not trusted.
+
+- `ui/macos/`: the menu bar follows the Menus mock: Gobi, File, Edit, View, Go, Run, Debug, Window, Help with the mock's items and shortcuts, built from `MenuSpec` (tested against a transcription of the mock). Items whose feature is not built yet are shown disabled. New commands: Close Project, Save All, Reveal in Finder, Toggle Sidebar, Toggle Bottom Panel, Enter Full Screen, Minimize, Zoom, Bring All to Front. `gobi-check terminal DIR` checks the terminal client against gobid.
+
+- `ui/macos/`: the Terminal tab of the bottom panel: one shell per tab on gobid's `pty` channel, new, kill, clear and shell menu, a Restricted Mode notice with "Trust Project…" (which reopens the project trusted). Drawn by SwiftTerm 1.5.1 (MIT), the only third-party package, imported by the app shell only. `GobiApp FOLDER --selftest-terminal` checks it end to end.
+
+- `ui/macos/`: right-click menus for the editor, the explorer and the tabs, from the new Context menus mock and the GoLand project-view menu as reference. Live now: Go to Definition, Format Document, Cut, Copy, Paste, Select All, Copy Path (absolute, from project root, file name), Reveal in Finder, Jump to Source (F4 too), Close, Close Others, Close Tabs to the Right, and Go Mod Tidy and Download Go Modules (run in the Terminal, in the go.mod's folder, trusted projects only). The rest are shown disabled until their features exist.
+- `ui/macos/`: Go to Definition (F12) and Format Document (⌥⇧F) through gopls, from the menu bar and the right-click menu; the format is one undo step and is dropped if the text changed meanwhile. `LSPResults` reads definition, completion, formatting and hover answers; completion and hover are read but not shown yet.
+- `ui/macos/`: Help > Keyboard Shortcuts lists every shortcut from the same data the menus use; `Shortcut` reads the mock's notation; the self-test checks that every live menu item carries its key.
+- `ui/macos/`: explorer file icons by type (GO, test, go.mod, go.sum, go.work, Markdown, YAML, JSON, TOML, Makefile, .gitignore, .env, shell, Dockerfile, proto, SQL, images) as coloured badges and symbols.
+
 ### Fixed
+- `ui/macos/`: a menu item built with a method named `perform` crashed when chosen, because the name collides with `NSObject.perform(_:)`.
+- `ui/macos/`: the project window no longer shrinks itself to the layout's fitting size (a holding priority above Auto Layout's window priority did it), and a saved window frame that is too small is ignored.
 - `ui/macos/`: the tabs were never visible. The tab strip was a stack used as a scroll view's document view without constraints, so every tab had size 0 by 0. It is pinned now, has a background of its own with a hairline, and the project self-test checks that each tab is drawn with a real size (and writes a window snapshot with `--snapshot`).
 - `ui-macos/` and `core/`: a lone `\r` is a line break in `LineIndex`, `lsp` text sync and `langsvc` positions, as the protocol defines.
 - `ui-macos/`: `GobiApp --selftest` and `gobi-check` run quietly (no window, focus change or Dock icon); `--visible` shows the window.

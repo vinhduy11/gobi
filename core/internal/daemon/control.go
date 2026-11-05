@@ -18,7 +18,9 @@ import (
 //
 //	request: 1 id (uint), 2 method (string), 3 params (message, layout depends on the method)
 //	reply:   1 id (uint), 2 failure message (string, present only on failure), 3 result (message)
-//	project/new    params: 1 template, 2 name, 3 location, 4 module path, 5 go version, 6 git init (bool)
+//	project/new    params: 1 template, 2 name, 3 location, 4 module path, 5 go version, 6 git init (bool),
+//	               7 sample test (bool), 8 scaffold README/.gitignore/.env.example (bool), 9 work dir (add to this go.work)
+//	project/preview params: as project/new; result: 1 root, 2 kind, 3 module path, 4 file (repeated), relative to the root
 //	project/clone  params: 1 url, 2 location, 3 folder name
 //	project/open   params: 1 path
 //	project/import params: 1 path, 2 module path
@@ -32,6 +34,7 @@ const (
 	projectRoot   = 1
 	projectKind   = 2
 	projectModule = 3
+	projectFile   = 4
 )
 
 // serveControl answers project requests on the control channel, one at a time per connection.
@@ -102,12 +105,25 @@ func handleControl(method string, params []byte) ([]byte, error) {
 		return false
 	}
 
+	newRequest := project.NewRequest{
+		Template: text(1), Name: text(2), Location: text(3), ModulePath: text(4), GoVersion: text(5), GitInit: flag(6),
+		SampleTest: flag(7), Scaffold: flag(8), WorkDir: text(9),
+	}
 	var info project.Info
 	switch method {
+	case "project/preview":
+		files, err := project.Preview(newRequest)
+		if err != nil {
+			return nil, err
+		}
+		var result wire.Writer
+		result.String(projectRoot, filepath.Join(newRequest.Location, newRequest.Name))
+		for _, file := range files {
+			result.Raw(projectFile, []byte(file))
+		}
+		return result.Bytes(), nil
 	case "project/new":
-		info, err = project.Create(project.NewRequest{
-			Template: text(1), Name: text(2), Location: text(3), ModulePath: text(4), GoVersion: text(5), GitInit: flag(6),
-		})
+		info, err = project.Create(newRequest)
 	case "project/clone":
 		info, err = project.Clone(context.Background(), project.CloneRequest{URL: text(1), Location: text(2), Name: text(3)})
 	case "project/open":

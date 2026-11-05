@@ -105,6 +105,11 @@ public final class EditorView {
     /// The view to put in a window: the gutter next to the scroll view, or just the scroll view.
     public private(set) var view: NSView
     public private(set) var loadMilliseconds = 0.0
+    /// The right-click menu for the editor text, built by the host.
+    public var contextMenuProvider: ((NSEvent) -> NSMenu?)? {
+        get { (textView as? EditorTextView)?.contextMenuProvider }
+        set { (textView as? EditorTextView)?.contextMenuProvider = newValue }
+    }
     /// When true (the default) big scroll jumps are remapped to text positions; see EditorClipView.
     public var mapsLargeJumpsToLines = true
     private var highlighter: SyntaxHighlighter?
@@ -180,6 +185,7 @@ public final class EditorView {
         textView.string = text
         loadMilliseconds = Date().timeIntervalSince(loadStarted) * 1000
         textView.textStorage?.delegate = document
+        textView.setSelectedRange(NSRange(location: 0, length: 0))   // a file opens at its top, not at its end
 
         if lineNumbers {
             let numbers = LineNumberGutter(scrollView: scrollView, textView: textView, document: document)
