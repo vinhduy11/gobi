@@ -56,6 +56,8 @@ func Run(ctx context.Context, config Config) error {
 		config.Logger.Info("lsp client detached", "root", workspace.Root, "language", workspace.Language)
 	})
 
+	server.Handle("control", func(session *ipc.Session) { serveControl(session, config.Logger) })
+
 	served := make(chan error, 1)
 	go func() { served <- server.Serve() }()
 	config.Logger.Info("gobid listening", "dir", config.SocketDir)

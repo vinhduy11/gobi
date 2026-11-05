@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Core project API</title>
+<style>body{font:15px/1.5 -apple-system,sans-serif;max-width:820px;margin:32px auto;padding:0 16px}code{background:#f2f2f4;padding:1px 4px;border-radius:4px}</style></head><body>
+<h1>Core project API</h1>
+<h2>Specs</h2><p>New Project, Open, Clone and Import need support in gobid before the UI can offer them (roadmap: project lifecycle).</p>
+<h2>Actions</h2><ul>
+<li><code>internal/project</code>: name and module validation, templates, <code>Create</code>, <code>Inspect</code>, <code>Import</code>, <code>Clone</code>, <code>ModulePathFromRemote</code>.</li>
+<li><code>daemon/control.go</code>: JSON-RPC style requests on the <code>control</code> channel: <code>project/new|open|clone|import</code>.</li>
+<li>Tests written first: unit tests, a build of a generated project, git init on master, clone from a local repository, and an end-to-end test through the socket.</li></ul>
+<h2>Tradeoffs</h2><ul>
+<li>Requests on one connection run in order; a long clone blocks later requests on that connection.</li>
+<li>Clone validates the URL and also restricts git's transports, so a crafted URL cannot run commands.</li>
+<li>No gRPC template (it needs dependencies and generated code) and no "add to an existing go.work" yet.</li>
+<li>The environment profile option in the New Project mockup waits for the environment-profile work.</li></ul>
+</body></html>
