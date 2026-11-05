@@ -34,6 +34,8 @@ type Hello struct {
 	WorkspaceRoot string `json:"workspace_root,omitempty"`
 	// Trusted says the user trusted this workspace; the default (false) runs tools restricted.
 	Trusted bool `json:"trusted,omitempty"`
+	// Language selects the language service on the lsp channel ("go", "json", "markdown"); empty means "go".
+	Language string `json:"language,omitempty"`
 }
 
 // Reply answers a Hello.
@@ -69,6 +71,7 @@ type Server struct {
 
 	handlersLock sync.RWMutex
 	handlers     map[string]Handler
+	admit        func(Hello) string
 	closing      closer
 }
 
@@ -87,6 +90,13 @@ func (s *Server) Handle(channel string, handler Handler) {
 	s.handlersLock.Lock()
 	defer s.handlersLock.Unlock()
 	s.handlers[channel] = handler
+}
+
+// SetAdmit installs a check run after the built-in validation; a non-empty return refuses the handshake with that reason.
+func (s *Server) SetAdmit(admit func(Hello) string) {
+	s.handlersLock.Lock()
+	defer s.handlersLock.Unlock()
+	s.admit = admit
 }
 
 // Serve accepts connections until Close is called, then returns nil.
@@ -161,10 +171,15 @@ func (s *Server) validate(hello Hello) (Handler, string) {
 		return nil, "lsp channel needs a workspace_root"
 	}
 	s.handlersLock.RLock()
-	handler := s.handlers[hello.Channel]
+	handler, admit := s.handlers[hello.Channel], s.admit
 	s.handlersLock.RUnlock()
 	if handler == nil {
 		return nil, fmt.Sprintf("channel %q is not available", hello.Channel)
+	}
+	if admit != nil {
+		if reason := admit(hello); reason != "" {
+			return nil, reason
+		}
 	}
 	return handler, ""
 }

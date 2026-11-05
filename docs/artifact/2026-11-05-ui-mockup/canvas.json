@@ -1,22 +1,32 @@
 {
   "v": 3,
-  "createdOnFiles": {"v": 1, "at": "2026-11-05T12:00:00Z"},
-  "title": "Gobi IDE Mockup",
-  "launch": {"view": "canvas"},
-  "pages": [],
+  "attachments": {},
   "boards": {
-    "Main.dc.html": {"x": 0, "y": 0, "w": 1440, "h": 900, "title": "Edit"},
-    "Debug.dc.html": {"x": 1520, "y": 0, "w": 1440, "h": 900, "title": "Debug (dlv)"},
-    "Profiler.dc.html": {"x": 3040, "y": 0, "w": 1440, "h": 900, "title": "Profile (pprof)"},
-    "Environments.dc.html": {"x": 0, "y": 1020, "w": 1200, "h": 800, "title": "Environments"},
-    "Toolchains.dc.html": {"x": 1280, "y": 1020, "w": 1200, "h": 800, "title": "Go toolchains"},
-    "Welcome.dc.html": {"x": 0, "y": 1940, "w": 1100, "h": 680, "title": "Welcome (new / open / clone / import)"},
-    "NewProject.dc.html": {"x": 1180, "y": 1940, "w": 1000, "h": 680, "title": "New Project"},
-    "Trust.dc.html": {"x": 2260, "y": 1940, "w": 560, "h": 400, "title": "Workspace trust"}
+    "Debug.dc.html": {"h": 900, "title": "Debug (dlv)", "w": 1440, "x": 1520, "y": 0},
+    "Environments.dc.html": {"h": 800, "title": "Environments", "w": 1200, "x": 0, "y": 1020},
+    "Main.dc.html": {"h": 900, "title": "Edit", "w": 1440, "x": 0, "y": 0},
+    "NewProject.dc.html": {"h": 680, "title": "New Project", "w": 1000, "x": 1180, "y": 1940},
+    "Profiler.dc.html": {"h": 900, "title": "Profile (pprof)", "w": 1440, "x": 3040, "y": 0},
+    "Toolchains.dc.html": {"h": 800, "title": "Go toolchains", "w": 1200, "x": 1280, "y": 1020},
+    "Trust.dc.html": {"h": 400, "title": "Workspace trust", "w": 560, "x": 2260, "y": 1940},
+    "Welcome.dc.html": {"h": 680, "title": "Welcome (new / open / clone / import)", "w": 1100, "x": 0, "y": 1940},
+    "JsonEditor.dc.html": {"h": 900, "title": "JSON editing", "w": 1440, "x": 0, "y": 2740},
+    "MarkdownPreview.dc.html": {"h": 900, "title": "Markdown preview", "w": 1440, "x": 1520, "y": 2740},
+    "Menus.dc.html": {"h": 960, "title": "Menu bar", "w": 1500, "x": 0, "y": 3760},
+    "SettingsEditor.dc.html": {"h": 640, "title": "Settings: Editor", "w": 880, "x": 1580, "y": 3760},
+    "SettingsLanguages.dc.html": {"h": 640, "title": "Settings: Languages", "w": 880, "x": 2540, "y": 3760}
   },
-  "order": ["Main.dc.html", "Debug.dc.html", "Profiler.dc.html", "Environments.dc.html", "Toolchains.dc.html", "Welcome.dc.html", "NewProject.dc.html", "Trust.dc.html"],
+  "createdOnFiles": {"at": "2026-11-05T12:00:00Z", "v": 1},
+  "designSystems": [],
+  "launch": {"view": "canvas"},
   "notes": {
-    "title": {"x": 0, "y": -260, "text": "Gobi: macOS window, Apple HIG (AppKit look)", "kind": "title1", "maxW": 4480}
+    "title": {"kind": "title1", "maxW": 4480, "text": "Gobi: macOS window, Apple HIG (AppKit look)", "w": 240, "x": 0, "y": -260}
   },
-  "designSystems": []
+  "order": [
+    "Main.dc.html", "Debug.dc.html", "Profiler.dc.html", "Environments.dc.html", "Toolchains.dc.html",
+    "Welcome.dc.html", "NewProject.dc.html", "Trust.dc.html",
+    "JsonEditor.dc.html", "MarkdownPreview.dc.html", "Menus.dc.html", "SettingsEditor.dc.html", "SettingsLanguages.dc.html"
+  ],
+  "pages": [],
+  "title": "Gobi IDE Mockup"
 }

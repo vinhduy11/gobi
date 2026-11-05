@@ -2,6 +2,7 @@
 //
 //	gobid [serve] [-dir DIR]   serve the lsp channel on a private unix socket
 //	gobid doctor               report go, gopls and dlv; exit 1 if a required tool is missing
+//	gobid langserver           the built-in JSON and Markdown language service over stdio (started by gobid itself)
 package main
 
 import (
@@ -17,6 +18,7 @@ import (
 
 	"gobi/core/internal/daemon"
 	"gobi/core/internal/ipc"
+	"gobi/core/internal/langsvc"
 	"gobi/core/internal/toolchain"
 )
 
@@ -30,8 +32,13 @@ func main() {
 		os.Exit(doctor())
 	case "serve":
 		os.Exit(serve(args))
+	case "langserver":
+		if err := langsvc.Serve(os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "gobid langserver:", err)
+			os.Exit(1)
+		}
 	default:
-		fmt.Fprintln(os.Stderr, "usage: gobid [serve] [-dir DIR] | gobid doctor")
+		fmt.Fprintln(os.Stderr, "usage: gobid [serve] [-dir DIR] | gobid doctor | gobid langserver")
 		os.Exit(2)
 	}
 }
@@ -51,9 +58,17 @@ func serve(args []string) int {
 		goplsPath = "gopls"
 	}
 
+	servers := map[string][]string{"go": {goplsPath}}
+	if self, err := os.Executable(); err == nil {
+		builtIn := []string{self, "langserver"}
+		servers["json"], servers["markdown"] = builtIn, builtIn
+	} else {
+		logger.Warn("cannot locate gobid itself; JSON and Markdown support is off", "error", err)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	err = daemon.Run(ctx, daemon.Config{SocketDir: *socketDir, ServerCommand: []string{goplsPath}, Logger: logger})
+	err = daemon.Run(ctx, daemon.Config{SocketDir: *socketDir, Servers: servers, Logger: logger})
 	switch {
 	case errors.Is(err, ipc.ErrAlreadyRunning):
 		fmt.Fprintln(os.Stderr, "gobid: another instance is already running")

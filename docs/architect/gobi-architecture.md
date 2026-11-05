@@ -37,6 +37,25 @@ pprof, gofmt / goimports and `go.work`. Gobi does not reimplement any of them.
 - Messages are forwarded as bytes. `peekHeader` reads the top-level `id` and `method` with one scan and `rewriteID`
   splices the new id in; messages with a duplicate `id` or `method` are refused so a client cannot dodge translation.
 
+## Built-in language service (`internal/langsvc`)
+
+JSON and Markdown have no official server worth requiring, so `gobid` ships its own, started as a subprocess
+(`gobid langserver`, LSP over stdio) and supervised by the same broker as gopls: restart with document replay, id
+translation and sharing between windows all apply. The `lsp` channel handshake carries `language` (`go` default,
+`json`, `markdown`); the registry keeps one server per root, language and trust level, and the daemon refuses
+languages it has no server for.
+
+- **JSON** (strict): a hand-written parser reports the first syntax error with line and UTF-16 column, builds the
+  outline (objects, arrays up to 500 entries, scalar details) and the formatter uses `encoding/json` indentation
+  (spaces or tabs from the client's options, one whole-document edit, nothing for invalid or already formatted
+  files). A fuzz test keeps the parser's accept/reject decision identical to `encoding/json`.
+- **Markdown**: outline from ATX and setext headings outside fenced code, nested by level; request
+  `gobi/markdownPreview` returns HTML rendered with goldmark (GFM tables, task lists, strikethrough). Raw HTML and
+  dangerous URL schemes are dropped, so the preview can be shown in a web view without scripts.
+- Syntax colouring is a UI concern and is not part of the service.
+- Sync is full-text; the service advertises it so clients send whole files. Not supported: JSON with comments,
+  partial outlines for files with errors, Markdown link and spelling checks.
+
 ## Workspace trust
 
 `trusted` comes from the client in the handshake and defaults to false. An untrusted workspace runs gopls with

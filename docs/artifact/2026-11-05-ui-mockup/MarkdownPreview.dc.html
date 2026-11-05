@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi Markdown preview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.win{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid var(--sep)}
+.mono{font:12px/20px ui-monospace,"SF Mono",Menlo,monospace}
+.tb{height:52px;background:var(--bar);border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:8px;padding:0 14px;flex:none}
+.dot{width:12px;height:12px;border-radius:50%}
+.btn{height:28px;min-width:28px;padding:0 9px;border:0;border-radius:6px;background:transparent;color:var(--text);font:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:default}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sec{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);padding:12px 12px 4px}
+.row{display:flex;align-items:center;gap:6px;height:24px;padding:0 12px;white-space:nowrap}
+.row.sel{background:var(--accentBg);color:var(--accentT)}
+.t2{color:var(--text2)}
+.ln{display:flex;height:20px;align-items:center}
+.no{width:40px;text-align:right;padding-right:10px;color:var(--text2);flex:none}
+.cd{white-space:pre}
+.hd{color:var(--accentT);font-weight:700}.cm{color:var(--cm)}.st{color:var(--str)}.kw{color:var(--kw)}
+.seg{display:inline-flex;background:var(--hover);border-radius:7px;padding:2px}
+.seg span{padding:2px 12px;border-radius:5px;font-size:12px}
+.seg .a{background:var(--bg);box-shadow:0 0 0 .5px var(--sep),0 1px 2px rgba(0,0,0,.12);font-weight:600}
+.pv h1{font-size:26px;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--sep)}
+.pv h2{font-size:19px;margin:22px 0 6px}
+.pv p{margin:6px 0}
+.pv code{font:12px ui-monospace,"SF Mono",Menlo,monospace;background:var(--hover);padding:1px 5px;border-radius:4px}
+.pv pre{font:12px/1.5 ui-monospace,"SF Mono",Menlo,monospace;background:var(--side);border-radius:8px;padding:10px 12px;margin:8px 0}
+.pv table{border-collapse:collapse;margin:8px 0}.pv th,.pv td{border:1px solid var(--sep);padding:4px 12px;text-align:left}.pv th{background:var(--side)}
+.pv ul{margin:6px 0;padding-left:22px}
+</style>
+</helmet>
+<div class="win" style="width: 1440px; height: 900px; {{vars}}">
+
+  <div class="tb">
+    <div style="display:flex;gap:8px;margin-right:14px" aria-hidden="true"><div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div></div>
+    <button class="btn" aria-label="Toggle sidebar"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6 3v10"/></svg></button>
+    <button class="btn" aria-label="Run"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z"/></svg>Run</button>
+    <button class="btn" aria-label="Debug"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M8 5a3 3 0 013 3v2a3 3 0 01-6 0V8a3 3 0 013-3zM5 8H2m12 0h-3M5 11l-2 2m8-2l2 2M6 4L5 2m5 2l1-2"/></svg>Debug</button>
+    <button class="btn" style="border:1px solid var(--sep);margin-left:6px" aria-label="Environment: local"><span style="width:8px;height:8px;border-radius:50%;background:#34C759" aria-hidden="true"></span>local &#9662;</button>
+    <button class="btn" style="border:1px solid var(--sep)" aria-label="Go toolchain: auto from go.mod">Go 1.26.5 &#9662;</button>
+    <div style="flex:1;display:flex;justify-content:center">
+      <div style="display:flex;align-items:center;gap:8px;height:28px;padding:0 14px;border-radius:14px;background:var(--hover);font-size:12px"><span style="width:8px;height:8px;border-radius:50%;background:#34C759" aria-hidden="true"></span><span>Markdown</span><span class="t2">&#183; built-in language service</span></div>
+    </div>
+    <button class="btn" style="border:1px solid var(--sep);min-width:200px;justify-content:flex-start;color:var(--text2)" aria-label="Search and commands"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>Search&#8230;<span style="margin-left:auto">&#8984;&#8679;P</span></button>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0">
+    <div style="width:260px;background:var(--side);border-right:1px solid var(--sep);flex:none">
+      <div class="sec">Explorer</div>
+      <div class="row"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>hello</div>
+      <div class="row" style="padding-left:28px"><svg class="ic t2" aria-hidden="true" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4"/></svg>cmd</div>
+      <div class="row" style="padding-left:28px"><svg class="ic t2" aria-hidden="true" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4"/></svg>internal</div>
+      <div class="row" style="padding-left:46px"><svg class="ic t2" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3"/></svg>config.json</div>
+      <div class="row" style="padding-left:46px"><svg class="ic t2" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3"/></svg>go.mod</div>
+      <div class="row sel" style="padding-left:46px"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3"/></svg>README.md</div>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+      <div style="height:36px;background:var(--bar);border-bottom:1px solid var(--sep);display:flex;align-items:stretch;flex:none">
+        <div style="padding:0 14px;display:flex;align-items:center;color:var(--text2);border-right:1px solid var(--sep)">config.json</div>
+        <div style="padding:0 14px;display:flex;align-items:center;background:var(--bg);border-right:1px solid var(--sep);font-weight:600">README.md</div>
+        <div style="flex:1"></div>
+        <span class="seg" style="align-self:center;margin-right:10px"><span>Source</span><span class="a">Split</span><span>Preview</span></span>
+      </div>
+
+      <div style="flex:1;display:flex;min-height:0">
+        <!-- source -->
+        <div class="mono" style="flex:1;border-right:1px solid var(--sep);padding-top:8px;overflow:hidden;min-width:0">
+          <div class="ln"><span class="no">1</span><span class="cd hd"># hello</span></div>
+          <div class="ln"><span class="no">2</span><span class="cd"></span></div>
+          <div class="ln"><span class="no">3</span><span class="cd">A tiny HTTP service written in Go.</span></div>
+          <div class="ln"><span class="no">4</span><span class="cd"></span></div>
+          <div class="ln"><span class="no">5</span><span class="cd hd">## Quick start</span></div>
+          <div class="ln"><span class="no">6</span><span class="cd"></span></div>
+          <div class="ln"><span class="no">7</span><span class="cd cm">```bash</span></div>
+          <div class="ln"><span class="no">8</span><span class="cd">go run ./cmd/hello</span></div>
+          <div class="ln"><span class="no">9</span><span class="cd cm">```</span></div>
+          <div class="ln"><span class="no">10</span><span class="cd"></span></div>
+          <div class="ln"><span class="no">11</span><span class="cd hd">## Configuration</span></div>
+          <div class="ln"><span class="no">12</span><span class="cd"></span></div>
+          <div class="ln"><span class="no">13</span><span class="cd">| Key  | Default |</span></div>
+          <div class="ln"><span class="no">14</span><span class="cd">|------|---------|</span></div>
+          <div class="ln"><span class="no">15</span><span class="cd">| port | 8080    |</span></div>
+          <div class="ln"><span class="no">16</span><span class="cd"></span></div>
+          <div class="ln"><span class="no">17</span><span class="cd hd">## Development</span></div>
+          <div class="ln"><span class="no">18</span><span class="cd"></span></div>
+          <div class="ln"><span class="no">19</span><span class="cd"><span class="kw">-</span> Run tests: <span class="st">`go test ./...`</span></span></div>
+          <div class="ln"><span class="no">20</span><span class="cd"><span class="kw">-</span> Profile with **Gobi**</span></div>
+        </div>
+        <!-- preview -->
+        <div class="pv" style="flex:1;padding:18px 26px;overflow:hidden;min-width:0">
+          <h1>hello</h1>
+          <p>A tiny HTTP service written in Go.</p>
+          <h2>Quick start</h2>
+          <pre>go run ./cmd/hello</pre>
+          <h2>Configuration</h2>
+          <table><tr><th>Key</th><th>Default</th></tr><tr><td>port</td><td>8080</td></tr></table>
+          <h2>Development</h2>
+          <ul><li>Run tests: <code>go test ./...</code></li><li>Profile with <strong>Gobi</strong></li></ul>
+          <p class="t2" style="margin-top:22px;font-size:11px">Preview shows Markdown only. Raw HTML and script links are removed.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:240px;background:var(--side);border-left:1px solid var(--sep);flex:none">
+      <div class="sec">Outline</div>
+      <div class="row"><span class="t2">H1</span>hello</div>
+      <div class="row" style="padding-left:28px"><span class="t2">H2</span>Quick start</div>
+      <div class="row" style="padding-left:28px"><span class="t2">H2</span>Configuration</div>
+      <div class="row sel" style="padding-left:28px"><span>H2</span>Development</div>
+      <div class="sec">This file</div>
+      <div class="row t2" style="justify-content:space-between"><span>Language</span><span style="color:var(--text)">Markdown</span></div>
+      <div class="row t2" style="justify-content:space-between"><span>Headings</span><span style="color:var(--text)">4</span></div>
+      <div class="row t2" style="justify-content:space-between"><span>Preview</span><span style="color:var(--text)">Side by side</span></div>
+    </div>
+  </div>
+
+  <div class="t2" style="height:24px;background:var(--bar);border-top:1px solid var(--sep);display:flex;align-items:center;gap:16px;padding:0 14px;font-size:11px;flex:none">
+    <span>feat/graceful-shutdown</span><span style="margin-left:auto">Ln 19, Col 1</span><span>UTF-8</span><span>LF</span><span>Markdown</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#FFFFFF',side:'#EDEDF0',bar:'#F5F5F7',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)',kw:'#AD3DA4',str:'#C41A16',cm:'#5D6C79'};
+    const D = {bg:'#1E1E1E',side:'#2A2A2C',bar:'#323235',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)',kw:'#FF7AB2',str:'#FF8170',cm:'#8A97A3'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

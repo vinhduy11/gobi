@@ -5,6 +5,7 @@ package daemon
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -12,11 +13,15 @@ import (
 	"gobi/core/internal/lsp"
 )
 
+// DefaultLanguage is used when a client does not name one.
+const DefaultLanguage = "go"
+
 // Config describes one gobid instance.
 type Config struct {
-	SocketDir     string
-	ServerCommand []string // the language server, normally the gopls binary
-	Logger        *slog.Logger
+	SocketDir string
+	// Servers maps a language name to the command of its language server over stdio.
+	Servers map[string][]string
+	Logger  *slog.Logger
 }
 
 // Run serves the lsp channel until ctx is cancelled, then removes the socket and stops every server.
@@ -29,19 +34,26 @@ func Run(ctx context.Context, config Config) error {
 	if err != nil {
 		return err
 	}
-	registry := lsp.NewRegistry(func(root string, trusted bool) *lsp.Broker {
-		brokerConfig := lsp.Config{Root: root, Command: config.ServerCommand, Logger: config.Logger}
-		if !trusted {
+	registry := lsp.NewRegistry(func(workspace lsp.Workspace) *lsp.Broker {
+		brokerConfig := lsp.Config{Root: workspace.Root, Command: config.Servers[workspace.Language], Logger: config.Logger}
+		if !workspace.Trusted {
 			// An untrusted workspace must not make `go` download or switch toolchains.
 			brokerConfig.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 		}
 		return lsp.NewBroker(brokerConfig)
 	})
+	server.SetAdmit(func(hello ipc.Hello) string {
+		if _, known := config.Servers[languageOf(hello)]; !known {
+			return fmt.Sprintf("language %q is not supported", languageOf(hello))
+		}
+		return ""
+	})
 	server.Handle("lsp", func(session *ipc.Session) {
 		hello := session.Hello
-		config.Logger.Info("lsp client attached", "root", hello.WorkspaceRoot, "trusted", hello.Trusted, "client", hello.ClientVersion)
-		registry.Serve(hello.WorkspaceRoot, hello.Trusted, session.Reader, session.Writer)
-		config.Logger.Info("lsp client detached", "root", hello.WorkspaceRoot)
+		workspace := lsp.Workspace{Root: hello.WorkspaceRoot, Language: languageOf(hello), Trusted: hello.Trusted}
+		config.Logger.Info("lsp client attached", "root", workspace.Root, "language", workspace.Language, "trusted", workspace.Trusted, "client", hello.ClientVersion)
+		registry.Serve(workspace, session.Reader, session.Writer)
+		config.Logger.Info("lsp client detached", "root", workspace.Root, "language", workspace.Language)
 	})
 
 	served := make(chan error, 1)
@@ -58,4 +70,11 @@ func Run(ctx context.Context, config Config) error {
 	registry.Close()
 	<-served
 	return nil
+}
+
+func languageOf(hello ipc.Hello) string {
+	if hello.Language == "" {
+		return DefaultLanguage
+	}
+	return hello.Language
 }

@@ -15,5 +15,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `internal/daemon` and `gobid serve`: serve the `lsp` channel; untrusted workspaces run gopls with `GOTOOLCHAIN=local`.
 - UI mockups (Edit, Debug, Profile, Environments, Go toolchains, Welcome, New Project, Workspace trust) in `docs/artifact/`.
 
+- `internal/langsvc` and `gobid langserver`: built-in JSON (strict syntax diagnostics, formatting, outline) and
+  Markdown (outline, safe HTML preview) language service, served through the same broker as gopls.
+- Handshake `language` field and per-language servers in the registry and daemon; unsupported languages are refused.
+- Mockups: JSON editing, Markdown preview, menu bar, Settings (Editor, Languages).
+
 ### Changed
 - `gobid` with no arguments now serves instead of printing usage.

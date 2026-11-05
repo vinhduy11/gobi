@@ -11,14 +11,14 @@ import (
 )
 
 func newTestRegistry() *Registry {
-	return NewRegistry(func(root string, trusted bool) *Broker {
+	return NewRegistry(func(workspace Workspace) *Broker {
 		config := Config{
-			Root:         root,
+			Root:         workspace.Root,
 			Command:      []string{fakeBinary},
 			Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
 			RestartDelay: 10 * time.Millisecond,
 		}
-		if !trusted {
+		if !workspace.Trusted {
 			config.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 		}
 		return NewBroker(config)
@@ -26,8 +26,26 @@ func newTestRegistry() *Registry {
 }
 
 func serveVia(registry *Registry, root string, trusted bool) func(*rpc.Reader, *rpc.Writer) error {
+	return serveLanguageVia(registry, root, "go", trusted)
+}
+
+func serveLanguageVia(registry *Registry, root, language string, trusted bool) func(*rpc.Reader, *rpc.Writer) error {
 	return func(reader *rpc.Reader, writer *rpc.Writer) error {
-		return registry.Serve(root, trusted, reader, writer)
+		return registry.Serve(Workspace{Root: root, Language: language, Trusted: trusted}, reader, writer)
+	}
+}
+
+func TestRegistryKeepsLanguagesOfOneWorkspaceApart(t *testing.T) {
+	registry := newTestRegistry()
+	t.Cleanup(registry.Close)
+
+	goClient := newTestClientVia(t, serveLanguageVia(registry, "/work/a", "go", false))
+	jsonClient := newTestClientVia(t, serveLanguageVia(registry, "/work/a", "json", false))
+	goClient.initialize()
+	jsonClient.initialize()
+
+	if decodeResult[pidResult](t, goClient.call("fake/pid", nil)).PID == decodeResult[pidResult](t, jsonClient.call("fake/pid", nil)).PID {
+		t.Fatal("each language needs its own server process")
 	}
 }
 

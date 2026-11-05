@@ -38,7 +38,7 @@ func TestHandshakeAcceptedAndRoutedToChannelHandler(t *testing.T) {
 		}
 	})
 
-	client, err := Dial(socketPath, Hello{ClientVersion: "test", Channel: "lsp", WorkspaceRoot: "/work/hello", Trusted: true})
+	client, err := Dial(socketPath, Hello{ClientVersion: "test", Channel: "lsp", WorkspaceRoot: "/work/hello", Trusted: true, Language: "json"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestHandshakeAcceptedAndRoutedToChannelHandler(t *testing.T) {
 	}
 	select {
 	case hello := <-seen:
-		if hello.Channel != "lsp" || hello.WorkspaceRoot != "/work/hello" || hello.ClientVersion != "test" || !hello.Trusted {
+		if hello.Channel != "lsp" || hello.WorkspaceRoot != "/work/hello" || hello.ClientVersion != "test" || !hello.Trusted || hello.Language != "json" {
 			t.Fatalf("handler saw %+v", hello)
 		}
 	case <-time.After(2 * time.Second):
@@ -86,6 +86,26 @@ func TestHandshakeRejections(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAdmitHookCanRefuseAHandshake(t *testing.T) {
+	server, socketPath := startServer(t, 0)
+	server.Handle("lsp", func(*Session) {})
+	server.SetAdmit(func(hello Hello) string {
+		if hello.Language == "cobol" {
+			return `language "cobol" is not supported`
+		}
+		return ""
+	})
+
+	if _, err := Dial(socketPath, Hello{Channel: "lsp", WorkspaceRoot: "/w", Language: "cobol"}); err == nil || !strings.Contains(err.Error(), "not supported") {
+		t.Fatalf("want the hook's reason, got %v", err)
+	}
+	session, err := Dial(socketPath, Hello{Channel: "lsp", WorkspaceRoot: "/w", Language: "json"})
+	if err != nil {
+		t.Fatalf("an admitted language must connect: %v", err)
+	}
+	session.Close()
 }
 
 func TestHandshakeTimesOutOnSilentClient(t *testing.T) {

@@ -209,6 +209,15 @@ stored per workspace root and shown in the status bar.
    (pprof, debugger variables) need a binary codec; if so add a `codec` field to the handshake. Keep an end-to-end
    latency harness in the repo so the budgets in the "Later slices" list are checked, not assumed.
 
+3. **Standing rule: every requested feature gets mockups.** Mockups for JSON editing, Markdown preview, the menu bar
+   and Settings (Editor, Languages) were added with the built-in JSON/Markdown language service. Still to mock up when
+   they are built: Settings panes for Keymap, Terminal, Git, Advanced and a Go language pane; the Environments and
+   non-local confirmation dialog; Find in Files and Rename preview.
+4. **Built-in JSON and Markdown language service is implemented** (`internal/langsvc`, `gobid langserver`).
+   UI work left for slice 2/4: syntax colouring (tree-sitter or a small tokenizer), the Source/Split/Preview control
+   that calls `gobi/markdownPreview`, "Format Document" calling `textDocument/formatting`, Outline from
+   `textDocument/documentSymbol`.
+
 ## Deferred (decide later, from Codex review 2)
 Editor architecture + test explorer/coverage + `go generate`/`mod tidy` tasks; rename/refactor/code actions UX;
 multi-module/go.work semantics and whether one gopls stays valid; cgo/cross-compile build contexts; debugger on macOS

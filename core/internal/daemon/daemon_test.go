@@ -19,7 +19,7 @@ import (
 	"gobi/core/internal/toolchain"
 )
 
-var fakeBinary string
+var fakeBinary, gobidBinary string
 
 func TestMain(m *testing.M) {
 	dir, err := os.MkdirTemp("", "fakelsp")
@@ -32,12 +32,17 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "build fakelsp: %v\n%s", err, output)
 		os.Exit(1)
 	}
+	gobidBinary = filepath.Join(dir, "gobid")
+	if output, err := exec.Command("go", "build", "-o", gobidBinary, "../../cmd/gobid").CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "build gobid: %v\n%s", err, output)
+		os.Exit(1)
+	}
 	code := m.Run()
 	os.RemoveAll(dir)
 	os.Exit(code)
 }
 
-func startDaemon(t *testing.T, command []string) (socketPath string, stop func() error) {
+func startDaemon(t *testing.T, servers map[string][]string) (socketPath string, stop func() error) {
 	t.Helper()
 	socketDir, err := os.MkdirTemp("", "gd")
 	if err != nil {
@@ -50,9 +55,9 @@ func startDaemon(t *testing.T, command []string) (socketPath string, stop func()
 	done := make(chan error, 1)
 	go func() {
 		done <- Run(ctx, Config{
-			SocketDir:     socketDir,
-			ServerCommand: command,
-			Logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
+			SocketDir: socketDir,
+			Servers:   servers,
+			Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		})
 	}()
 	socketPath = filepath.Join(socketDir, ipc.SocketName)
@@ -102,7 +107,7 @@ func call(t *testing.T, session *ipc.Session, id int, method string, params any)
 }
 
 func TestDaemonServesLSPChannelEndToEnd(t *testing.T) {
-	socketPath, stop := startDaemon(t, []string{fakeBinary})
+	socketPath, stop := startDaemon(t, map[string][]string{"go": {fakeBinary}})
 
 	session, err := ipc.Dial(socketPath, ipc.Hello{ClientVersion: "test", Channel: "lsp", WorkspaceRoot: "/work/hello"})
 	if err != nil {
@@ -127,7 +132,7 @@ func TestDaemonServesLSPChannelEndToEnd(t *testing.T) {
 }
 
 func TestDaemonReportsMissingLanguageServerWithoutDying(t *testing.T) {
-	socketPath, stop := startDaemon(t, []string{"/nonexistent/gopls"})
+	socketPath, stop := startDaemon(t, map[string][]string{"go": {"/nonexistent/gopls"}})
 	defer stop()
 
 	for attempt := 0; attempt < 2; attempt++ {
@@ -144,12 +149,103 @@ func TestDaemonReportsMissingLanguageServerWithoutDying(t *testing.T) {
 }
 
 func TestDaemonRefusesASecondInstance(t *testing.T) {
-	socketPath, stop := startDaemon(t, []string{fakeBinary})
+	socketPath, stop := startDaemon(t, map[string][]string{"go": {fakeBinary}})
 	defer stop()
 
-	err := Run(context.Background(), Config{SocketDir: filepath.Dir(socketPath), ServerCommand: []string{fakeBinary}})
+	err := Run(context.Background(), Config{SocketDir: filepath.Dir(socketPath), Servers: map[string][]string{"go": {fakeBinary}}})
 	if err == nil || !strings.Contains(err.Error(), "already running") {
 		t.Fatalf("want an already-running error, got %v", err)
+	}
+}
+
+// readUntil returns the first message from the session that satisfies accept.
+func readUntil(t *testing.T, session *ipc.Session, accept func(map[string]json.RawMessage) bool) map[string]json.RawMessage {
+	t.Helper()
+	for {
+		payload, err := session.Reader.Read()
+		if err != nil {
+			t.Fatalf("reading: %v", err)
+		}
+		var message map[string]json.RawMessage
+		json.Unmarshal(payload, &message)
+		if accept(message) {
+			return message
+		}
+	}
+}
+
+func builtInServers() map[string][]string {
+	builtIn := []string{gobidBinary, "langserver"}
+	return map[string][]string{"go": {fakeBinary}, "json": builtIn, "markdown": builtIn}
+}
+
+func TestDaemonServesJSONThroughTheBuiltInLanguageService(t *testing.T) {
+	socketPath, stop := startDaemon(t, builtInServers())
+	defer stop()
+	session, err := ipc.Dial(socketPath, ipc.Hello{Channel: "lsp", WorkspaceRoot: "/work/hello", Language: "json"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+
+	if response := call(t, session, 1, "initialize", map[string]any{"capabilities": map[string]any{}}); !strings.Contains(string(response["result"]), "documentFormattingProvider") {
+		t.Fatalf("initialize: %s", response["result"])
+	}
+	const uri = "file:///work/hello/config.json"
+	opened, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": map[string]any{
+		"textDocument": map[string]any{"uri": uri, "languageId": "json", "version": 1, "text": `{"a":1,}`},
+	}})
+	session.Writer.Write(opened)
+	published := readUntil(t, session, func(message map[string]json.RawMessage) bool {
+		return string(message["method"]) == `"textDocument/publishDiagnostics"`
+	})
+	if !strings.Contains(string(published["params"]), "gobi-json") {
+		t.Fatalf("expected a gobi-json diagnostic, got %s", published["params"])
+	}
+
+	changed, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "method": "textDocument/didChange", "params": map[string]any{
+		"textDocument": map[string]any{"uri": uri, "version": 2}, "contentChanges": []map[string]any{{"text": `{"a":1}`}},
+	}})
+	session.Writer.Write(changed)
+	readUntil(t, session, func(message map[string]json.RawMessage) bool {
+		return string(message["method"]) == `"textDocument/publishDiagnostics"` && strings.Contains(string(message["params"]), `"diagnostics":[]`)
+	})
+	formatted := call(t, session, 2, "textDocument/formatting", map[string]any{"textDocument": map[string]any{"uri": uri}})
+	if !strings.Contains(string(formatted["result"]), `\"a\": 1`) {
+		t.Fatalf("formatting: %s", formatted["result"])
+	}
+}
+
+func TestDaemonServesMarkdownPreviewThroughTheBuiltInLanguageService(t *testing.T) {
+	socketPath, stop := startDaemon(t, builtInServers())
+	defer stop()
+	session, err := ipc.Dial(socketPath, ipc.Hello{Channel: "lsp", WorkspaceRoot: "/work/hello", Language: "markdown"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Close()
+
+	call(t, session, 1, "initialize", map[string]any{"capabilities": map[string]any{}})
+	const uri = "file:///work/hello/README.md"
+	opened, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": map[string]any{
+		"textDocument": map[string]any{"uri": uri, "languageId": "markdown", "version": 1, "text": "# Title\n\n**bold**\n"},
+	}})
+	session.Writer.Write(opened)
+	preview := call(t, session, 2, "gobi/markdownPreview", map[string]any{"textDocument": map[string]any{"uri": uri}})
+	var rendered struct {
+		HTML string `json:"html"`
+	}
+	json.Unmarshal(preview["result"], &rendered)
+	if !strings.Contains(rendered.HTML, "<strong>bold</strong>") {
+		t.Fatalf("preview: %s", preview["result"])
+	}
+}
+
+func TestDaemonRefusesAnUnsupportedLanguage(t *testing.T) {
+	socketPath, stop := startDaemon(t, map[string][]string{"go": {fakeBinary}})
+	defer stop()
+	if _, err := ipc.Dial(socketPath, ipc.Hello{Channel: "lsp", WorkspaceRoot: "/w", Language: "json"}); err == nil || !strings.Contains(err.Error(), "not supported") {
+		t.Fatalf("want a 'not supported' refusal, got %v", err)
 	}
 }
 
@@ -171,7 +267,7 @@ func TestRealGopls(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	socketPath, stop := startDaemon(t, []string{goplsPath})
+	socketPath, stop := startDaemon(t, map[string][]string{"go": {goplsPath}})
 	defer stop()
 	session, err := ipc.Dial(socketPath, ipc.Hello{ClientVersion: "test", Channel: "lsp", WorkspaceRoot: root, Trusted: true})
 	if err != nil {

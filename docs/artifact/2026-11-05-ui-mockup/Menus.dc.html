@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi menu bar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.board{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--desk);overflow:hidden}
+.bar{height:28px;background:var(--bar);border-bottom:1px solid var(--sep);display:flex;align-items:center;gap:20px;padding:0 16px;font-size:13px}
+.bar b{font-weight:700}
+.bar .on{background:var(--accent);color:#fff;padding:2px 9px;border-radius:5px;margin:0 -9px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px 24px;padding:28px 28px}
+.cap{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+.menu{background:var(--menu);border:1px solid var(--sep);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.2);padding:5px}
+.mi{display:flex;align-items:center;height:24px;padding:0 10px;border-radius:5px;gap:8px;white-space:nowrap}
+.mi .k{margin-left:auto;color:var(--text2);font-size:12px}
+.mi.hot{background:var(--accent);color:#fff}.mi.hot .k{color:#fff}
+.mi.off{color:var(--text2)}
+.chk{width:12px;flex:none}
+.sepline{height:1px;background:var(--sep);margin:4px 6px}
+</style>
+</helmet>
+<div class="board" style="width: 1500px; height: 960px; {{vars}}">
+  <div class="bar"><b>Gobi</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Run</span><span>Debug</span><span>Window</span><span>Help</span></div>
+  <div class="grid">
+
+    <div><div class="cap">Gobi</div><div class="menu">
+      <div class="mi">About Gobi</div><div class="mi off">Check for Updates&#8230;</div><div class="sepline"></div>
+      <div class="mi hot">Settings&#8230;<span class="k">&#8984;,</span></div><div class="sepline"></div>
+      <div class="mi">Services<span class="k">&#9656;</span></div><div class="sepline"></div>
+      <div class="mi">Hide Gobi<span class="k">&#8984;H</span></div><div class="mi">Hide Others<span class="k">&#8997;&#8984;H</span></div><div class="sepline"></div>
+      <div class="mi">Quit Gobi<span class="k">&#8984;Q</span></div></div></div>
+
+    <div><div class="cap">File</div><div class="menu">
+      <div class="mi">New Project&#8230;<span class="k">&#8679;&#8984;N</span></div><div class="mi">New File<span class="k">&#8984;N</span></div><div class="sepline"></div>
+      <div class="mi">Open&#8230;<span class="k">&#8984;O</span></div><div class="mi">Open Recent<span class="k">&#9656;</span></div>
+      <div class="mi">Clone Repository&#8230;<span class="k">&#8679;&#8984;K</span></div><div class="mi">Import Existing Code&#8230;</div><div class="sepline"></div>
+      <div class="mi">Close Tab<span class="k">&#8984;W</span></div><div class="mi">Close Project<span class="k">&#8679;&#8984;W</span></div><div class="sepline"></div>
+      <div class="mi">Save<span class="k">&#8984;S</span></div><div class="mi">Save All<span class="k">&#8997;&#8984;S</span></div><div class="mi">Reveal in Finder</div></div></div>
+
+    <div><div class="cap">Edit</div><div class="menu">
+      <div class="mi">Undo<span class="k">&#8984;Z</span></div><div class="mi">Redo<span class="k">&#8679;&#8984;Z</span></div><div class="sepline"></div>
+      <div class="mi">Cut<span class="k">&#8984;X</span></div><div class="mi">Copy<span class="k">&#8984;C</span></div><div class="mi">Paste<span class="k">&#8984;V</span></div><div class="mi">Select All<span class="k">&#8984;A</span></div><div class="sepline"></div>
+      <div class="mi">Find<span class="k">&#9656;</span></div><div class="mi">Find in Files&#8230;<span class="k">&#8679;&#8984;F</span></div><div class="sepline"></div>
+      <div class="mi">Format Document<span class="k">&#8997;&#8679;F</span></div><div class="mi">Organize Imports<span class="k">&#8963;&#8997;O</span></div>
+      <div class="mi">Rename Symbol&#8230;<span class="k">F2</span></div><div class="mi">Code Actions&#8230;<span class="k">&#8984;.</span></div><div class="mi">Toggle Comment<span class="k">&#8984;/</span></div></div></div>
+
+    <div><div class="cap">View</div><div class="menu">
+      <div class="mi">Toggle Sidebar<span class="k">&#8984;0</span></div><div class="mi">Toggle Inspector<span class="k">&#8997;&#8984;0</span></div><div class="mi">Toggle Bottom Panel<span class="k">&#8984;J</span></div><div class="sepline"></div>
+      <div class="mi"><span class="chk">&#10003;</span>Outline</div><div class="mi">Markdown Preview<span class="k">&#8679;&#8984;V</span></div><div class="mi">Editor Layout<span class="k">&#9656;</span></div><div class="sepline"></div>
+      <div class="mi">Zoom In<span class="k">&#8984;+</span></div><div class="mi">Zoom Out<span class="k">&#8984;&#8722;</span></div><div class="mi">Actual Size<span class="k">&#8984;0</span></div><div class="sepline"></div>
+      <div class="mi">Enter Full Screen<span class="k">&#8963;&#8984;F</span></div></div></div>
+
+    <div><div class="cap">Go</div><div class="menu">
+      <div class="mi">Back<span class="k">&#8984;[</span></div><div class="mi">Forward<span class="k">&#8984;]</span></div><div class="sepline"></div>
+      <div class="mi">Go to File&#8230;<span class="k">&#8984;P</span></div><div class="mi">Go to Symbol in Workspace&#8230;<span class="k">&#8984;T</span></div><div class="mi">Go to Symbol in File&#8230;<span class="k">&#8679;&#8984;O</span></div><div class="sepline"></div>
+      <div class="mi">Go to Definition<span class="k">F12</span></div><div class="mi">Go to Implementation<span class="k">&#8984;F12</span></div><div class="mi">Find References<span class="k">&#8679;F12</span></div><div class="mi">Go to Test<span class="k">&#8679;&#8984;T</span></div><div class="sepline"></div>
+      <div class="mi">Next Problem<span class="k">F8</span></div><div class="mi">Previous Problem<span class="k">&#8679;F8</span></div></div></div>
+
+    <div><div class="cap">Run</div><div class="menu">
+      <div class="mi">Run<span class="k">&#8984;R</span></div><div class="mi">Run Tests<span class="k">&#8984;U</span></div><div class="mi">Run Test at Cursor<span class="k">&#8997;&#8984;U</span></div>
+      <div class="mi">Run on Multiple Go Versions&#8230;</div><div class="mi">Profile<span class="k">&#8984;I</span></div><div class="sepline"></div>
+      <div class="mi">Environment<span class="k">&#9656;</span></div><div class="mi">Go Toolchain<span class="k">&#9656;</span></div><div class="sepline"></div>
+      <div class="mi">Edit Run Configurations&#8230;</div><div class="mi">Manage Environments&#8230;</div><div class="mi">Manage Go Toolchains&#8230;</div></div></div>
+
+    <div><div class="cap">Debug</div><div class="menu">
+      <div class="mi">Start Debugging<span class="k">F5</span></div><div class="mi off">Stop<span class="k">&#8679;F5</span></div><div class="mi off">Restart<span class="k">&#8679;&#8984;F5</span></div><div class="sepline"></div>
+      <div class="mi off">Continue<span class="k">F5</span></div><div class="mi off">Step Over<span class="k">F10</span></div><div class="mi off">Step Into<span class="k">F11</span></div><div class="mi off">Step Out<span class="k">&#8679;F11</span></div><div class="sepline"></div>
+      <div class="mi">Toggle Breakpoint<span class="k">&#8984;\</span></div><div class="mi">Add Conditional Breakpoint&#8230;</div><div class="mi">Attach to Process&#8230;</div><div class="mi">Show Goroutines</div></div></div>
+
+    <div><div class="cap">Window and Help</div><div class="menu">
+      <div class="mi">Minimize<span class="k">&#8984;M</span></div><div class="mi">Zoom</div><div class="mi">Move Tab to New Window</div><div class="mi">Bring All to Front</div><div class="sepline"></div>
+      <div class="mi">Search<span class="k">&#8679;&#8984;/</span></div><div class="mi">Gobi Help</div><div class="mi">Release Notes</div><div class="mi">Keyboard Shortcuts</div><div class="mi">Report an Issue&#8230;</div></div></div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1500,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {desk:'#E4E4E8',bar:'#F5F5F7',menu:'#F8F8FA',text:'#1D1D1F',text2:'#5C5C61',sep:'#D0D0D5',accent:'#007AFF'};
+    const D = {desk:'#161617',bar:'#323235',menu:'#2C2C2E',text:'#F2F2F7',text2:'#A8A8AE',sep:'#48484C',accent:'#0A84FF'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

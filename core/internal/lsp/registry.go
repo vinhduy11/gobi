@@ -6,9 +6,12 @@ import (
 	"gobi/core/internal/rpc"
 )
 
-type workspaceKey struct {
-	root    string
-	trusted bool
+// Workspace identifies one language server: a root folder, a language service and a trust level.
+// Trust levels never share a server because an untrusted workspace runs with a restricted environment.
+type Workspace struct {
+	Root     string
+	Language string
+	Trusted  bool
 }
 
 type registryEntry struct {
@@ -16,47 +19,44 @@ type registryEntry struct {
 	clients int
 }
 
-// Registry hands out one Broker per workspace root and trust level. A broker is created for the
-// first client and closed when the last one leaves. Trust levels never share a server because an
-// untrusted workspace runs gopls with a restricted environment.
+// Registry hands out one Broker per Workspace, created for the first client and closed when the last leaves.
 type Registry struct {
-	newBroker func(root string, trusted bool) *Broker
+	newBroker func(Workspace) *Broker
 
 	lock    sync.Mutex
-	entries map[workspaceKey]*registryEntry
+	entries map[Workspace]*registryEntry
 }
 
-func NewRegistry(newBroker func(root string, trusted bool) *Broker) *Registry {
-	return &Registry{newBroker: newBroker, entries: map[workspaceKey]*registryEntry{}}
+func NewRegistry(newBroker func(Workspace) *Broker) *Registry {
+	return &Registry{newBroker: newBroker, entries: map[Workspace]*registryEntry{}}
 }
 
 // Serve attaches one client to the workspace's broker and returns when the client disconnects.
-func (r *Registry) Serve(root string, trusted bool, reader *rpc.Reader, writer *rpc.Writer) error {
-	key := workspaceKey{root, trusted}
-	broker := r.acquire(key)
-	defer r.release(key)
+func (r *Registry) Serve(workspace Workspace, reader *rpc.Reader, writer *rpc.Writer) error {
+	broker := r.acquire(workspace)
+	defer r.release(workspace)
 	return broker.Attach(reader, writer)
 }
 
-func (r *Registry) acquire(key workspaceKey) *Broker {
+func (r *Registry) acquire(workspace Workspace) *Broker {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	entry := r.entries[key]
+	entry := r.entries[workspace]
 	if entry == nil {
-		entry = &registryEntry{broker: r.newBroker(key.root, key.trusted)}
-		r.entries[key] = entry
+		entry = &registryEntry{broker: r.newBroker(workspace)}
+		r.entries[workspace] = entry
 	}
 	entry.clients++
 	return entry.broker
 }
 
-func (r *Registry) release(key workspaceKey) {
+func (r *Registry) release(workspace Workspace) {
 	r.lock.Lock()
-	entry := r.entries[key]
+	entry := r.entries[workspace]
 	entry.clients--
 	last := entry.clients == 0
 	if last {
-		delete(r.entries, key)
+		delete(r.entries, workspace)
 	}
 	r.lock.Unlock()
 	if last {

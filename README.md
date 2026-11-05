@@ -33,6 +33,9 @@ go run ./cmd/gobid doctor     # reports go, gopls and dlv locations and versions
 go run ./cmd/gobid serve      # serve the lsp channel on a private unix socket (-dir to choose the directory)
 ```
 
+JSON and Markdown are handled by a built-in language service (`gobid langserver`, started automatically): JSON syntax
+errors, formatting and outline; Markdown outline and an HTML preview request. No extra tool to install.
+
 `gobid` allows one instance per socket directory. A workspace is untrusted unless the client says otherwise in the
 handshake; untrusted workspaces run gopls with `GOTOOLCHAIN=local`.
 
