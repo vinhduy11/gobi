@@ -1,8 +1,11 @@
 import AppKit
+import GobiClient
 import GobiEditor
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controllers: [EditorWindowController] = []
+    private var projects: [ProjectWindowController] = []
+    private var welcome: WelcomeWindowController?
 
     private let selfTest = CommandLine.arguments.contains("--selftest")
     private let snapshotPath: String? = {
@@ -14,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         installMenu()
         // Paths on the command line reach us through application(_:openFile:), which AppKit calls for each one.
-        if controllers.isEmpty && !selfTest { openDocument(nil) }
+        if controllers.isEmpty && projects.isEmpty && !selfTest { showWelcome() }
         if NSApp.activationPolicy() == .regular { NSApp.activate(ignoringOtherApps: true) }
     }
 
@@ -23,18 +26,103 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
         // AppKit also offers option values that look like paths (the --snapshot target); those are not documents.
         if filename == snapshotPath { return true }
-        return open(URL(fileURLWithPath: filename), selfTest: selfTest, snapshotPath: snapshotPath)
+        return openChosen(URL(fileURLWithPath: filename))
     }
 
     @objc func openDocument(_ sender: Any?) {
         let panel = NSOpenPanel()
-        panel.canChooseDirectories = false
+        panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else {
-            if controllers.isEmpty { NSApp.terminate(nil) }
-            return
+        panel.message = "Choose a folder, a go.mod or go.work, or a single file"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        openChosen(url)
+    }
+
+    /// A folder, go.mod or go.work opens a project window; any other file opens on its own.
+    @discardableResult
+    private func openChosen(_ url: URL) -> Bool {
+        if let root = ProjectFolder.projectRoot(for: url) { return openProject(root) }
+        return open(url, selfTest: selfTest, snapshotPath: snapshotPath)
+    }
+
+    private func showWelcome() {
+        let controller = welcome ?? WelcomeWindowController()
+        controller.onOpenFolder = { [weak self] in self?.openDocument(nil) }
+        controller.onOpenRecent = { [weak self] project in self?.openProject(URL(fileURLWithPath: project.path)) }
+        welcome = controller
+        controller.reload()
+        controller.showWindow(nil)
+    }
+
+    @discardableResult
+    private func openProject(_ root: URL) -> Bool {
+        if let existing = projects.first(where: { $0.root == root }) {
+            existing.showWindow(nil)
+            return true
         }
-        open(url, selfTest: false, snapshotPath: nil)
+        guard FileManager.default.fileExists(atPath: root.path) else {
+            ProjectStore.shared.recents.remove(path: root.path)
+            welcome?.reload()
+            return false
+        }
+        var trust = ProjectStore.shared.trust
+        if !trust.isTrusted(path: root.path), !selfTest, let answer = askTrust(root) {
+            if answer.trusted { trust.trust(path: answer.parentToo ? root.deletingLastPathComponent().path : root.path) }
+            ProjectStore.shared.trust = trust
+        } else if !trust.isTrusted(path: root.path), !selfTest {
+            return false   // Cancel
+        }
+        let kind = ProjectFolder.kind(of: root)
+        let controller = ProjectWindowController(root: root, kind: kind, isTrusted: trust.isTrusted(path: root.path))
+        projects.append(controller)
+        ProjectStore.shared.recents.add(path: root.path, kind: kind)
+        welcome?.close()
+        if NSApp.activationPolicy() != .regular { controller.window?.alphaValue = 0; controller.window?.ignoresMouseEvents = true }
+        controller.showWindow(nil)
+        if selfTest { runProjectSelfTest(controller) }
+        return true
+    }
+
+    /// nil means Cancel; otherwise whether to trust, and whether to trust the whole parent folder.
+    private func askTrust(_ root: URL) -> (trusted: Bool, parentToo: Bool)? {
+        let alert = NSAlert()
+        alert.messageText = "Do you trust the authors of “\(root.lastPathComponent)”?"
+        alert.informativeText = "Building, running or debugging a Go project can run code from its files. In Restricted Mode you can still edit, navigate and see gopls diagnostics, but Run, Debug, Test, Profile, terminals and automatic toolchain downloads are off."
+        alert.addButton(withTitle: "Trust and Open")
+        alert.addButton(withTitle: "Open in Restricted Mode")
+        alert.addButton(withTitle: "Cancel")
+        let parentBox = NSButton(checkboxWithTitle: "Also trust projects in “\(root.deletingLastPathComponent().lastPathComponent)”", target: nil, action: nil)
+        alert.accessoryView = parentBox
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: return (true, parentBox.state == .on)
+        case .alertSecondButtonReturn: return (false, false)
+        default: return nil
+        }
+    }
+
+    /// `GobiApp FOLDER --selftest`: opens the explorer, opens a file from it and checks the editor shows it.
+    private func runProjectSelfTest(_ controller: ProjectWindowController) {
+        var failures = 0
+        func check(_ name: String, _ passed: Bool) {
+            print(passed ? "  ok   \(name)" : "  FAIL \(name)")
+            if !passed { failures += 1 }
+        }
+        let names = ((try? FileManager.default.contentsOfDirectory(atPath: controller.root.path)) ?? []).sorted()
+        check("project kind is \(controller.kind)", controller.kind == ProjectKind.detect(entryNames: names))
+        check("the explorer lists the folder (\(controller.explorerRowCount) rows)", controller.explorerRowCount > 0)
+        let first = names.first { name in
+            var isFolder: ObjCBool = false
+            return FileManager.default.fileExists(atPath: controller.root.appendingPathComponent(name).path, isDirectory: &isFolder) && !isFolder.boolValue && name.hasSuffix(".go")
+        }
+        if let first {
+            let url = controller.root.appendingPathComponent(first)
+            check("opening \(first) shows an editor", controller.openFile(url) && controller.currentPane?.editor.document.fileURL == url)
+            check("the same file opens again from its kept pane", controller.openFile(url))
+        } else {
+            print("  note no .go file at the top of the folder; skipped the open-file checks")
+        }
+        print(failures == 0 ? "SELFTEST PASSED" : "SELFTEST FAILED")
+        exit(failures == 0 ? 0 : 1)
     }
 
     @discardableResult

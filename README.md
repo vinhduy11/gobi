@@ -45,7 +45,8 @@ handshake; untrusted workspaces run gopls with `GOTOOLCHAIN=local`.
 cd ui-macos
 ./scripts/test.sh                      # Swift tests (works with the Command Line Tools only)
 ./scripts/make-app.sh                  # builds dist/Gobi.app with gobid bundled, signed ad hoc
-open dist/Gobi.app --args Fixtures/broken/main.go
+open dist/Gobi.app                                   # Welcome window: Open… a folder, or pick a recent project
+open dist/Gobi.app --args Fixtures/broken/main.go   # a single file
 swift build -c release --product gobi-bench && .build/release/gobi-bench    # editor measurements
 ```
 

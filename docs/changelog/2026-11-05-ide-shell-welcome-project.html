@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>IDE shell: welcome, project window, trust</title>
+<style>body{font:15px/1.5 -apple-system,sans-serif;max-width:820px;margin:32px auto;padding:0 16px}code{background:#f2f2f4;padding:1px 4px;border-radius:4px}</style></head><body>
+<h1>IDE shell: welcome, project window, trust</h1>
+<h2>Specs</h2>
+<p>Turn the single-file editor window into the start of the full app: open a project, browse its files, edit them, and respect workspace trust (roadmap slice 4, first part).</p>
+<h2>Actions</h2>
+<ul>
+<li><code>GobiClient/ProjectModel.swift</code>: <code>ProjectKind</code>, <code>FileTree</code>, <code>RecentProjects</code>, <code>TrustList</code> with 8 new tests.</li>
+<li><code>EditorPane</code> extracted from the old window controller; <code>EditorWindowController</code> now only hosts one pane.</li>
+<li><code>ProjectWindowController</code> (explorer outline + editor area + status), <code>WelcomeWindowController</code>, <code>ProjectStore</code> (UserDefaults), trust dialog and ⌘O routing in <code>AppDelegate</code>.</li>
+<li><code>GobiApp FOLDER --selftest</code> project check.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>One editor shown at a time, with panes kept per file; a real tab bar comes next.</li>
+<li>Trust only changes how gopls runs (restricted when untrusted); Run, Debug, Test and terminals do not exist yet, so nothing else to gate.</li>
+<li>New Project, Clone and Import need core support (<code>project/*</code> calls) and are not built yet.</li>
+</ul>
+</body></html>

@@ -1,0 +1,83 @@
+import Testing
+@testable import GobiClient
+
+@Suite("Project model")
+struct ProjectModelTests {
+    @Test func aWorkFileMakesAWorkspaceAndBeatsGoMod() {
+        #expect(ProjectKind.detect(entryNames: ["go.mod", "go.work", "main.go"]) == .workspace)
+    }
+
+    @Test func goModMakesAModule() {
+        #expect(ProjectKind.detect(entryNames: ["go.mod", "main.go"]) == .module)
+    }
+
+    @Test func aFolderWithoutGoModIsPlain() {
+        #expect(ProjectKind.detect(entryNames: ["main.go", "README.md"]) == .folder)
+    }
+
+    @Test func treeOrderPutsFoldersFirstThenNamesIgnoringCase() {
+        let entries = [
+            FileEntry(name: "zeta.go", isDirectory: false), FileEntry(name: "Beta", isDirectory: true),
+            FileEntry(name: "alpha.go", isDirectory: false), FileEntry(name: "cmd", isDirectory: true),
+        ]
+        #expect(FileTree.ordered(entries).map(\.name) == ["Beta", "cmd", "alpha.go", "zeta.go"])
+    }
+
+    @Test func treeHidesGitFolderAndMacMetadataButKeepsOtherDotFiles() {
+        let entries = [
+            FileEntry(name: ".git", isDirectory: true), FileEntry(name: ".DS_Store", isDirectory: false),
+            FileEntry(name: ".gitignore", isDirectory: false), FileEntry(name: ".env.example", isDirectory: false),
+        ]
+        #expect(FileTree.ordered(entries).map(\.name) == [".env.example", ".gitignore"])
+    }
+
+    @Test func recentsPutTheNewestFirstWithoutDuplicates() {
+        var recents = RecentProjects(limit: 3)
+        recents.add(path: "/a", kind: .module)
+        recents.add(path: "/b", kind: .folder)
+        recents.add(path: "/a", kind: .workspace)   // opened again: moves to the front, kind refreshed
+        #expect(recents.items.map(\.path) == ["/a", "/b"])
+        #expect(recents.items[0].kind == .workspace)
+    }
+
+    @Test func recentsDropTheOldestPastTheLimit() {
+        var recents = RecentProjects(limit: 2)
+        for path in ["/a", "/b", "/c"] { recents.add(path: path, kind: .module) }
+        #expect(recents.items.map(\.path) == ["/c", "/b"])
+    }
+
+    @Test func recentsRemoveOnePath() {
+        var recents = RecentProjects(limit: 5)
+        recents.add(path: "/a", kind: .module)
+        recents.add(path: "/b", kind: .module)
+        recents.remove(path: "/a")
+        #expect(recents.items.map(\.path) == ["/b"])
+    }
+}
+
+@Suite("Workspace trust list")
+struct TrustListTests {
+    @Test func aTrustedPathCoversItselfAndWhatIsInsideIt() {
+        var trust = TrustList()
+        trust.trust(path: "/work/hello")
+        #expect(trust.isTrusted(path: "/work/hello"))
+        #expect(trust.isTrusted(path: "/work/hello/cmd/main.go"))
+    }
+
+    @Test func aSiblingWithTheSamePrefixIsNotTrusted() {
+        var trust = TrustList()
+        trust.trust(path: "/work/hello")
+        #expect(!trust.isTrusted(path: "/work/hello-other"))
+        #expect(!trust.isTrusted(path: "/work"))
+    }
+
+    @Test func trustingAParentFolderCoversItsProjects() {
+        var trust = TrustList()
+        trust.trust(path: "/work/")
+        #expect(trust.isTrusted(path: "/work/hello"))
+    }
+
+    @Test func nothingIsTrustedByDefault() {
+        #expect(!TrustList().isTrusted(path: "/work/hello"))
+    }
+}

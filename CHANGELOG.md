@@ -36,6 +36,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 - `ui-macos/`: find in file (own find bar, Edit > Find, Find Next, Find Previous, Use Selection for Find); files with a line over 550,000 characters open read-only with a notice; the scroller thumb now moves the text while dragging (throttled live jumps); `gobi-check scrollthrough`; mockups for the find bar and the read-only notice.
 
+- `ui-macos/`: IDE shell. Welcome window (Open…, recent projects), project window with a file explorer beside the editor, workspace trust dialog (Trust and Open / Open in Restricted Mode / Cancel, optional parent folder), project kind (workspace, module, folder) in the title, trust passed to gobid. File > Open (⌘O) takes a folder, go.mod, go.work or a single file. `GobiApp FOLDER --selftest` checks the explorer and opening a file. Pure model (`ProjectKind`, `FileTree`, `RecentProjects`, `TrustList`) with tests.
+
 ### Fixed
 - `ui-macos/` and `core/`: a lone `\r` is a line break in `LineIndex`, `lsp` text sync and `langsvc` positions, as the protocol defines.
 - `ui-macos/`: `GobiApp --selftest` and `gobi-check` run quietly (no window, focus change or Dock icon); `--visible` shows the window.
