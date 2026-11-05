@@ -16,6 +16,12 @@ mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 cp .build/release/GobiApp "$CONTENTS/MacOS/GobiApp"
 cp .build/gobid "$CONTENTS/MacOS/gobid"
 
+# App icon: render Resources/AppIcon.svg into an iconset, then pack it into AppIcon.icns.
+ICONSET="$ROOT/.build/AppIcon.iconset"
+rm -rf "$ICONSET"
+swift scripts/make-icon.swift Resources/AppIcon.svg "$ICONSET"
+iconutil -c icns "$ICONSET" -o "$CONTENTS/Resources/AppIcon.icns"
+
 cat > "$CONTENTS/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -25,6 +31,7 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
     <key>CFBundleDisplayName</key><string>Gobi</string>
     <key>CFBundleIdentifier</key><string>dev.gobi.app</string>
     <key>CFBundleExecutable</key><string>GobiApp</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1</string>
     <key>CFBundleVersion</key><string>1</string>
