@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controllers: [EditorWindowController] = []
     private var projects: [ProjectWindowController] = []
     private var welcome: WelcomeWindowController?
+    private let dialogs = ProjectDialogs()
 
     private let selfTest = CommandLine.arguments.contains("--selftest")
     private let snapshotPath: String? = {
@@ -58,9 +59,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return open(url, selfTest: selfTest, snapshotPath: snapshotPath)
     }
 
+    @objc func newProject(_ sender: Any?) { dialogs.newProject { [weak self] info, trust in self?.openCreated(info, trust: trust) } }
+    @objc func cloneRepository(_ sender: Any?) { dialogs.clone { [weak self] info, trust in self?.openCreated(info, trust: trust) } }
+    @objc func importCode(_ sender: Any?) { dialogs.importFolder { [weak self] info, trust in self?.openCreated(info, trust: trust) } }
+
+    /// A project the user just made is trusted (they wrote it); a clone or import still gets the trust question.
+    private func openCreated(_ info: ProjectInfo, trust: Bool) {
+        if trust {
+            var list = ProjectStore.shared.trust
+            list.trust(path: info.root)
+            ProjectStore.shared.trust = list
+        }
+        openProject(URL(fileURLWithPath: info.root))
+    }
+
     private func showWelcome() {
         let controller = welcome ?? WelcomeWindowController()
         controller.onOpenFolder = { [weak self] in self?.openDocument(nil) }
+        controller.onNewProject = { [weak self] in self?.newProject(nil) }
+        controller.onClone = { [weak self] in self?.cloneRepository(nil) }
+        controller.onImport = { [weak self] in self?.importCode(nil) }
         controller.onOpenRecent = { [weak self] project in self?.openProject(URL(fileURLWithPath: project.path)) }
         welcome = controller
         controller.reload()
@@ -122,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let names = ((try? FileManager.default.contentsOfDirectory(atPath: controller.root.path)) ?? []).sorted()
         check("project kind is \(controller.kind)", controller.kind == ProjectKind.detect(entryNames: names))
+        check("the status text keeps 14 points or more from the window edge (\(controller.statusTextInset))", controller.statusTextInset >= 14)
         check("the explorer lists the folder (\(controller.explorerRowCount) rows)", controller.explorerRowCount > 0)
         let first = names.first { name in
             var isFolder: ObjCBool = false
@@ -243,7 +262,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let fileItem = NSMenuItem()
         mainMenu.addItem(fileItem)
         let fileMenu = NSMenu(title: "File")
+        let newItem = fileMenu.addItem(withTitle: "New Project…", action: #selector(newProject(_:)), keyEquivalent: "n")
+        newItem.keyEquivalentModifierMask = [.command, .shift]
         fileMenu.addItem(withTitle: "Open…", action: #selector(openDocument(_:)), keyEquivalent: "o")
+        let cloneItem = fileMenu.addItem(withTitle: "Clone Repository…", action: #selector(cloneRepository(_:)), keyEquivalent: "k")
+        cloneItem.keyEquivalentModifierMask = [.command, .shift]
+        fileMenu.addItem(withTitle: "Import Existing Code…", action: #selector(importCode(_:)), keyEquivalent: "")
         fileMenu.addItem(withTitle: "Save", action: #selector(saveFile(_:)), keyEquivalent: "s")
         fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: "Close Tab", action: #selector(closeTab(_:)), keyEquivalent: "w")

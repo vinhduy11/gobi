@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>New Project, Clone and Import dialogs</title>
+<style>body{font:15px/1.5 -apple-system,sans-serif;max-width:820px;margin:32px auto;padding:0 16px}code{background:#f2f2f4;padding:1px 4px;border-radius:4px}</style></head><body>
+<h1>New Project, Clone and Import dialogs</h1>
+<h2>Specs</h2><p>Offer the core's project requests in the app: create from a template, clone a repository, turn a folder into a module.</p>
+<h2>Actions</h2><ul>
+<li><code>GobiClient/ProjectForm.swift</code> (name, module path, clone URL checks; repository name from a URL) with tests written first.</li>
+<li><code>GobiClient/ControlClient.swift</code>: <code>project/new|open|clone|import</code> over the control channel.</li>
+<li><code>GobiApp/ProjectDialogs.swift</code>, File menu items, Welcome buttons, progress panel while gobid works.</li>
+<li><code>gobi-check project DIR</code>: real gobid, five templates, import, refusals.</li></ul>
+<h2>Tradeoffs</h2><ul>
+<li>Forms are alert-style dialogs with a grid: little code and native look, but no live "Will create" file preview from the mockup yet.</li>
+<li>A project created in the app is trusted at once (the user wrote it); clones and imports ask.</li>
+<li>The dialogs themselves are not driven by automated tests (they are modal); the logic under them is.</li></ul>
+</body></html>

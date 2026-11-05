@@ -20,18 +20,11 @@ public final class GobiSession: @unchecked Sendable {
         clientVersion: String = GobiClientVersion.current
     ) throws -> GobiSession {
         let session = GobiSession(connection: try UnixConnection(path: socketPath))
-        var hello: [String: Any] = ["protocol": 1, "client_version": clientVersion, "channel": channel, "workspace_root": workspaceRoot]
-        if trusted { hello["trusted"] = true }
-        if let language { hello["language"] = language }
-        try session.send(Array(try JSONSerialization.data(withJSONObject: hello)))
+        try session.send(Handshake.encodeHello(clientVersion: clientVersion, channel: channel, workspaceRoot: workspaceRoot, trusted: trusted, language: language))
 
-        guard let answer = try session.nextMessage(),
-              let reply = try JSONSerialization.jsonObject(with: Data(answer)) as? [String: Any] else {
-            throw ConnectionError.closed
-        }
-        guard reply["ok"] as? Bool == true else {
-            throw ConnectionError.rejected(reply["error"] as? String ?? "unknown reason")
-        }
+        guard let answer = try session.nextMessage() else { throw ConnectionError.closed }
+        let reply = try Handshake.decodeReply(answer)
+        guard reply.ok else { throw ConnectionError.rejected(reply.error.isEmpty ? "unknown reason" : reply.error) }
         return session
     }
 

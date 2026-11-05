@@ -41,6 +41,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ui-macos/`: editor tabs in the project window (open, switch, close with ⌘W, next/previous with ⇧⌘] and ⇧⌘[, middle-click closes), unsaved-changes dot and window edited mark, File > Save (⌘S), save prompts on closing a tab or window. Pure `TabStrip` model with tests; project self-test checks tabs, dirty state and save (`--allow-writes`). Several files open at once as tabs: select them in the explorer (shift/command-click) or choose them in File > Open.
 - `internal/project` and the `control` channel: `project/new` (templates cli, library, http, empty, workspace; name, location, module path, Go version, `git init` on master, README and `.gitignore`), `project/open` (kind and module path), `project/clone` (user's `git`; only https, ssh, git and scp-style URLs; ext:: and local paths refused), `project/import` (adds `go.mod`, module path from the git remote or folder name). A project is never written into a folder that already has files; `go` runs with `GOTOOLCHAIN=local`.
 
+- `ui-macos/`: New Project (⇧⌘N), Clone Repository (⇧⌘K) and Import Existing Code dialogs, also on the Welcome window; they call gobid's `project/*` requests through `ControlClient`. A project you create is trusted automatically; a clone or import still asks. Form checks in `ProjectForm` with tests; `gobi-check project DIR` exercises the requests against a real gobid. Mockup board for the Clone and Import dialogs.
+
 ### Fixed
 - `ui-macos/` and `core/`: a lone `\r` is a line break in `LineIndex`, `lsp` text sync and `langsvc` positions, as the protocol defines.
 - `ui-macos/`: `GobiApp --selftest` and `gobi-check` run quietly (no window, focus change or Dock icon); `--visible` shows the window.
@@ -66,4 +68,5 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ui-macos/`: `GobiApp FILE --selftest` exits with code 1 at once when FILE cannot be read, instead of waiting forever.
 
 ### Changed
+- The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.

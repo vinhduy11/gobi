@@ -6,6 +6,9 @@ final class WelcomeWindowController: NSWindowController, NSTableViewDataSource, 
     private let table = NSTableView()
     private var recents: [RecentProject] = []
     var onOpenFolder: (() -> Void)?
+    var onNewProject: (() -> Void)?
+    var onClone: (() -> Void)?
+    var onImport: (() -> Void)?
     var onOpenRecent: ((RecentProject) -> Void)?
 
     init() {
@@ -33,10 +36,14 @@ final class WelcomeWindowController: NSWindowController, NSTableViewDataSource, 
         let open = NSButton(title: "Open…", target: self, action: #selector(openPressed))
         open.keyEquivalent = "\r"
         open.bezelStyle = .rounded
+        let create = NSButton(title: "New Project…", target: self, action: #selector(newPressed))
+        let clone = NSButton(title: "Clone Repository…", target: self, action: #selector(clonePressed))
+        let importCode = NSButton(title: "Import Existing Code…", target: self, action: #selector(importPressed))
+        for button in [create, clone, importCode] { button.bezelStyle = .rounded }
         let hint = NSTextField(wrappingLabelWithString: "Choose a folder, a go.mod or a go.work. A folder you have not trusted opens in Restricted Mode.")
         hint.textColor = .secondaryLabelColor
         hint.preferredMaxLayoutWidth = 260
-        let left = NSStackView(views: [title, subtitle, open, hint])
+        let left = NSStackView(views: [title, subtitle, create, open, clone, importCode, hint])
         left.orientation = .vertical
         left.alignment = .leading
         left.spacing = 12
@@ -72,6 +79,9 @@ final class WelcomeWindowController: NSWindowController, NSTableViewDataSource, 
     }
 
     @objc private func openPressed() { onOpenFolder?() }
+    @objc private func newPressed() { onNewProject?() }
+    @objc private func clonePressed() { onClone?() }
+    @objc private func importPressed() { onImport?() }
 
     @objc private func recentDoubleClicked() {
         guard table.clickedRow >= 0, table.clickedRow < recents.count else { return }

@@ -99,6 +99,13 @@
       "w": 1440,
       "x": 0,
       "y": 4800
+    },
+    "CloneImport.dc.html": {
+      "h": 300,
+      "title": "Clone and Import dialogs",
+      "w": 1640,
+      "x": 0,
+      "y": 5360
     }
   },
   "createdOnFiles": {
@@ -133,7 +140,8 @@
     "Menus.dc.html",
     "SettingsEditor.dc.html",
     "SettingsLanguages.dc.html",
-    "Find.dc.html"
+    "Find.dc.html",
+    "CloneImport.dc.html"
   ],
   "pages": [],
   "title": "Gobi IDE Mockup"

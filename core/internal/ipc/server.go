@@ -3,7 +3,6 @@
 package ipc
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -144,16 +143,15 @@ func (s *Server) handshake(conn net.Conn) (*Session, Handler, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	var hello Hello
-	if err := json.Unmarshal(payload, &hello); err != nil {
-		return nil, nil, reject(writer, "malformed handshake")
+	hello, err := DecodeHello(payload)
+	if err != nil {
+		return nil, nil, reject(writer, "malformed handshake: the handshake is binary (protobuf wire format), not JSON")
 	}
 	handler, problem := s.validate(hello)
 	if problem != "" {
 		return nil, nil, reject(writer, problem)
 	}
-	accepted, _ := json.Marshal(Reply{OK: true, Protocol: ProtocolVersion})
-	if err := writer.Write(accepted); err != nil {
+	if err := writer.Write(EncodeReply(Reply{OK: true, Protocol: ProtocolVersion})); err != nil {
 		return nil, nil, err
 	}
 	conn.SetDeadline(time.Time{})
@@ -185,8 +183,7 @@ func (s *Server) validate(hello Hello) (Handler, string) {
 }
 
 func reject(writer *rpc.Writer, problem string) error {
-	refusal, _ := json.Marshal(Reply{OK: false, Protocol: ProtocolVersion, Error: problem})
-	writer.Write(refusal)
+	writer.Write(EncodeReply(Reply{OK: false, Protocol: ProtocolVersion, Error: problem}))
 	return errors.New(problem)
 }
 
@@ -203,8 +200,7 @@ func Dial(socketPath string, hello Hello) (*Session, error) {
 	reader := rpc.NewReader(conn, maxMessage)
 	writer := rpc.NewWriter(conn)
 
-	request, _ := json.Marshal(hello)
-	if err := writer.Write(request); err != nil {
+	if err := writer.Write(EncodeHello(hello)); err != nil {
 		conn.Close()
 		return nil, err
 	}
@@ -213,8 +209,8 @@ func Dial(socketPath string, hello Hello) (*Session, error) {
 		conn.Close()
 		return nil, err
 	}
-	var reply Reply
-	if err := json.Unmarshal(answer, &reply); err != nil {
+	reply, err := DecodeReply(answer)
+	if err != nil {
 		conn.Close()
 		return nil, fmt.Errorf("ipc: bad handshake reply: %w", err)
 	}

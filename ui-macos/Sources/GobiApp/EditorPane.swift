@@ -35,7 +35,9 @@ final class EditorPane: NSViewController {
         statusLabel.lineBreakMode = .byTruncatingTail
         statusLabel.textColor = .secondaryLabelColor
 
-        let stack = NSStackView(views: [editor.view, problemsScroll, statusLabel])
+        let statusRow = NSStackView(views: [statusLabel])
+        statusRow.edgeInsets = NSEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        let stack = NSStackView(views: [editor.view, problemsScroll, statusRow])
         stack.orientation = .vertical
         stack.spacing = 4
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 6, right: 0)

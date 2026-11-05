@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Binary handshake and control channel</title>
+<style>body{font:15px/1.5 -apple-system,sans-serif;max-width:820px;margin:32px auto;padding:0 16px}code{background:#f2f2f4;padding:1px 4px;border-radius:4px}</style></head><body>
+<h1>Binary handshake and control channel</h1>
+<h2>Specs</h2><p>The UI and gobid talked JSON everywhere. Move the messages gobid owns to a binary format with a fixed layout.</p>
+<h2>Actions</h2><ul>
+<li><code>core/internal/wire</code> and <code>GobiClient/Wire.swift</code>: protobuf wire format, hand-coded, same golden bytes in both test suites, Go fuzz test.</li>
+<li>Handshake (<code>ipc</code>) and control channel (<code>daemon/control.go</code>, <code>ControlClient</code>) are binary; a JSON handshake gets a readable refusal.</li>
+<li><code>docs/architect/wire-protocol.md</code> lists every field number.</li>
+<li>End to end: <code>gobi-check project</code>, the file and project self-tests (LSP through the new handshake) and <code>gobi-probe</code> against a rebuilt gobid.</li></ul>
+<h2>Tradeoffs</h2><ul>
+<li>The LSP channel stays JSON-RPC: gopls speaks it, and the broker's byte splice is faster than decoding and re-encoding every message.</li>
+<li>No JSON fallback for the handshake: one format is easier to keep stable; old clients get a clear error.</li>
+<li>Hand-coded instead of generated protobuf: no dependency or tooling in a Command Line Tools-only build; the bytes stay protobuf-compatible so a schema can replace it.</li></ul>
+</body></html>

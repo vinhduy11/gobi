@@ -44,6 +44,11 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     var tabTitles: [String] { tabBar.titles }
     private let tabBar = TabBarView()
     var explorerRowCount: Int { outline.numberOfRows }
+    /// Distance in points from the window's left edge to the status text.
+    var statusTextInset: CGFloat {
+        window?.contentView?.layoutSubtreeIfNeeded()
+        return statusLabel.convert(NSPoint.zero, to: nil).x
+    }
 
     init(root: URL, kind: ProjectKind, isTrusted: Bool) {
         self.root = root
@@ -105,10 +110,12 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         split.setHoldingPriority(.defaultHigh, forSubviewAt: 0)
         sidebar.widthAnchor.constraint(equalToConstant: 260).isActive = true
 
-        let stack = NSStackView(views: [split, statusLabel])
+        let statusRow = NSStackView(views: [statusLabel])
+        statusRow.edgeInsets = NSEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        let stack = NSStackView(views: [split, statusRow])
         stack.orientation = .vertical
         stack.spacing = 4
-        stack.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 6, right: 8)
+        stack.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 6, right: 0)
         stack.alignment = .leading
         split.trailingAnchor.constraint(equalTo: stack.trailingAnchor).isActive = true
         window?.contentView = stack

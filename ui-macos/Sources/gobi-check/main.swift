@@ -11,6 +11,7 @@
 //   gobi-check highlight FILE [--png-dir DIR]          highlighter and document bookkeeping checks (PNGs of the edits)
 //   gobi-check scrollthrough FILE [--stages 1000,5000,20000]   scroll steadily down the file; keystroke cost and memory at each stage
 //   gobi-check cliff FILE [--no-fix]                  root-cause experiment for the scroll-jump slowdown and its remedies
+//   gobi-check project DIR                             project/new, open, import and clone against a real gobid (writes under DIR)
 //   gobi-check fuzz                                    SyntaxIndex/LineIndex fuzz with large multi-line edits
 
 import AppKit
@@ -130,6 +131,39 @@ func fuzz() {
 
 if mode == "fuzz" { fuzz(); exit(0) }
 if mode == "help" || filePath.isEmpty { print("usage: see header"); exit(2) }
+
+/// `gobi-check project DIR`: the project calls against a real gobid, creating folders under DIR.
+func projectCheck() {
+    var failures = 0
+    func check(_ name: String, _ passed: Bool) {
+        print(passed ? "  ok   \(name)" : "  FAIL \(name)")
+        if !passed { failures += 1 }
+    }
+    do {
+        let client = try ControlClient.connect()
+        defer { client.close() }
+        for template in ["cli", "library", "http", "empty", "workspace"] {
+            let info = try client.newProject(NewProjectRequest(template: template, name: "check-\(template)", location: filePath, goVersion: "1.22"))
+            let expected: ProjectKind = template == "workspace" ? .workspace : .module
+            check("new \(template) project is a \(expected)", info.kind == expected && FileManager.default.fileExists(atPath: info.root))
+            if template == "cli" { check("opening it reports the module path", try client.open(path: info.root).modulePath == "check-cli") }
+        }
+        check("a name with a slash is refused", (try? client.newProject(NewProjectRequest(template: "cli", name: "../x", location: filePath))) == nil)
+        check("creating over an existing project is refused", (try? client.newProject(NewProjectRequest(template: "cli", name: "check-cli", location: filePath))) == nil)
+        let legacy = filePath + "/legacy"
+        try FileManager.default.createDirectory(atPath: legacy, withIntermediateDirectories: true)
+        try "package main\n\nfunc main() {}\n".write(toFile: legacy + "/main.go", atomically: true, encoding: .utf8)
+        let imported = try client.importFolder(path: legacy)
+        check("import adds a module named after the folder", imported.kind == .module && imported.modulePath == "legacy")
+        check("an unsafe clone URL is refused", (try? client.clone(url: "ext::sh -c id", location: filePath)) == nil)
+    } catch {
+        print("  FAIL \(error)")
+        failures += 1
+    }
+    print(failures == 0 ? "PROJECT CHECK PASSED" : "PROJECT CHECK FAILED")
+}
+
+if mode == "project" { projectCheck(); exit(0) }
 
 // MARK: the editor in a visible window
 
