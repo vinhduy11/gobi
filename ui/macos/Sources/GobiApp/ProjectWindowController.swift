@@ -63,6 +63,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     var breadcrumbText: String { breadcrumb.text }
     var problemCount: Int { bottomPanel.problemCount }
     var panelTabTitles: [String] { bottomPanel.tabTitles }
+    var panelTabLayout: [(frame: NSRect, isCurrent: Bool)] { bottomPanel.tabLayout }
     var isBottomPanelVisible: Bool { !bottomPanel.isHidden }
 
     init(root: URL, kind: ProjectKind, isTrusted: Bool) {
@@ -195,6 +196,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     var onTrustRequested: (() -> Void)?
     var terminalSessionCount: Int { terminalPane?.sessionCount ?? 0 }
     var isTerminalNoticeShowing: Bool { terminalPane?.isShowingNotice ?? false }
+    var terminalBackground: [Int]? { terminalPane?.background }
     func showTerminalTab() { bottomPanel.select(tab: 2) }
     var terminalText: String { terminalPane?.screenText ?? "" }
     func typeInTerminal(_ text: String) { terminalPane?.type(text) }

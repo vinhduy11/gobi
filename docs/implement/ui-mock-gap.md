@@ -24,5 +24,5 @@ sidebar tabs, bottom panel, status bar), then menus. The terminal gets its mock 
 | Screen (mock) | Status |
 |---|---|
 | Context menus (editor, explorer, tab) | Mock added; built. Disabled until their features exist: Go to Implementation, Find References, Rename, Code Actions, New, Cut/Copy/Paste of files, Find and Replace in Files, Refactor, Organize Imports, Delete, Build Module |
-| Explorer file icons and colours | Icons by file type done. Not done: name colours for git status and ignored files (needs the git service) |
+| Explorer file icons and colours | Icons by file type in the reference style done (grey folders, GO badge, outlined pages with a letter, bare glyphs). Not done: name colours for git status and ignored files (needs the git service) |
 | Code help | Go to Definition and Format Document done. Completion popup and hover are read from gopls but not shown yet; rename and code actions not started |

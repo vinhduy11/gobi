@@ -20,8 +20,9 @@ body{margin:0}
 .ptab{padding:0 12px;height:30px;display:flex;align-items:center;color:var(--text2);border-bottom:2px solid transparent}
 .ptab.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
 .term{background:var(--term);color:var(--termText)}
-.tt{display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:6px;color:var(--text2)}
-.tt.on{background:var(--accentBg);color:var(--accentT)}
+.tt{display:flex;align-items:center;gap:8px;height:26px;padding:0 10px;border-radius:7px;border:1px solid transparent;color:var(--text2)}
+.tt.on{border-color:var(--accent);background:var(--accentBg);color:var(--text)}
+.tt .x{opacity:.7;font-size:12px}
 .ib{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;color:var(--text2)}
 .menu{position:absolute;background:var(--bg);border:1px solid var(--sep);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:4px;min-width:250px}
 .mi{display:flex;justify-content:space-between;gap:24px;padding:4px 10px;border-radius:5px}
@@ -45,8 +46,8 @@ body{margin:0}
 <script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1440,"height":720}}'>
 class Component extends DCLogic {
   renderVals() {
-    const L = {bg:'#FFFFFF',bar:'#ECECEF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)',term:'#FAFAFB',termText:'#1D1D1F',ok:'#1B7F3B',warn:'#9A6700'};
-    const D = {bg:'#1E1E1E',bar:'#2A2A2C',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)',term:'#141416',termText:'#E6E6EA',ok:'#5AD27A',warn:'#E5B567'};
+    const L = {bg:'#FFFFFF',bar:'#ECECEF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)',term:'#FFFFFF',termText:'#383A42',ok:'#2E8B3A',warn:'#B07800'};
+    const D = {bg:'#1E1E1E',bar:'#2A2A2C',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)',term:'#1E1F22',termText:'#BCBEC4',ok:'#98C379',warn:'#E5C07B'};
     const p = this.props.dark ? D : L;
     return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
   }

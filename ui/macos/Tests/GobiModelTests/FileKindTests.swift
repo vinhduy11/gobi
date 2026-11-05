@@ -21,16 +21,36 @@ struct FileKindTests {
         #expect(FileKind.classify(name: ".git", isDirectory: true) == .folder)
     }
 
-    @Test func everyKindHasABadgeLabelOrASymbol() {
+    @Test func everyKindCanBeDrawn() {
         for kind in FileKind.allCases {
             let look = kind.look
-            #expect(!look.badge.isEmpty || !look.symbol.isEmpty, "\(kind)")
+            switch look.style {
+            case .solidBadge, .glyph: #expect(!look.text.isEmpty, "\(kind) needs text")
+            case .documentLetter: #expect(!look.text.isEmpty, "\(kind) needs a letter")
+            case .documentSymbol, .symbol: #expect(!look.symbol.isEmpty, "\(kind) needs a symbol")
+            }
         }
     }
 
+    @Test func goSourceIsASolidBadgeAndTheConfigFilesAreOutlinedDocuments() {
+        #expect(FileKind.goSource.look.style == .solidBadge && FileKind.goSource.look.text == "GO")
+        for kind in [FileKind.goMod, .env, .yaml, .toml, .shell, .proto, .sql, .docker] {
+            #expect(kind.look.style == .documentLetter, "\(kind)")
+        }
+        #expect(FileKind.goSum.look.style == .documentSymbol && FileKind.goSum.look.symbol == "lock.fill")
+    }
+
+    @Test func jsonAndMarkdownAreBareGlyphs() {
+        #expect(FileKind.json.look.style == .glyph && FileKind.json.look.text == "{}")
+        #expect(FileKind.markdown.look.style == .glyph && FileKind.markdown.look.text == "M↓")
+        #expect(FileKind.makefile.look.style == .glyph)
+    }
+
+    @Test func foldersAreAQuietGreyOutline() {
+        #expect(FileKind.folder.look.style == .symbol && FileKind.folder.look.color == .gray)
+    }
+
     @Test func goFilesAreEasyToTellApartFromOtherFiles() {
-        #expect(FileKind.goSource.look.badge == "GO")
-        #expect(FileKind.goTest.look.badge == "GO")
         #expect(FileKind.goSource.look.color != FileKind.goTest.look.color)
         #expect(FileKind.goMod.look.color != FileKind.goSource.look.color)
     }

@@ -107,6 +107,44 @@ struct ProblemItem {
     let character: Int
 }
 
+/// A tab of the bottom panel: roomy, with an accent underline when selected and a soft highlight under the pointer.
+final class PanelTabButton: NSButton {
+    var isCurrent = false { didSet { needsDisplay = true } }
+    private var isHovered = false { didSet { needsDisplay = true } }
+
+    override var intrinsicContentSize: NSSize {
+        let size = super.intrinsicContentSize
+        return NSSize(width: size.width + 24, height: 30)   // 12 points of room on each side, as in the mock
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
+    }
+
+    override func mouseEntered(with event: NSEvent) { isHovered = true }
+    override func mouseExited(with event: NSEvent) { isHovered = false }
+
+    override func draw(_ dirtyRect: NSRect) {
+        if isHovered && !isCurrent {
+            NSColor.labelColor.withAlphaComponent(0.07).setFill()
+            NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 3), xRadius: 6, yRadius: 6).fill()
+        }
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 12, weight: isCurrent ? .semibold : .regular),
+            .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor,
+        ]
+        let text = NSAttributedString(string: title, attributes: attributes)
+        let box = text.size()
+        text.draw(at: NSPoint(x: bounds.midX - box.width / 2, y: bounds.midY - box.height / 2 + 1))
+        if isCurrent {
+            NSColor.controlAccentColor.setFill()
+            NSRect(x: 8, y: isFlipped ? bounds.maxY - 2 : 0, width: bounds.width - 16, height: 2).fill()   // along the bottom edge
+        }
+    }
+}
+
 /// The bottom panel of the mock: tab row (Problems, Tests, Terminal, Debug, Profiler, Git, Output) over the active tab's
 /// content. Problems is a list; the tabs whose features are not built yet say so.
 final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate {
@@ -134,17 +172,22 @@ final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate 
 
     var problemCount: Int { problems.count }
     var tabTitles: [String] { buttons.map(\.title) }
+    /// Frames of the tab buttons in the panel's coordinates and which one is current, for the self-test.
+    var tabLayout: [(frame: NSRect, isCurrent: Bool)] {
+        layoutSubtreeIfNeeded()
+        return buttons.map { (convert($0.bounds, from: $0), ($0 as? PanelTabButton)?.isCurrent ?? false) }
+    }
 
     init() {
         super.init(frame: .zero)
         let tabs = NSStackView()
         tabs.spacing = 2
-        tabs.edgeInsets = NSEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+        tabs.edgeInsets = NSEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)
         for (index, name) in Self.tabNames.enumerated() {
-            let button = NSButton(title: name, target: self, action: #selector(tabPressed(_:)))
+            let button = PanelTabButton(title: name, target: self, action: #selector(tabPressed(_:)))
             button.tag = index
             button.isBordered = false
-            button.font = NSFont.systemFont(ofSize: 12)
+            button.setAccessibilityRole(.radioButton)
             tabs.addArrangedSubview(button)
             buttons.append(button)
         }
@@ -210,8 +253,8 @@ final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate 
     func select(tab index: Int) {
         selectedTab = index
         for (position, button) in buttons.enumerated() {
-            button.font = NSFont.systemFont(ofSize: 12, weight: position == index ? .semibold : .regular)
-            button.contentTintColor = position == index ? .labelColor : .secondaryLabelColor
+            (button as? PanelTabButton)?.isCurrent = position == index
+            button.setAccessibilityValue(position == index ? 1 : 0)
         }
         showContent()
     }

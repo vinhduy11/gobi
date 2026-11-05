@@ -70,7 +70,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ui/macos/`: Help > Keyboard Shortcuts lists every shortcut from the same data the menus use; `Shortcut` reads the mock's notation; the self-test checks that every live menu item carries its key.
 - `ui/macos/`: explorer file icons by type (GO, test, go.mod, go.sum, go.work, Markdown, YAML, JSON, TOML, Makefile, .gitignore, .env, shell, Dockerfile, proto, SQL, images) as coloured badges and symbols.
 
+- `ui/macos/`: the terminal and explorer follow the new reference images. Terminal tabs are pills with an accent outline and a close mark, with the new and menu buttons right beside them (split and kill live in the menu); the terminal takes a slate background and a softer ANSI palette (`TerminalPalette`, with a light version, switching with the appearance). Explorer icons: grey outline folders, a solid cyan GO badge, outlined pages with a small letter for go.mod, .env, YAML and similar, bare glyphs for JSON and Markdown, in softer colours. The Terminal and Context menus mocks were updated first.
+
 ### Fixed
+- `ui/macos/`: the bottom panel tabs and the terminal strip are easier to tell apart: tabs have room around their names, the current one has an accent underline and bolder text, the new-terminal and menu buttons are separate square buttons with a hover highlight and a divider before them. The self-test checks the spacing and that exactly one tab is current.
 - `ui/macos/`: a menu item built with a method named `perform` crashed when chosen, because the name collides with `NSObject.perform(_:)`.
 - `ui/macos/`: the project window no longer shrinks itself to the layout's fitting size (a holding priority above Auto Layout's window priority did it), and a saved window frame that is too small is ignored.
 - `ui/macos/`: the tabs were never visible. The tab strip was a stack used as a scroll view's document view without constraints, so every tab had size 0 by 0. It is pinned now, has a background of its own with a hairline, and the project self-test checks that each tab is drawn with a real size (and writes a window snapshot with `--snapshot`).

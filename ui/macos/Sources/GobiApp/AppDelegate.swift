@@ -191,6 +191,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let controller = ProjectWindowController(root: root, kind: .module, isTrusted: true)
         controller.showWindow(nil)
         controller.showTerminalTab()
+        let layout = controller.panelTabLayout
+        let gaps = zip(layout, layout.dropFirst()).map { $1.frame.minX - $0.frame.maxX }
+        check("the panel tabs are spaced apart and exactly one is current (gaps \(gaps.map { Int($0) }))", gaps.allSatisfy { $0 >= 2 } && layout.filter(\.isCurrent).count == 1 && layout.allSatisfy { $0.frame.width >= 40 })
         settle { controller.terminalSessionCount == 1 }
         check("opening the Terminal tab starts one shell (\(controller.terminalTitles))", controller.terminalSessionCount == 1 && !controller.isTerminalNoticeShowing)
         // The user's shell start-up files may read the terminal too, so type only once the screen has stopped changing.
@@ -204,6 +207,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settle { controller.terminalText.contains("result-3") }
         check("a command typed into it runs and its output is on screen", controller.terminalText.contains("result-3"))
         check("the shell started in the project folder", controller.terminalText.contains(root.lastPathComponent))
+        let palette = TerminalPalette.forAppearance(isDark: controller.window?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua)
+        check("the terminal uses the palette's background (\(controller.terminalBackground.map(String.init(describing:)) ?? "none"))", controller.terminalBackground == [Int(palette.background.red), Int(palette.background.green), Int(palette.background.blue)])
         controller.runInTerminal("echo menu-ran-$((20+22))", inFolder: root)
         settle { controller.terminalText.contains("menu-ran-42") }
         check("a command from a menu (Go Mod Tidy and friends) runs in the terminal", controller.terminalText.contains("menu-ran-42"))

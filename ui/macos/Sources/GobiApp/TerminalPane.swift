@@ -3,6 +3,79 @@ import GobiClient
 import GobiModel
 import SwiftTerm
 
+/// A small square button for the terminal strip (new terminal, menu) with a soft highlight under the pointer.
+private final class StripButton: NSButton {
+    private var isHovered = false { didSet { needsDisplay = true } }
+
+    override var intrinsicContentSize: NSSize { NSSize(width: 26, height: 24) }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
+    }
+
+    override func mouseEntered(with event: NSEvent) { isHovered = true }
+    override func mouseExited(with event: NSEvent) { isHovered = false }
+
+    override func draw(_ dirtyRect: NSRect) {
+        if isHovered && isEnabled {
+            NSColor.labelColor.withAlphaComponent(0.1).setFill()
+            NSBezierPath(roundedRect: bounds, xRadius: 6, yRadius: 6).fill()
+        }
+        guard let image else { return }
+        let box = image.size
+        image.draw(in: NSRect(x: bounds.midX - box.width / 2, y: bounds.midY - box.height / 2, width: box.width, height: box.height),
+                   from: .zero, operation: .sourceOver, fraction: isEnabled ? 1 : 0.4, respectFlipped: true, hints: nil)
+    }
+}
+
+/// One terminal tab, as a pill: its title and a close mark, with an accent outline when selected.
+private final class TerminalTabView: NSView {
+    var onSelect: (() -> Void)?
+    var onClose: (() -> Void)?
+
+    init(title: String, isSelected: Bool) {
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.cornerRadius = 7
+        layer?.borderWidth = 1
+        let label = NSTextField(labelWithString: title)
+        label.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        label.textColor = isSelected ? .labelColor : .secondaryLabelColor
+        let close = NSButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close \(title)") ?? NSImage(), target: self, action: #selector(closePressed))
+        close.isBordered = false
+        close.imageScaling = .scaleProportionallyDown
+        close.contentTintColor = .secondaryLabelColor
+        let row = NSStackView(views: [label, close])
+        row.spacing = 8
+        row.edgeInsets = NSEdgeInsets(top: 3, left: 10, bottom: 3, right: 8)
+        row.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(row)
+        NSLayoutConstraint.activate([
+            row.leadingAnchor.constraint(equalTo: leadingAnchor), row.trailingAnchor.constraint(equalTo: trailingAnchor),
+            row.topAnchor.constraint(equalTo: topAnchor), row.bottomAnchor.constraint(equalTo: bottomAnchor),
+            close.widthAnchor.constraint(equalToConstant: 12), close.heightAnchor.constraint(equalToConstant: 12),
+        ])
+        selected = isSelected
+        setAccessibilityRole(.radioButton)
+        setAccessibilityLabel("Terminal \(title)")
+        setAccessibilityValue(isSelected ? 1 : 0)
+    }
+
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    private var selected = false
+
+    override func updateLayer() {
+        layer?.borderColor = (selected ? NSColor.controlAccentColor : NSColor.clear).cgColor
+        layer?.backgroundColor = (selected ? NSColor.controlAccentColor.withAlphaComponent(0.14) : NSColor.clear).cgColor
+    }
+    override var wantsUpdateLayer: Bool { true }
+    override func mouseDown(with event: NSEvent) { onSelect?() }
+    @objc private func closePressed() { onClose?() }
+}
+
 /// The Terminal tab of the bottom panel, as in the mock: one tab per shell with a new, shell menu, split and kill control,
 /// the terminal below, and a notice instead when the project is not trusted. SwiftTerm draws and understands the terminal;
 /// gobid runs the shell on its pty channel.
@@ -47,6 +120,17 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         return String(decoding: sessions[selected].view.getTerminal().getBufferAsData(), as: UTF8.self)
     }
 
+    /// The background the selected terminal uses, as 0-255 components, for the self-test.
+    var background: [Int]? {
+        guard sessions.indices.contains(selected) else { return nil }
+        let view = sessions[selected].view
+        func components(_ color: NSColor) -> [Int] {
+            let rgb = color.usingColorSpace(.sRGB) ?? color
+            return [Int((rgb.redComponent * 255).rounded()), Int((rgb.greenComponent * 255).rounded()), Int((rgb.blueComponent * 255).rounded())]
+        }
+        return components(view.nativeBackgroundColor)
+    }
+
     /// Types into the selected terminal as if from the keyboard.
     func type(_ text: String) {
         guard sessions.indices.contains(selected) else { return }
@@ -65,8 +149,8 @@ final class TerminalPane: NSView, TerminalViewDelegate {
     // MARK: layout
 
     private func build() {
-        strip.spacing = 6
-        strip.edgeInsets = NSEdgeInsets(top: 4, left: 10, bottom: 4, right: 10)
+        strip.spacing = 8
+        strip.edgeInsets = NSEdgeInsets(top: 5, left: 10, bottom: 5, right: 10)
         host.translatesAutoresizingMaskIntoConstraints = false
         let rule = NSBox()
         rule.boxType = .separator
@@ -118,29 +202,51 @@ final class TerminalPane: NSView, TerminalViewDelegate {
     private func rebuildStrip() {
         strip.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for (index, title) in TerminalTitle.numbered(sessions.map(\.title)).enumerated() {
-            let button = NSButton(title: title, target: self, action: #selector(tabPressed(_:)))
-            button.tag = index
-            button.bezelStyle = .inline
-            button.isBordered = false
-            button.font = NSFont.systemFont(ofSize: 12, weight: index == selected ? .semibold : .regular)
-            button.contentTintColor = index == selected ? .controlAccentColor : .secondaryLabelColor
-            button.setAccessibilityLabel("Terminal \(title)")
-            strip.addArrangedSubview(button)
+            let tab = TerminalTabView(title: title, isSelected: index == selected)
+            tab.onSelect = { [weak self] in self?.select(index) }
+            tab.onClose = { [weak self] in self?.close(at: index) }
+            strip.addArrangedSubview(tab)
         }
-        strip.addArrangedSubview(NSView())
+        // The new-terminal and menu buttons sit right after the tabs, set off by a divider.
+        let divider = NSBox()
+        divider.boxType = .separator
+        divider.widthAnchor.constraint(equalToConstant: 1).isActive = true
+        divider.heightAnchor.constraint(equalToConstant: 16).isActive = true
+        strip.addArrangedSubview(divider)
         strip.addArrangedSubview(iconButton("plus", "New Terminal", #selector(newPressed)))
         strip.addArrangedSubview(iconButton("chevron.down", "Terminal menu", #selector(menuPressed(_:))))
-        strip.addArrangedSubview(iconButton("rectangle.split.2x1", "Split Terminal (not available yet)", nil))
-        strip.addArrangedSubview(iconButton("trash", "Kill Terminal", #selector(killPressed)))
+        strip.addArrangedSubview(NSView())
     }
 
     private func iconButton(_ symbol: String, _ label: String, _ action: Selector?) -> NSButton {
-        let button = NSButton(image: NSImage(systemSymbolName: symbol, accessibilityDescription: label) ?? NSImage(), target: self, action: action)
+        let configuration = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium).applying(.init(paletteColors: [.labelColor]))
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)?.withSymbolConfiguration(configuration) ?? NSImage()
+        let button = StripButton(image: image, target: self, action: action)
         button.isBordered = false
+        button.imagePosition = .imageOnly
         button.toolTip = label
         button.isEnabled = action != nil
         button.setAccessibilityLabel(label)
         return button
+    }
+
+    // MARK: colours
+
+    /// The palette for the window's current light or dark appearance, with the soft ANSI colours.
+    private func applyPalette(to view: TerminalView) {
+        let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let palette = TerminalPalette.forAppearance(isDark: isDark)
+        func native(_ color: RGB) -> NSColor { NSColor(srgbRed: CGFloat(color.red) / 255, green: CGFloat(color.green) / 255, blue: CGFloat(color.blue) / 255, alpha: 1) }
+        func swiftTermColor(_ color: RGB) -> Color { Color(red: UInt16(color.red) * 257, green: UInt16(color.green) * 257, blue: UInt16(color.blue) * 257) }
+        view.installColors(palette.ansi.map(swiftTermColor))
+        view.nativeBackgroundColor = native(palette.background)
+        view.nativeForegroundColor = native(palette.foreground)
+        view.caretColor = native(palette.cursor)
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        sessions.forEach { applyPalette(to: $0.view) }
     }
 
     // MARK: sessions
@@ -157,6 +263,7 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         let view = TerminalView(frame: NSRect(x: 0, y: 0, width: 600, height: 200))
         view.terminalDelegate = self
         view.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        applyPalette(to: view)
         let title = TerminalTitle.make(shellPath: ProcessInfo.processInfo.environment["SHELL"], folder: root.lastPathComponent)
         let session = Session(view: view, title: title)
         sessions.append(session)
@@ -203,14 +310,20 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         window?.makeFirstResponder(view)
     }
 
-    @objc private func tabPressed(_ sender: NSButton) { select(sender.tag) }
+    @objc private func killPressed() { close(at: selected) }
 
-    @objc private func killPressed() {
-        guard sessions.indices.contains(selected) else { return }
-        let session = sessions.remove(at: selected)
+    /// Ends the shell of tab `index` and removes the tab; the neighbour takes over.
+    private func close(at index: Int) {
+        guard sessions.indices.contains(index) else { return }
+        let session = sessions.remove(at: index)
         session.client?.close()
         session.view.removeFromSuperview()
-        if sessions.isEmpty { host.subviews.forEach { $0.removeFromSuperview() }; rebuildStrip() } else { select(min(selected, sessions.count - 1)) }
+        if sessions.isEmpty {
+            host.subviews.forEach { $0.removeFromSuperview() }
+            rebuildStrip()
+        } else {
+            select(min(index < selected ? selected - 1 : selected, sessions.count - 1))
+        }
     }
 
     /// The menu of the mock: new, split, kill, clear and the shell. Only new, kill and clear are live.
