@@ -200,6 +200,21 @@ final class EditorTextView: NSTextView {
         super.scrollWheel(with: event)
     }
 
+    /// Text starts a few points inside the view. Revealing a caret near the left edge made AppKit scroll sideways by a small amount
+    /// (14 pt seen), which cut the first character off every line; a small sideways offset is taken back to the left edge.
+    static let leftSnapDistance: CGFloat = 48
+
+    override func scrollRangeToVisible(_ range: NSRange) {
+        super.scrollRangeToVisible(range)
+        guard let scroll = enclosingScrollView else { return }
+        let clip = scroll.contentView
+        let x = clip.bounds.origin.x
+        if x > 0, x < Self.leftSnapDistance {
+            clip.scroll(to: NSPoint(x: 0, y: clip.bounds.origin.y))
+            scroll.reflectScrolledClipView(clip)
+        }
+    }
+
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
         hover?.hide()
         super.insertText(insertString, replacementRange: replacementRange)

@@ -130,6 +130,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ui/macos/`: quick open on one panel: Go to File (⌘P), Command Palette (⇧⌘P, every live menu command with its menu and shortcut), Go to Symbol in File (⇧⌘O) and in Workspace (⌘T) through gopls. `Fuzzy` ranks matches (name prefix, name contains, letters in order with word-start bonus).
 
 ### Fixed
+- The first character of every line (`p` of package, `i` of import, `f` of func) was cut off after jumping to a line: revealing a caret near the left edge scrolled the editor sideways by about 14 pt. A small sideways offset is now taken back to the left edge.
 - Find in Files no longer follows symbolic links, so a link inside the project cannot expose a file outside it.
 - The git program from the handshake is now per session; a later connection no longer changes the program used by other sessions.
 - Remote addresses and git error messages hide the password of `https://user:password@host` URLs.

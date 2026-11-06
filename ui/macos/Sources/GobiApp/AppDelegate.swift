@@ -350,6 +350,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let declared = controller.currentPane
         let declaration = (declared?.textView.string as NSString?)?.range(of: "func helper")
         check("the caret is on the declared name", declared != nil && declaration != nil && NSLocationInRange(declared!.textView.selectedRange().location, NSRange(location: declaration!.location, length: declaration!.length + 1)))
+        check("revealing a caret near the left edge does not scroll sideways (the first character stays visible, offset \(declared?.textView.enclosingScrollView?.contentView.bounds.origin.x ?? -1))", declared?.textView.enclosingScrollView?.contentView.bounds.origin.x == 0)
 
         // Go to Implementation: from the interface method to the method of the type that implements it (shapes.go).
         controller.openFile(root.appendingPathComponent("shapes.go"))
