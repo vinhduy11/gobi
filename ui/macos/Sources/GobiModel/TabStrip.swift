@@ -33,6 +33,21 @@ public struct TabStrip: Equatable, Sendable {
         if isDirty { dirty.insert(path) } else { dirty.remove(path) }
     }
 
+    /// Renames a tab in place: same position, same active and edited marks.
+    public mutating func replace(_ path: String, with new: String) {
+        guard let index = paths.firstIndex(of: path) else { return }
+        paths[index] = new
+        if active == path { active = new }
+        if dirty.remove(path) != nil { dirty.insert(new) }
+    }
+
+    /// Moves a tab to `index` (clamped); the active tab does not change.
+    public mutating func place(_ path: String, at index: Int) {
+        guard let from = paths.firstIndex(of: path) else { return }
+        paths.remove(at: from)
+        paths.insert(path, at: max(0, min(index, paths.count)))
+    }
+
     /// Closing the active tab activates its right neighbour, or the left one when it was the last.
     public mutating func close(_ path: String) {
         guard let index = paths.firstIndex(of: path) else { return }

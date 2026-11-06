@@ -62,7 +62,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     let kind: ProjectKind
     let isTrusted: Bool
     private let rootNode: FileNode
-    private let outline = ExplorerOutlineView()
+    let outline = ExplorerOutlineView()
     private let content = NSView()
     let statusBar = StatusBarView()
     private let breadcrumb = BreadcrumbView()
@@ -76,14 +76,14 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private(set) var goInstalls: [GoInstall] = []
     private(set) var gitStatus: GitStatus?
     private var connectedPaths: Set<String> = []
-    private var panes: [String: EditorPane] = [:]
+    var panes: [String: EditorPane] = [:]
     /// The last code lens part clicked, and how many places the last Find References / Go to Implementation listed. The
     /// self-test reads them; it also turns the pop-up list off (a pop-up menu would hold the run loop).
     var lastLensAction: LensAction?
     var lastListedLocations = 0
     var presentsLocationMenus = true
     private(set) var currentPane: EditorPane?
-    private(set) var tabs = TabStrip()
+    var tabs = TabStrip()
     var tabTitles: [String] { tabBar.titles }
     /// Where the tabs are drawn, in the tab bar's coordinates, and the bar's own size.
     var tabFrames: [NSRect] { tabBar.itemFrames }
@@ -222,6 +222,12 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         outline.setAccessibilityLabel("Project files")
         outline.menuProvider = { [weak self] row in self?.explorerMenu(row: row) }
         outline.onJumpToSource = { [weak self] in self?.jumpToSourceOfSelection() }
+        outline.onCut = { [weak self] in if let self { self.copyToClipboard(self.selectedURLs(), cut: true) } }
+        outline.onCopy = { [weak self] in if let self { self.copyToClipboard(self.selectedURLs(), cut: false) } }
+        outline.onPaste = { [weak self] in self?.pasteIntoSelection() }
+        outline.onDelete = { [weak self] in if let self { self.deleteItems(self.selectedURLs()) } }
+        outline.onRename = { [weak self] in if let self, let url = self.selectedURLs().first, self.selectedURLs().count == 1 { self.renameItem(url) } }
+        outline.onMove = { [weak self] in if let self { self.moveWithSheet(self.selectedURLs()) } }
         let sidebar = NSScrollView()
         sidebar.documentView = outline
         sidebar.hasVerticalScroller = true
@@ -375,7 +381,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private var profileSample: Int?
     private var sidebarTabControl: NSSegmentedControl?
     private(set) var watches = WatchList()
-    private(set) var breakpoints = Breakpoints()
+    var breakpoints = Breakpoints()
     private var debugSession: DebugSession?
     private var runClient: RunClient?
     private var fetchTimer: Timer?
@@ -741,9 +747,15 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
 
     /// Reads the folders again (after a branch switch changed what is on disk).
     func reloadExplorer() {
-        rootNode.invalidate()
+        rootNode.refresh()   // keeps the nodes (and so what is expanded) of names that are still there
+        // The selected rows would point at other items now, and selecting a file opens it: drop the selection without opening anything.
+        isReloadingExplorer = true
         outline.reloadData()
+        outline.deselectAll(nil)
+        isReloadingExplorer = false
     }
+
+    private var isReloadingExplorer = false
 
     var sourceControlRows: [String] { sourceControl.rowTexts }
     var sourceControlBranch: String { sourceControl.branchText }
@@ -821,7 +833,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
 
     // MARK: debugging
 
-    private var breakpointsKey: String { "gobi.breakpoints." + root.path }
+    var breakpointsKey: String { "gobi.breakpoints." + root.path }
 
     func loadBreakpoints() {
         breakpoints = Breakpoints.decode(UserDefaults.standard.string(forKey: breakpointsKey) ?? "")
@@ -841,7 +853,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         debugSession?.breakpointsChanged(in: path)
     }
 
-    private func applyBreakpoints(to path: String) {
+    func applyBreakpoints(to path: String) {
         guard let editor = panes[path]?.editor else { return }
         let lines = breakpoints.lines(in: path)
         editor.breakpointLines = Set(lines)
@@ -1471,7 +1483,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     }
 
     /// Brings the status bar, breadcrumb and window title in line with the active file.
-    private func refreshChrome() {
+    func refreshChrome() {
         let path = currentPane?.editorFile.fileURL.path
         let connected = path.map(connectedPaths.contains) ?? false
         var uts = utsname(); uname(&uts)
@@ -1494,7 +1506,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         }
     }
 
-    private func rebuildProblems() {
+    func rebuildProblems() {
         var items: [ProblemItem] = []
         for path in tabs.paths {
             for diagnostic in diagnosticsByPath[path] ?? [] {
@@ -1611,7 +1623,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
 
     func contains(_ url: URL) -> Bool { url.path.hasPrefix(root.path + "/") }
 
-    private func activate(_ path: String) {
+    func activate(_ path: String) {
         defer { updateGitMarks() }
         guard let pane = panes[path] else { return }
         tabs.select(path)
@@ -1827,6 +1839,18 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         handlers["newFolder"] = { [weak self] in self?.newEntry(.folder, in: target) }
         handlers["newGoFile"] = { [weak self] in self?.newEntry(.goFile, in: target) }
         handlers["newGoTestFile"] = { [weak self] in self?.newEntry(.goTestFile, in: target) }
+        // Cut, Copy, Delete, Rename and Move act on the selected rows (the row clicked when it was not selected); Paste goes into the
+        // folder clicked, next to the file clicked, or into the project folder from empty space.
+        let picked = selectedURLs()
+        let items = row >= 0 ? (picked.isEmpty ? [url] : picked) : []
+        if !items.isEmpty {
+            handlers["cutFiles"] = { [weak self] in self?.copyToClipboard(items, cut: true) }
+            handlers["copyFiles"] = { [weak self] in self?.copyToClipboard(items, cut: false) }
+            handlers["deleteFiles"] = { [weak self] in self?.deleteItems(items) }
+            handlers["moveFile"] = { [weak self] in self?.moveWithSheet(items) }
+            if items.count == 1 { handlers["renameFile"] = { [weak self] in self?.renameItem(items[0]) } }
+        }
+        if canPaste { handlers["pasteFiles"] = { [weak self] in self?.paste(into: target) } }
         // Go Mod Tidy and Download Go Modules run in a terminal, in the folder of the go.mod: the one selected, or the folder
         // selected when it holds one. Only a trusted project has a terminal.
         let moduleFolder = node.isDirectory ? url : (url.lastPathComponent == "go.mod" ? url.deletingLastPathComponent() : nil)
@@ -2025,6 +2049,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
+        if isReloadingExplorer { return }
         // Every selected file gets a tab, so shift- or command-clicking several files opens them all.
         let selected = outline.selectedRowIndexes.compactMap { outline.item(atRow: $0) as? FileNode }.filter { !$0.isDirectory }
         openFiles(selected.map(\.url))

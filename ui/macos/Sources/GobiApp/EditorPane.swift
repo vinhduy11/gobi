@@ -328,7 +328,7 @@ final class EditorPane: NSViewController {
 
     /// Puts kept unsaved text back, marked as edited, with the notice bar saying so. The buffer file goes away when the edit mark
     /// clears (saved, reloaded or discarded).
-    func restoreUnsaved(_ text: String, changedOnDisk: Bool) {
+    func restoreUnsaved(_ text: String, changedOnDisk: Bool, quiet: Bool = false) {
         guard let storage = textView.textStorage else { return }
         let whole = NSRange(location: 0, length: (textView.string as NSString).length)
         if textView.shouldChangeText(in: whole, replacementString: text) {
@@ -338,6 +338,7 @@ final class EditorPane: NSViewController {
         editorFile.isEdited = true
         markDiskKnown()
         let name = editorFile.fileURL.lastPathComponent
+        if quiet { return }
         if changedOnDisk {
             diskNotified = true   // an automatic save waits for the answer
             editor.showNotice("Restored unsaved changes to \(name), but it changed on disk since.", style: .warning, actions: [

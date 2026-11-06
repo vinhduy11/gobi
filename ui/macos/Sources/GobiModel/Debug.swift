@@ -20,6 +20,13 @@ public struct Breakpoints: Equatable, Sendable {
         return added
     }
 
+    /// Keeps a file's breakpoints (and their conditions) when the file is renamed or moved.
+    public mutating func move(from old: String, to new: String) {
+        guard old != new else { return }
+        if let lines = byPath[old] { byPath[new] = lines; byPath[old] = nil }
+        if let found = conditions[old] { conditions[new] = found; conditions[old] = nil }
+    }
+
     public mutating func removeAll(in path: String) { byPath[path] = nil; conditions[path] = nil }
 
     /// Makes `line` a breakpoint that stops only when `condition` is true; an empty condition makes it a plain breakpoint again.

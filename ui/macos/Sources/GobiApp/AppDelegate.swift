@@ -328,7 +328,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let copyPathMenu = explorerMenu?.items.first { $0.title == "Copy Path" }?.submenu
         perform("Path from Project Root", in: copyPathMenu ?? NSMenu())
         check("Copy Path > Path from Project Root gives a path inside the project", NSPasteboard.general.string(forType: .string) == "a.go")
-        check("Cut, Copy, Paste, Delete and Refactor are in the explorer menu but disabled until they exist, New is live", ["Cut", "Copy", "Paste", "Delete…", "Refactor"].allSatisfy { title in explorerMenu?.items.first { $0.title == title }?.isEnabled == false })
+        check("Cut, Copy, Delete and Refactor are live on a file row", ["Cut", "Copy", "Delete…", "Refactor"].allSatisfy { title in explorerMenu?.items.first { $0.title == title }?.isEnabled == true })
+        check("Rename and Move are live in Refactor", explorerMenu?.items.first { $0.title == "Refactor" }?.submenu?.items.map(\.isEnabled) == [true, true])
         let modRow = (0 ..< controller.explorerRowCount).first { controller.explorerRowTitle($0) == "go.mod" }
         check("Go Mod Tidy and Download Go Modules are live on go.mod", modRow.flatMap { controller.explorerMenu(row: $0) }.map { menu in ["Go Mod Tidy", "Download Go Modules"].allSatisfy { title in menu.items.first { $0.title == title }?.isEnabled == true } } ?? false)
 
@@ -378,6 +379,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             check("with the setting off a { stays alone", view.string == "{")
             EditorPreferences.current = before
         }
+        runFileOperationChecks(emptyController, root: emptyRoot, scratch: root.appendingPathComponent("gobi-scratch-trash"), check: check, addCleanup: { selfTestCleanups.append($0) })
         emptyController.window?.close()
         check("and absent on a plain Go file", explorerMenu?.items.first { $0.title == "Go Mod Tidy" }?.isEnabled == false)
 

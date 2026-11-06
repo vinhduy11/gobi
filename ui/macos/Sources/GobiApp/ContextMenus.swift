@@ -57,8 +57,25 @@ final class ExplorerOutlineView: NSOutlineView {
     /// F4 (Jump to Source) on the selected rows.
     var onJumpToSource: (() -> Void)?
 
+    var onCut: (() -> Void)?
+    var onCopy: (() -> Void)?
+    var onPaste: (() -> Void)?
+    var onDelete: (() -> Void)?
+    var onRename: (() -> Void)?
+    var onMove: (() -> Void)?
+
+    // The Edit menu's Cut, Copy and Paste reach the explorer through the responder chain while it has focus.
+    @objc func cut(_ sender: Any?) { onCut?() }
+    @objc func copy(_ sender: Any?) { onCopy?() }
+    @objc func paste(_ sender: Any?) { onPaste?() }
+
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 118 { onJumpToSource?() } else { super.keyDown(with: event) }   // 118 is F4
+        switch event.keyCode {
+        case 118: onJumpToSource?()   // F4
+        case 51, 117: onDelete?()     // delete, forward delete (also with command)
+        case 97: if event.modifierFlags.contains(.shift) { onRename?() } else { onMove?() }   // F6, ⇧F6
+        default: super.keyDown(with: event)
+        }
     }
 
     override func menu(for event: NSEvent) -> NSMenu? {

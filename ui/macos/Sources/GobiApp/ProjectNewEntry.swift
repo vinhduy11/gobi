@@ -66,7 +66,7 @@ extension ProjectWindowController {
         return url
     }
 
-    private static func describe(_ problem: NewEntry.Problem, name: String) -> String {
+    static func describe(_ problem: NewEntry.Problem, name: String) -> String {
         switch problem {
         case .empty: return "type a name"
         case .hasSeparator: return "a name cannot contain /"
