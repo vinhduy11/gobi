@@ -1,11 +1,12 @@
 #!/bin/sh
-# Assembles dist/Gobi.app from the release build, bundles gobid next to the app binary, and signs ad hoc.
+# Assembles dist/Gobi.app (dist/ is at the repository root) from the release build, bundles gobid next to the app binary, and signs ad hoc.
 # SwiftPM builds the executable only; the bundle, Info.plist and signing are done here (works with the
 # Command Line Tools alone). Release signing: SIGN_IDENTITY; notarization: scripts/notarize.sh.
 set -eu
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)
-APP="$ROOT/dist/Gobi.app"
+DIST="$(cd "$ROOT/../.." && pwd)/dist"
+APP="$DIST/Gobi.app"
 CONTENTS="$APP/Contents"
 
 swift build -c release --product GobiApp

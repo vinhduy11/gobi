@@ -29,6 +29,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Recovery of unsaved edits: when a project window closes or Gobi quits, each edited buffer is kept (text plus the file's signature) under Application Support/Gobi/Recovery, one file per project and file, never inside the project. On the next open the tab comes back marked as edited with a notice: "Restored unsaved changes" (Keep / Discard), or, when the file changed on disk since, Keep Mine / Reload from Disk. A buffer is deleted when saved, reloaded, discarded or the tab is closed. Mock board added to `ExternalChange`.
 
 ### Changed
+- The build output folder `dist/` (Gobi.app, Gobi-<version>.dmg) is now at the repository root instead of `ui/macos/dist/`; `make-app.sh`, `make-dmg.sh` and `notarize.sh` use it, and the root `.gitignore` ignores it.
 - Run > Debug replaces the Debug menu (Start Debugging is now Debug, Continue is Resume Program, Toggle Breakpoint is Toggle Line Breakpoint, Restart is under Debugging Actions); Find in Files… moved out of the Find submenu to the Edit menu, as in the mock. A custom shortcut set for a renamed Debug item in Settings > Keymap must be set again.
 - Toolbar: the run target, Run and Debug sit on the right beside a ⋮ menu (Profile, Run Tests, Run Test at Cursor); Environment and Go version moved next to the branch.
 - Changes on disk are noticed through file-system events (FSEvents on the project folder, coalesced to about 150 ms) instead of a one-second poll; a 10 s poll stays as a fallback.

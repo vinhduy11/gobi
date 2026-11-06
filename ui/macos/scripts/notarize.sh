@@ -6,8 +6,9 @@
 set -eu
 cd "$(dirname "$0")/.."
 : "${NOTARY_PROFILE:?set NOTARY_PROFILE to the notarytool keychain profile name}"
-APP=dist/Gobi.app
-ZIP=dist/Gobi.zip
+DIST="$(cd ../.. && pwd)/dist"   # dist/ is at the repository root
+APP="$DIST/Gobi.app"
+ZIP="$DIST/Gobi.zip"
 ditto -c -k --keepParent "$APP" "$ZIP"
 xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
 xcrun stapler staple "$APP"

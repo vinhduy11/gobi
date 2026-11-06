@@ -3,10 +3,11 @@
 # A release build is signed with SIGN_IDENTITY and notarized with scripts/notarize.sh before this step.
 set -eu
 cd "$(dirname "$0")/.."
-APP=dist/Gobi.app
+DIST="$(cd ../.. && pwd)/dist"   # dist/ is at the repository root
+APP="$DIST/Gobi.app"
 [ -d "$APP" ] || { echo "dist/Gobi.app is missing: run scripts/make-app.sh first" >&2; exit 1; }
 VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")
-DMG="dist/Gobi-$VERSION.dmg"
+DMG="$DIST/Gobi-$VERSION.dmg"
 STAGE=$(mktemp -d "$(pwd)/.build/dmg.XXXXXX")
 trap 'rm -rf "$STAGE"' EXIT
 cp -R "$APP" "$STAGE/"

@@ -86,9 +86,9 @@ macOS app:
 ```bash
 cd ui/macos
 ./scripts/test.sh                      # Swift tests (works with the Command Line Tools only)
-./scripts/make-app.sh                  # builds dist/Gobi.app with gobid bundled, signed ad hoc
-./scripts/make-dmg.sh                  # packs dist/Gobi-<version>.dmg (drag to Applications)
-open dist/Gobi.app                     # Welcome window: Open… a folder, or pick a recent project
+./scripts/make-app.sh                  # builds <repo>/dist/Gobi.app with gobid bundled, signed ad hoc
+./scripts/make-dmg.sh                  # packs <repo>/dist/Gobi-<version>.dmg (drag to Applications)
+open ../../dist/Gobi.app             # Welcome window: Open… a folder, or pick a recent project
 ```
 
 The app is signed ad hoc, so on another Mac use right click > Open the first time. A release build is signed with

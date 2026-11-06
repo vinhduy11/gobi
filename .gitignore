@@ -22,3 +22,6 @@ coverage.*
 profile.cov
 go.work
 go.work.sum
+
+# Build output of ui/macos/scripts (app bundle and DMG)
+/dist/
