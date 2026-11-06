@@ -23,6 +23,8 @@ import (
 )
 
 func main() {
+	// Started from Finder, the app (and so gobid) has only the system PATH; add where go, gopls and dlv usually are.
+	toolchain.ExtendProcessPath()
 	command, args := "serve", os.Args[1:]
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
 		command, args = args[0], args[1:]

@@ -74,6 +74,31 @@ public enum Gobid {
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
+    private static let staleLock = NSLock()
+    nonisolated(unsafe) private static var staleChecked = false
+
+    /// The first time this process connects: when the running gobid started before the gobid file next to the app was written
+    /// (an update), asks it to stop so that the connection below starts the new one. Never touches a daemon that is newer.
+    private static func replaceStaleDaemonOnce(socketPath: String) {
+        staleLock.lock()
+        let first = !staleChecked
+        staleChecked = true
+        staleLock.unlock()
+        guard first, let binary = locateBinary(),
+              let modified = (try? FileManager.default.attributesOfItem(atPath: binary))?[.modificationDate] as? Date,
+              let session = try? GobiSession.connect(socketPath: socketPath, channel: "control", workspaceRoot: "")
+        else { return }
+        let client = ControlClient(session: session)
+        defer { client.close() }
+        guard let status = try? client.daemonStatus(), DaemonFreshness.isStale(startedAt: status.startedAt, binaryModified: Int(modified.timeIntervalSince1970)) else { return }
+        try? client.stopDaemon()
+        // Wait for the old daemon to let go of the socket so that the new one can take it.
+        for _ in 0 ..< 60 {
+            if (try? GobiSession.connect(socketPath: socketPath, channel: "control", workspaceRoot: "")) == nil { return }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+    }
+
     /// Connects to the running daemon, starting one first when none answers.
     public static func connect(
         channel: String,
@@ -86,6 +111,7 @@ public enum Gobid {
         autostart: Bool = true
     ) throws -> GobiSession {
         let socketPath = defaultSocketPath()
+        if autostart { replaceStaleDaemonOnce(socketPath: socketPath) }
         func attempt() throws -> GobiSession {
             try GobiSession.connect(socketPath: socketPath, channel: channel, workspaceRoot: workspaceRoot, language: language, goRoot: goRoot, shell: shell, tool: tool, trusted: trusted)
         }
