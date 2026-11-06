@@ -2119,7 +2119,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("every live menu item has its shortcut (mismatches: \(mismatches))", mismatches.isEmpty)
         let recentMenu = NSApp.mainMenu?.items.compactMap { $0.submenu }.flatMap { $0.items }.first { $0.title == "Open Recent" }?.submenu
         recentMenu.map { menuNeedsUpdate($0) }
-        check("Open Recent lists this project first", recentMenu?.items.first?.title == controller.root.lastPathComponent)
+        check("Open Recent lists this project first (\(recentMenu?.items.prefix(3).map(\.title) ?? []))", recentMenu?.items.first?.title.hasPrefix(controller.root.lastPathComponent) == true)   // a second project with the same folder name makes the menu add its location
         check("Open Recent ends with Clear Menu", recentMenu?.items.last?.title == "Clear Menu")
         check("the status bar shows the project, not a stale line (\(controller.statusBarTexts.filter { !$0.isEmpty }))", controller.statusBarTexts.contains { $0.hasPrefix("gopls") })
         check("the bottom panel has the mock's eight tabs", controller.panelTabTitles.count == 8 && controller.panelTabTitles.last == "Find")
