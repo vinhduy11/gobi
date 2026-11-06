@@ -90,6 +90,8 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     /// Generate: only the newest list or render counts, and only for the text it was asked about; the dialog's preview has its own gate.
     var generateGate = RequestGate()
     var generatePreviewGate = RequestGate()
+    /// The open Generate dialog; the panel's buttons hold their target weakly, so it must be kept alive here.
+    var generateSheet: GenerateSheet?
     /// The self-test turns the pop-up and the dialog off (they would hold the run loop) and drives the same steps directly.
     var presentsGenerateUI = true
     private(set) var currentPane: EditorPane?

@@ -82,6 +82,7 @@ final class GenerateSheet: NSObject, NSTextFieldDelegate, NSTextViewDelegate {
         preview.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         preview.textContainerInset = NSSize(width: 6, height: 6)
         let scroll = NSScrollView()
+        Self.makeScrollable(preview)
         scroll.documentView = preview
         scroll.hasVerticalScroller = true
         scroll.borderType = .lineBorder
@@ -102,7 +103,17 @@ final class GenerateSheet: NSObject, NSTextFieldDelegate, NSTextViewDelegate {
         stack.addArrangedSubview(buttons)
 
         panel.contentView = stack
-        panel.setContentSize(stack.fittingSize)
+        panel.setContentSize(NSSize(width: 520, height: stack.fittingSize.height))
+    }
+
+    /// A bare `NSTextView` has a zero frame and does not track its scroll view, so its text never shows.
+    private static func makeScrollable(_ text: NSTextView) {
+        text.minSize = NSSize(width: 0, height: 0)
+        text.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        text.isVerticallyResizable = true
+        text.isHorizontallyResizable = false
+        text.autoresizingMask = [.width]
+        text.textContainer?.widthTracksTextView = true
     }
 
     private func row(_ label: String, field: NSView) -> NSView {
@@ -110,7 +121,7 @@ final class GenerateSheet: NSObject, NSTextFieldDelegate, NSTextViewDelegate {
         text.alignment = .right
         text.textColor = .secondaryLabelColor
         text.translatesAutoresizingMaskIntoConstraints = false
-        text.widthAnchor.constraint(equalToConstant: 88).isActive = true
+        text.widthAnchor.constraint(equalToConstant: 120).isActive = true
         let row = NSStackView(views: [text, field])
         row.orientation = .horizontal
         row.alignment = .firstBaseline
@@ -123,7 +134,7 @@ final class GenerateSheet: NSObject, NSTextFieldDelegate, NSTextViewDelegate {
         field.identifier = NSUserInterfaceItemIdentifier(id)
         field.delegate = self
         field.translatesAutoresizingMaskIntoConstraints = false
-        field.widthAnchor.constraint(equalToConstant: 382).isActive = true
+        field.widthAnchor.constraint(equalToConstant: 350).isActive = true
         return field
     }
 
@@ -135,12 +146,13 @@ final class GenerateSheet: NSObject, NSTextFieldDelegate, NSTextViewDelegate {
         text.isRichText = false
         text.isAutomaticQuoteSubstitutionEnabled = false
         text.delegate = self
+        Self.makeScrollable(text)
         let scroll = NSScrollView()
         scroll.documentView = text
         scroll.hasVerticalScroller = true
         scroll.borderType = .bezelBorder
         scroll.translatesAutoresizingMaskIntoConstraints = false
-        scroll.widthAnchor.constraint(equalToConstant: 382).isActive = true
+        scroll.widthAnchor.constraint(equalToConstant: 350).isActive = true
         scroll.heightAnchor.constraint(equalToConstant: 56).isActive = true
         return scroll
     }

@@ -192,9 +192,11 @@ extension ProjectWindowController {
             self.previewGenerated(form, base: base, in: pane, show: show)
         }
         sheet.onFinish = { [weak self, weak pane] form in
+            self?.generateSheet = nil
             guard let self, let form else { return }
             self.insertGenerated(form, base: base, in: pane, folder: folder)
         }
+        generateSheet = sheet
         sheet.present(on: window)
     }
 
