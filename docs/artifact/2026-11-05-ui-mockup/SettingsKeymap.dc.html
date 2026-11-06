@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi settings keymap</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.win{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-radius:12px;border:1px solid var(--sep)}
+.dot{width:12px;height:12px;border-radius:50%}
+.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.tabs{display:flex;gap:4px;justify-content:center;padding:8px 14px 0;background:var(--bar);border-bottom:1px solid var(--sep)}
+.tab{width:84px;padding:6px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:8px 8px 0 0;font-size:11px;color:var(--text2)}
+.tab.a{background:var(--accentBg);color:var(--accentT)}
+.form{padding:22px 40px;display:flex;flex-direction:column;gap:12px}
+.fr{display:flex;align-items:center;gap:14px;min-height:28px}
+.fr>label{width:190px;flex:none;text-align:right;color:var(--text2)}
+.pop{height:26px;min-width:150px;border:1px solid var(--sep);border-radius:6px;padding:0 10px;display:inline-flex;align-items:center;justify-content:space-between;gap:10px;background:var(--field)}
+.seg{display:inline-flex;background:var(--hover);border-radius:7px;padding:2px}
+.seg span{padding:2px 14px;border-radius:5px;font-size:12px}
+.seg .a{background:var(--bg);box-shadow:0 0 0 .5px var(--sep),0 1px 2px rgba(0,0,0,.12);font-weight:600}
+.hint{color:var(--text2);font-size:12px}
+.rule{height:1px;background:var(--sep);margin:2px 0}
+.mono{font:12px ui-monospace,"SF Mono",Menlo,monospace}
+</style>
+</helmet>
+<div class="win" style="width: 880px; height: 640px; {{vars}}">
+  <div style="height:36px;display:flex;align-items:center;padding:0 14px;background:var(--bar);flex:none">
+    <div style="display:flex;gap:8px" aria-hidden="true"><div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div></div>
+    <div style="flex:1;text-align:center;font-weight:600">Keymap</div><div style="width:52px"></div>
+  </div>
+  <div class="tabs">
+    <div class="tab"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>General</div>
+    <div class="tab"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 6h14M5 12h10M5 18h14"/></svg>Editor</div>
+    <div class="tab"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>Languages</div>
+    <div class="tab a"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 11h.01M11 11h.01M15 11h.01M8 15h8"/></svg>Keymap</div>
+    <div class="tab"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10l3 2-3 2M12 15h5"/></svg>Terminal</div>
+    <div class="tab"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><circle cx="7" cy="6" r="2"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="9" r="2"/><path d="M7 8v8M17 11c0 4-10 2-10 5"/></svg>Git</div>
+    <div class="tab"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Advanced</div>
+  </div>
+
+  <div class="form">
+    <div class="fr"><label>Keymap</label><span class="pop" style="min-width:170px">Gobi default<span class="hint">&#9662;</span></span></div>
+    <div class="fr"><label>Search</label><span class="pop" style="min-width:300px;color:var(--text2)">Search commands or shortcuts&#8230;</span></div>
+    <div style="border:1px solid var(--sep);border-radius:6px;overflow:hidden;margin:0 0 0 204px">
+      <div style="display:flex;height:28px;align-items:center;padding:0 12px;border-bottom:1px solid var(--sep)"><span style="flex:1">Run</span><span class="mono" style="color:var(--text2)">&#8984;R</span></div>
+      <div style="display:flex;height:28px;align-items:center;padding:0 12px;border-bottom:1px solid var(--sep)"><span style="flex:1">Run Tests</span><span class="mono" style="color:var(--text2)">&#8984;U</span></div>
+      <div style="display:flex;height:28px;align-items:center;padding:0 12px;border-bottom:1px solid var(--sep)"><span style="flex:1">Go to File&#8230;</span><span class="mono" style="color:var(--text2)">&#8984;P</span></div>
+      <div style="display:flex;height:28px;align-items:center;padding:0 12px;border-bottom:1px solid var(--sep)"><span style="flex:1">Go to Definition</span><span class="mono" style="color:var(--text2)">F12</span></div>
+      <div style="display:flex;height:28px;align-items:center;padding:0 12px;border-bottom:1px solid var(--sep)"><span style="flex:1">Find References</span><span class="mono" style="color:var(--text2)">&#8679;F12</span></div>
+      <div style="display:flex;height:28px;align-items:center;padding:0 12px;border-bottom:1px solid var(--sep)"><span style="flex:1">Rename Symbol&#8230;</span><span class="mono" style="color:var(--text2)">F2</span></div>
+      <div style="display:flex;height:28px;align-items:center;padding:0 12px;border-bottom:1px solid var(--sep)"><span style="flex:1">Format Document</span><span class="mono" style="color:var(--text2)">&#8997;&#8679;F</span></div>
+      <div style="display:flex;height:28px;align-items:center;padding:0 12px;border-bottom:1px solid var(--sep)"><span style="flex:1">Toggle Bottom Panel</span><span class="mono" style="color:var(--text2)">&#8984;J</span></div>
+    </div>
+    <div class="fr"><label></label><span class="hint">Select a row and press the new keys to change a shortcut. Conflicts are shown before they are saved.</span></div>
+    <div class="fr"><label></label><button style="height:26px;padding:0 12px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit">Reset to Default</button></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":880,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#FFFFFF',bar:'#F5F5F7',field:'#FFFFFF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)'};
+    const D = {bg:'#1E1E1E',bar:'#323235',field:'#1A1A1C',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

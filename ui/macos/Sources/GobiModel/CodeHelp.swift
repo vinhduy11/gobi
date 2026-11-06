@@ -41,13 +41,29 @@ public struct CompletionItem: Equatable {
     /// The edit gopls wants instead: replace a range with `newText` (the range covers what was already typed).
     public var replaces: TextEdit?
     public var sortText: String
+    /// True when `insertText` / the edit's text is snippet syntax (insertTextFormat 2) with tab stops.
+    public var isSnippet: Bool
 
-    public init(label: String, kind: CompletionKind, detail: String, insertText: String, replaces: TextEdit?, sortText: String) {
+    public init(label: String, kind: CompletionKind, detail: String, insertText: String, replaces: TextEdit?, sortText: String, isSnippet: Bool = false) {
+        self.isSnippet = isSnippet
         self.label = label
         self.kind = kind
         self.detail = detail
         self.insertText = insertText
         self.replaces = replaces
         self.sortText = sortText
+    }
+}
+
+/// A fix or refactoring gopls offers, with the edits it makes (by file URI).
+public struct CodeAction: Equatable {
+    public var title: String
+    public var kind: String
+    public var edits: [String: [TextEdit]]
+
+    public init(title: String, kind: String, edits: [String: [TextEdit]]) {
+        self.title = title
+        self.kind = kind
+        self.edits = edits
     }
 }

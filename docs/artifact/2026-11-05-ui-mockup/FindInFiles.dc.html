@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi find in files</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.board{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--desk);padding:28px;display:flex;gap:28px;align-items:flex-start}
+.cap{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+.panel{background:var(--bg);border:1px solid var(--sep);border-radius:10px;overflow:hidden}
+.tabs{display:flex;gap:2px;padding:0 8px;height:30px;align-items:center;border-bottom:1px solid var(--sep);background:var(--bar)}
+.tab{padding:3px 10px;border-radius:6px;font-size:12px;color:var(--text2)}.tab.a{background:var(--accentBg);color:var(--accentT);font-weight:600}
+.fld{height:26px;border:1px solid var(--sep);border-radius:6px;padding:0 8px;display:flex;align-items:center;background:var(--field);font-size:12px;flex:1;min-width:0}
+.opt{height:26px;min-width:26px;border:1px solid var(--sep);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:var(--text2)}
+.opt.on{background:var(--accentBg);color:var(--accentT);border-color:var(--accent);font-weight:600}
+.btn{height:26px;padding:0 12px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;font-size:12px}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.file{display:flex;align-items:center;gap:8px;height:24px;padding:0 10px;font-weight:600;font-size:12px;background:var(--hover)}
+.hit{display:flex;align-items:center;gap:10px;height:22px;padding:0 10px 0 26px;font:12px ui-monospace,"SF Mono",Menlo,monospace}
+.hit .n{width:34px;color:var(--text2);text-align:right}
+.hit.sel{background:var(--accentBg)}
+mark{background:rgba(255,214,10,.45);color:inherit;border-radius:2px}
+.del{background:rgba(255,59,48,.2);text-decoration:line-through}
+.add{background:rgba(52,199,89,.25)}
+.t2{color:var(--text2)}
+.row{display:flex;gap:6px;align-items:center;padding:6px 10px}
+</style>
+</helmet>
+<div class="board" style="width: 1300px; height: 520px; {{vars}}">
+  <div>
+    <div class="cap">Find tab: search</div>
+    <div class="panel" style="width:700px">
+      <div class="tabs"><span class="tab">Problems</span><span class="tab">Tests</span><span class="tab">Terminal</span><span class="tab">Debug</span><span class="tab">Profiler</span><span class="tab">Git</span><span class="tab">Output</span><span class="tab a">Find</span></div>
+      <div class="row"><div class="fld" title="Dropdown lists the last 10 searches">&#128269; &#9662; sum</div><span class="opt" title="Match case">Aa</span><span class="opt" title="Whole word">W</span><span class="opt on" title="Regular expression">.*</span><div class="fld" style="max-width:150px">*.go</div></div>
+      <div class="row" style="padding-top:0"><div class="fld">total</div><button class="btn">Replace All</button><button class="btn">Stop</button></div>
+      <div class="row t2" style="padding-top:0;font-size:12px">5 results in 2 files &#183; replacing with <b style="color:var(--text)">total</b></div>
+      <div class="file"><span>&#9745;</span><span title="Unchecked files are skipped by Replace All">&#9662;</span>main.go<span class="t2" style="margin-left:auto;font-weight:400">3</span><button class="btn" style="height:20px;padding:0 8px">Replace in File</button></div>
+      <div class="hit"><span class="n">6</span><span><mark>sum</mark> := 0</span></div>
+      <div class="hit sel"><span class="n">8</span><span>    <mark>sum</mark> += item</span><button class="btn" style="height:18px;padding:0 6px;margin-left:auto" title="Replace this match only">Replace</button></div>
+      <div class="hit"><span class="n">10</span><span>return <mark>sum</mark></span></div>
+      <div class="file"><span>&#9744;</span><span>&#9662;</span>internal/stats/stats.go<span class="t2" style="margin-left:auto;font-weight:400">2 &#183; excluded</span><button class="btn" style="height:20px;padding:0 8px">Replace in File</button></div>
+      <div class="hit"><span class="n">14</span><span>func Sum(a []int) int { return <mark>sum</mark>(a) }</span></div>
+      <div class="hit"><span class="n">21</span><span>func <mark>sum</mark>(a []int) (s int) {</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">A match with its replacement</div>
+    <div class="panel" style="width:430px">
+      <div class="hit" style="padding-left:12px"><span class="n">8</span><span>    <span class="del">sum</span><span class="add">total</span> += item</span></div>
+      <div class="row t2" style="font-size:12px">Open files change in the editor (one undo step each). Other files are rewritten on disk. A match that changed since the search is skipped.</div>
+    </div>
+    <div class="cap" style="margin-top:20px">Large results</div>
+    <div class="panel" style="width:430px"><div class="row t2" style="font-size:12px">Stops at 2,000 results: &#8220;Narrow the search, or add a file filter such as *.go&#8221;. Binary files, files over 2 MB, .git and ignored folders are skipped.</div></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1300,"height":520}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {desk:'#E4E4E8',bg:'#FFFFFF',bar:'#F5F5F7',field:'#FFFFFF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',hover:'rgba(0,0,0,.05)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)'};
+    const D = {desk:'#161617',bg:'#1E1E1E',bar:'#2A2A2C',field:'#1A1A1C',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',hover:'rgba(255,255,255,.06)',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

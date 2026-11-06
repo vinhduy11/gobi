@@ -111,6 +111,8 @@ public final class LSPClient: @unchecked Sendable {
                     "synchronization": ["didSave": false],
                     "publishDiagnostics": ["relatedInformation": false],
                     "hover": ["contentFormat": ["plaintext", "markdown"]],
+                    "completion": ["completionItem": ["snippetSupport": true]],
+                    "signatureHelp": ["signatureInformation": ["documentationFormat": ["plaintext"], "parameterInformation": ["labelOffsetSupport": true]]],
                 ],
                 "general": ["positionEncodings": ["utf-16"]],
             ],

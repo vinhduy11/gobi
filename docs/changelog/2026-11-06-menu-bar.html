@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Menu bar to the Menus mock</title>
+<style>body{font:14px/1.5 -apple-system,sans-serif;max-width:860px;margin:2rem auto;padding:0 1rem}h2{margin-top:2rem}code{background:#f2f2f4;padding:0 .25em}</style></head><body>
+<h1>Menu bar to the Menus mock</h1>
+<h2>Specs</h2>
+<p>Make the real menu bar match <code>Menus.dc.html</code>: Gobi, File, Edit, View, Go, Build, Run, Git, Window, Help; Debug merged into Run; Git submenus (Patch, Uncommitted Changes, Current File). Items with a feature are live, the rest stay disabled. New git operations need core support: tag, reset, stash, unstash, abort merge, rebase (abort, continue, skip), patch and apply patch, revert and cherry-pick control, remotes, worktrees, and the operation in progress in the status reply.</p>
+<h2>Actions</h2>
+<ul>
+<li>Core: <code>core/internal/gitsvc/ops.go</code> (with <code>ops_test.go</code>, real temp repositories), git channel kinds 15-35, list reply, field 9, status field 7 (<code>core/internal/daemon/git.go</code>, <code>git_ops_test.go</code>); <code>GIT_EDITOR=true</code> for every git call; run channel <code>build</code> accepts <code>-a</code>.</li>
+<li>GobiModel: <code>MenuSpec</code> rewritten from the mock, <code>MenuAvailability</code> (which item is enabled for a context), <code>LineOrder</code> and <code>RecentFiles</code>, git request/reply cases, <code>GitOperation</code>, <code>GitRemote</code>, <code>GitWorktree</code>; tests for each.</li>
+<li>GobiApp: <code>ProjectMenuActions.swift</code> (git, build, run and edit actions with plain entry points), <code>MenuActions.swift</code> (app delegate actions, Recent Files menu, project window cycling), <code>MainMenuBuilder</code> selector map and item identifiers, <code>validateMenuItem</code> consults <code>MenuAvailability</code>.</li>
+<li>Self-tests: menu bar titles and wiring (<code>--selftest</code>), the git operations (<code>--selftest-git</code>), Build and Stop (<code>--selftest-run</code>), Stop and View Breakpoints while paused (<code>--selftest-debug</code>), Sort/Reverse/Paste as Plain Text with undo.</li>
+<li>Docs: wire protocol, CHANGELOG, mock-gap row, <code>docs/implement/menu-shortcuts.md</code>.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>Where the mock's shortcut collides with a key Gobi already uses, the existing feature keeps it and the new item shows none (listed in menu-shortcuts.md). Debug keeps F5 over the mock's ⌘D.</li>
+<li>The Debug menu is gone, so keymap overrides stored under the old item names no longer apply.</li>
+<li>Dialogs for tag, reset, stash, rebase, remotes and worktrees are plain alert sheets; the mock has none for them yet.</li>
+<li>Patch contains tracked changes only (<code>git diff HEAD</code>); new untracked files are not in it.</li>
+<li>Rebase conflicts are left in progress and reported; Resolve Conflicts only lists the files and opens the first.</li>
+<li>Not built, left disabled: Column Selection Mode (the text view has none), Quick Definition, Notifications, Show History and Annotate (no feature), and every other item the mock shows that has no feature behind it.</li>
+</ul>
+</body></html>

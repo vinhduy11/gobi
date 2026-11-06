@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi toolchain menus</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.board{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--desk);padding:28px;display:flex;gap:28px;align-items:flex-start}
+.cap{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+.menu{background:var(--menu);border:1px solid var(--sep);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.2);padding:5px;width:290px}
+.mi{display:flex;align-items:center;height:24px;padding:0 10px;border-radius:5px;gap:8px;white-space:nowrap}
+.mi .k{margin-left:auto;color:var(--text2);font-size:12px}
+.mi.hot{background:var(--accent);color:#fff}.mi.hot .k{color:#fff}
+.mi.off{color:var(--text2)}
+.chk{width:12px;flex:none}
+.sepline{height:1px;background:var(--sep);margin:4px 6px}
+.btn{height:28px;padding:0 14px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;cursor:default}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.sm{height:24px;padding:0 10px;font-size:12px}
+.sheet{background:var(--bg);border:1px solid var(--sep);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,.25);padding:20px 22px;width:470px}
+.tr{display:flex;align-items:center;gap:10px;height:34px;border-bottom:1px solid var(--sep)}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;font-size:11px;font-weight:600;background:var(--hover);color:var(--text2)}
+.bar{height:6px;border-radius:3px;background:var(--hover);overflow:hidden}
+.bar>div{height:100%;background:var(--accent)}
+.t2{color:var(--text2)}
+.mono{font:12px ui-monospace,"SF Mono",Menlo,monospace}
+.tb{height:36px;border-radius:8px;background:var(--bar);border:1px solid var(--sep);display:flex;align-items:center;gap:8px;padding:0 10px;margin-bottom:10px;width:290px}
+</style>
+</helmet>
+<div class="board" style="width: 1500px; height: 560px; {{vars}}">
+  <div>
+    <div class="cap">Run &#9656; Go Toolchain, and the toolbar popup</div>
+    <div class="tb"><span class="t2">Go version</span><span style="margin-left:auto;border:1px solid var(--sep);border-radius:6px;padding:2px 10px;background:var(--bg)">Go 1.25.10 &#9662;</span></div>
+    <div class="menu">
+      <div class="mi"><span class="chk"></span>Auto (go.mod: go 1.25)</div>
+      <div class="sepline"></div>
+      <div class="mi"><span class="chk"></span>go1.26.5<span class="k">System</span></div>
+      <div class="mi hot"><span class="chk">&#10003;</span>go1.25.10<span class="k">golang.org/dl</span></div>
+      <div class="mi"><span class="chk"></span>go1.24.12<span class="k">golang.org/dl</span></div>
+      <div class="sepline"></div>
+      <div class="mi">Install Version&#8230;</div>
+      <div class="mi">Run on Multiple Go Versions&#8230;</div>
+      <div class="mi">Manage Go Toolchains&#8230;</div>
+    </div>
+    <div class="t2" style="max-width:290px;margin-top:10px;font-size:12px">The check mark is the version this project uses for Run, Test, Debug, Profile and gopls. Changing it restarts gopls. Auto follows the go.mod line; when that version is not installed Gobi offers to install it.</div>
+  </div>
+
+  <div>
+    <div class="cap">Install Version sheet</div>
+    <div class="sheet">
+      <div style="font-weight:700;font-size:15px">Install a Go version</div>
+      <div class="t2" style="margin:4px 0 12px">Downloads from go.dev into ~/sdk. Nothing is installed until you press Install.</div>
+      <div class="tr"><span style="width:90px;font-weight:600">go1.26.6</span><span class="chip">Latest</span><span class="t2" style="flex:1">released this week</span><button class="btn sm pri">Install</button></div>
+      <div class="tr"><span style="width:90px;font-weight:600">go1.25.10</span><span class="t2" style="flex:1">Installed</span><span class="chip">Ready</span></div>
+      <div class="tr"><span style="width:90px;font-weight:600">go1.24.12</span><span class="t2" style="flex:1">Installed</span><span class="chip">Ready</span></div>
+      <div class="tr"><span style="width:90px;font-weight:600">go1.23.12</span><span class="t2" style="flex:1">Older release</span><button class="btn sm">Install</button></div>
+      <div style="margin-top:14px"><div class="t2" style="margin-bottom:6px">Installing go1.26.6&#8230; downloading 71 MB</div><div class="bar"><div style="width:54%"></div></div></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn">Cancel</button><button class="btn">Done</button></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="cap">Update notice and multi-version run</div>
+    <div class="sheet" style="width:420px;padding:14px 16px;margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:10px"><span style="width:8px;height:8px;border-radius:50%;background:#FF9500"></span><div style="flex:1"><div style="font-weight:600">go1.26.6 is available</div><div class="t2" style="font-size:12px">You have go1.26.5. Security fixes are included in patch releases.</div></div><button class="btn sm pri">Install</button><button class="btn sm">Later</button></div>
+    </div>
+    <div class="sheet" style="width:420px">
+      <div style="font-weight:700;font-size:15px">Run on multiple Go versions</div>
+      <div style="display:flex;gap:14px;margin:10px 0"><label><input type="checkbox" checked style="accent-color:var(--accent)"> 1.24</label><label><input type="checkbox" checked style="accent-color:var(--accent)"> 1.25</label><label><input type="checkbox" checked style="accent-color:var(--accent)"> 1.26</label></div>
+      <div class="tr" style="height:28px"><span class="t2" style="width:90px">Version</span><span class="t2" style="width:80px">go vet</span><span class="t2" style="flex:1">go test ./&#8230;</span><span class="t2">Time</span></div>
+      <div class="tr" style="height:28px"><span style="width:90px">go1.24.12</span><span style="width:80px;color:#1E7B34">Passed</span><span style="flex:1">Passed &#183; 42 tests</span><span class="t2">12.4 s</span></div>
+      <div class="tr" style="height:28px"><span style="width:90px">go1.25.10</span><span style="width:80px;color:#1E7B34">Passed</span><span style="flex:1;color:#C4261D">1 failed &#183; TestServer_Run</span><span class="t2">11.8 s</span></div>
+      <div class="tr" style="height:28px;border:0"><span style="width:90px">go1.26.5</span><span class="t2" style="flex:1">Running&#8230;</span></div>
+      <div class="t2" style="font-size:12px;margin-top:10px">last run: 5 min ago</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px"><button class="btn">Clear</button><button class="btn">Stop</button><button class="btn pri">Run</button></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1500,"height":560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {desk:'#E4E4E8',bg:'#FFFFFF',bar:'#F5F5F7',menu:'#F8F8FA',text:'#1D1D1F',text2:'#5C5C61',sep:'#D0D0D5',hover:'rgba(0,0,0,.06)',accent:'#007AFF'};
+    const D = {desk:'#161617',bg:'#2A2A2C',bar:'#323235',menu:'#2C2C2E',text:'#F2F2F7',text2:'#A8A8AE',sep:'#48484C',hover:'rgba(255,255,255,.08)',accent:'#0A84FF'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

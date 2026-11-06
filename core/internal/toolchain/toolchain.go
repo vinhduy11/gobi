@@ -1,5 +1,5 @@
 // Package toolchain locates the Go tools Gobi drives (go, gopls, dlv) and reports their versions.
-// It only reports; it never installs or modifies anything.
+// Finding only reports; installing happens only through Install, which a caller runs after the user agreed.
 package toolchain
 
 import (
@@ -24,6 +24,7 @@ var DefaultTools = []Tool{
 	{Name: "go", VersionArgs: []string{"version"}, Required: true},
 	{Name: "gopls", VersionArgs: []string{"version"}, Required: true},
 	{Name: "dlv", VersionArgs: []string{"version"}},
+	{Name: "git", VersionArgs: []string{"--version"}},
 }
 
 // Report is the result of looking for one tool.
@@ -120,4 +121,49 @@ func versionOf(path string, args []string) (string, error) {
 	}
 	firstLine, _, _ := strings.Cut(strings.TrimSpace(string(output)), "\n")
 	return firstLine, nil
+}
+
+// installPackages are the tools `go install` can fetch.
+var installPackages = map[string]string{
+	"gopls": "golang.org/x/tools/gopls@latest",
+	"dlv":   "github.com/go-delve/delve/cmd/dlv@latest",
+}
+
+// InstallArgs are the arguments to `go` that install name, or false when go install cannot provide it.
+func InstallArgs(name string) ([]string, bool) {
+	pkg, ok := installPackages[name]
+	if !ok {
+		return nil, false
+	}
+	return []string{"install", pkg}, true
+}
+
+// Hint says how to get a tool Gobi cannot install itself.
+func Hint(name string) string {
+	switch name {
+	case "go":
+		return "Install Go from https://go.dev/dl, or run: brew install go"
+	case "git":
+		return "Install the command line tools with: xcode-select --install"
+	}
+	return ""
+}
+
+// Install fetches name with `go install`. It needs go to be installed already.
+func Install(ctx context.Context, finder Finder, name string) error {
+	args, ok := InstallArgs(name)
+	if !ok {
+		return fmt.Errorf("%s cannot be installed automatically. %s", name, Hint(name))
+	}
+	goPath, err := finder.Find("go")
+	if err != nil {
+		return fmt.Errorf("go is needed to install %s, and it was not found. %s", name, Hint("go"))
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, goPath, args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("go %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+	}
+	return nil
 }

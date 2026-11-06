@@ -50,7 +50,8 @@ func serve(args []string) int {
 		return 2
 	}
 
-	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	level := new(slog.LevelVar)
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 	goplsPath, err := toolchain.FromOS().Find("gopls")
 	if err != nil {
 		// Keep serving: clients get an "unavailable" error that says what to install.
@@ -59,6 +60,9 @@ func serve(args []string) int {
 	}
 
 	servers := map[string][]string{"go": {goplsPath}}
+	if dlvPath, err := toolchain.FromOS().Find("dlv"); err == nil {
+		servers["dap"] = []string{dlvPath, "dap", "--listen=127.0.0.1:0"}
+	}
 	if self, err := os.Executable(); err == nil {
 		builtIn := []string{self, "langserver"}
 		servers["json"], servers["markdown"] = builtIn, builtIn
@@ -68,7 +72,7 @@ func serve(args []string) int {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	err = daemon.Run(ctx, daemon.Config{SocketDir: *socketDir, Servers: servers, Logger: logger})
+	err = daemon.Run(ctx, daemon.Config{SocketDir: *socketDir, Servers: servers, Logger: logger, LogLevel: level})
 	switch {
 	case errors.Is(err, ipc.ErrAlreadyRunning):
 		fmt.Fprintln(os.Stderr, "gobid: another instance is already running")

@@ -92,3 +92,65 @@ extension String {
         return result
     }
 }
+
+/// The few facts the inspector shows from a go.mod file.
+public struct GoModFacts: Equatable {
+    public var module = ""
+    public var goVersion = ""
+    public var toolchain = ""
+
+    public var shortName: String { module.split(separator: "/").last.map(String.init) ?? module }
+
+    public static func parse(_ text: String) -> GoModFacts {
+        var facts = GoModFacts()
+        for rawLine in text.split(separator: "\n", omittingEmptySubsequences: true) {
+            var line = rawLine
+            if let comment = commentStart(in: line) { line = line[line.startIndex ..< comment] }
+            let parts = line.split(whereSeparator: { $0 == " " || $0 == "\t" })
+            guard parts.count == 2 else { continue }
+            let value = String(parts[1]).filter { $0 != "\"" }
+            switch parts[0] {
+            case "module": facts.module = value
+            case "go": facts.goVersion = value
+            case "toolchain": facts.toolchain = value
+            default: break
+            }
+        }
+        return facts
+    }
+
+    private static func commentStart(in line: Substring) -> Substring.Index? {
+        var previous: Character?
+        for index in line.indices {
+            if line[index] == "/", previous == "/" { return line.index(before: index) }
+            previous = line[index]
+        }
+        return nil
+    }
+}
+
+public enum ToolbarText {
+    /// "hello › go run ./cmd/hello": what Run would start, or just the project name when there is nothing to run.
+    public static func runTarget(project: String, package: String?) -> String {
+        guard let package else { return project }
+        return project + " › go run " + package
+    }
+
+    public static func status(goplsReady: Bool, goVersion: String?, platform: String) -> String {
+        var parts = [goplsReady ? "gopls ready" : "gopls starting…"]
+        if let goVersion { parts.append("Go " + goVersion) }
+        parts.append(platform)
+        return parts.joined(separator: " · ")
+    }
+
+    /// "darwin/arm64" from uname's system and machine names.
+    public static func platform(system: String, machine: String) -> String {
+        let architecture: String
+        switch machine {
+        case "x86_64": architecture = "amd64"
+        case "aarch64": architecture = "arm64"
+        default: architecture = machine
+        }
+        return system.lowercased() + "/" + architecture
+    }
+}

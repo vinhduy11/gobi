@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi git panel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.board{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--desk);padding:28px;display:flex;gap:28px;align-items:flex-start}
+.cap{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+.panel{background:var(--bg);border:1px solid var(--sep);border-radius:10px;overflow:hidden}
+.menu{background:var(--menu);border:1px solid var(--sep);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.2);padding:5px;width:250px}
+.mi{display:flex;align-items:center;height:24px;padding:0 10px;border-radius:5px;gap:8px;white-space:nowrap}
+.mi .k{margin-left:auto;color:var(--text2);font-size:12px}
+.mi.hot{background:var(--accent);color:#fff}
+.chk{width:12px;flex:none}
+.sepline{height:1px;background:var(--sep);margin:4px 6px}
+.tabs{display:flex;gap:2px;padding:0 8px;height:30px;align-items:center;border-bottom:1px solid var(--sep);background:var(--bar)}
+.tab{padding:3px 10px;border-radius:6px;font-size:12px;color:var(--text2)}
+.tab.a{background:var(--accentBg);color:var(--accentT);font-weight:600}
+.row{display:flex;align-items:center;gap:8px;height:24px;padding:0 10px;font-size:12px}
+.row.sel{background:var(--accentBg);color:var(--accentT)}
+.badge{width:14px;font-weight:700;font-size:11px;text-align:center}
+.t2{color:var(--text2)}
+.mono{font:12px/18px ui-monospace,"SF Mono",Menlo,monospace}
+.add{background:rgba(52,199,89,.16)}.del{background:rgba(255,59,48,.14)}
+.hunk{color:var(--text2);background:var(--hover);padding:0 8px}
+.btn{height:28px;padding:0 14px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;cursor:default}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.fld{border:1px solid var(--sep);border-radius:6px;padding:6px 8px;font-size:12px;background:var(--field)}
+.sheet{background:var(--bg);border:1px solid var(--sep);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,.25);padding:18px 20px}
+.gut{width:26px;position:relative}
+.bar{position:absolute;left:4px;width:4px;border-radius:2px}
+.code{font:13px/22px ui-monospace,"SF Mono",Menlo,monospace;background:var(--bg);border:1px solid var(--sep);border-radius:10px;overflow:hidden}
+.ln{display:flex}.num{width:36px;text-align:right;padding-right:8px;color:var(--text2);font-size:11px}
+</style>
+</helmet>
+<div class="board" style="width: 1500px; height: 800px; {{vars}}">
+  <div>
+    <div class="cap">Git tab: Changes</div>
+    <div class="panel" style="width:640px">
+      <div class="tabs"><span class="tab a">Changes</span><span class="tab">Log</span><span style="margin-left:auto" class="t2">feat/graceful-shutdown &#8593;1</span></div>
+      <div style="display:flex;height:300px">
+        <div style="width:230px;border-right:1px solid var(--sep)">
+          <div class="row t2" style="height:22px;font-weight:600">STAGED</div>
+          <div class="row"><span class="badge" style="color:#1E7B34">A</span>server_test.go</div>
+          <div class="row t2" style="height:22px;font-weight:600">CHANGES</div>
+          <div class="row sel"><span class="badge" style="color:#8A5A00">M</span>server.go</div>
+          <div class="row"><span class="badge" style="color:#1E7B34">?</span>notes.md</div>
+          <div style="padding:10px;display:flex;gap:6px"><button class="btn" style="flex:1">Commit&#8230;</button><button class="btn" title="Fast-forward only">Pull</button><button class="btn">Push &#8593;1</button></div>
+        </div>
+        <div class="mono" style="flex:1;overflow:hidden;padding-top:4px">
+          <div class="hunk">@@ -24,7 +24,9 @@ func (s *Server) Run</div>
+          <div style="padding:0 8px">    errc := make(chan error, 1)</div>
+          <div class="del" style="padding:0 8px">-   go func() { errc &lt;- s.srv.ListenAndServe() }()</div>
+          <div class="add" style="padding:0 8px">+   go func() {</div>
+          <div class="add" style="padding:0 8px">+       errc &lt;- s.srv.ListenAndServe()</div>
+          <div class="add" style="padding:0 8px">+   }()</div>
+          <div style="padding:0 8px">    select {</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap" style="margin-top:20px">Git tab: Log</div>
+    <div class="panel" style="width:640px">
+      <div class="tabs"><span class="tab">Changes</span><span class="tab a">Log</span></div>
+      <div class="row"><span style="width:60px" class="mono t2">a3f9c21</span><span style="flex:1">Shut the server down on context cancel</span><span class="t2">Duy &#183; 2 hours ago</span></div>
+      <div class="row"><span style="width:60px" class="mono t2">91be04d</span><span style="flex:1">Add the list endpoint</span><span class="t2">Duy &#183; yesterday</span></div>
+      <div class="row"><span style="width:60px" class="mono t2">0c77aa3</span><span style="flex:1">Initial commit</span><span class="t2">Duy &#183; 3 days ago</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Branch menu (toolbar)</div>
+    <div class="menu">
+      <div class="mi"><span class="chk"></span>main</div>
+      <div class="mi hot"><span class="chk">&#10003;</span>feat/graceful-shutdown</div>
+      <div class="mi"><span class="chk"></span>fix/typo</div>
+      <div class="sepline"></div>
+      <div class="mi">New Branch&#8230;</div>
+      <div class="mi">Merge into Current Branch&#8230;</div>
+    </div>
+    <div class="cap" style="margin-top:20px">Merge into Current Branch (sheet)</div>
+    <div class="sheet" style="width:420px">
+      <div style="font-weight:700;font-size:15px">Merge into feat/graceful-shutdown</div>
+      <div class="t2" style="margin:4px 0 10px">Brings the commits of the branch you pick into the current one. If they conflict, the merge is undone and nothing changes.</div>
+      <div class="fld">main</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn">Cancel</button><button class="btn pri">Merge</button></div>
+    </div>
+    <div class="cap" style="margin-top:20px">Discard Changes (row context menu)</div>
+    <div class="sheet" style="width:420px">
+      <div style="font-weight:700;font-size:15px">Discard changes to server.go?</div>
+      <div class="t2" style="margin:4px 0 10px">The edits are thrown away and the file goes back to the last commit. This cannot be undone. Untracked files are deleted.</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn">Cancel</button><button class="btn pri" style="background:#C0392B">Discard</button></div>
+    </div>
+    <div class="cap" style="margin-top:20px">Commit</div>
+    <div class="sheet" style="width:420px">
+      <div style="font-weight:700;font-size:15px">Commit changes</div>
+      <div class="t2" style="margin:4px 0 10px">2 files on feat/graceful-shutdown. Staged files are committed; if nothing is staged, all changes are.</div>
+      <div class="fld" style="height:84px">Shut the server down on context cancel</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn">Cancel</button><button class="btn pri">Commit</button></div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Gutter marks</div>
+    <div class="code" style="width:380px">
+      <div class="ln"><div class="gut"></div><div class="num">24</div><div>errc := make(chan error, 1)</div></div>
+      <div class="ln"><div class="gut"><span class="bar" style="top:2px;height:18px;background:#34C759"></span></div><div class="num">25</div><div>go func() {</div></div>
+      <div class="ln"><div class="gut"><span class="bar" style="top:2px;height:18px;background:#34C759"></span></div><div class="num">26</div><div>    errc &lt;- ListenAndServe()</div></div>
+      <div class="ln"><div class="gut"><span class="bar" style="top:2px;height:18px;background:#0A84FF"></span></div><div class="num">27</div><div>}()  <span class="t2">// modified</span></div></div>
+      <div class="ln"><div class="gut"><span style="position:absolute;left:3px;top:-3px;border:5px solid transparent;border-top-color:#FF3B30"></span></div><div class="num">28</div><div>select {</div></div>
+    </div>
+    <div class="t2" style="margin-top:8px;font-size:12px;max-width:380px">Green bar: added line. Blue: changed line. Red mark between lines: lines removed. Names in the Explorer use the same colours (orange modified, green new).</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1500,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {desk:'#E4E4E8',bg:'#FFFFFF',bar:'#F5F5F7',menu:'#F8F8FA',field:'#FFFFFF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D0D0D5',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)'};
+    const D = {desk:'#161617',bg:'#1E1E1E',bar:'#2A2A2C',menu:'#2C2C2E',field:'#1A1A1C',text:'#F2F2F7',text2:'#A8A8AE',sep:'#48484C',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

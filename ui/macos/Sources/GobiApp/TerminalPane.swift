@@ -76,6 +76,30 @@ private final class TerminalTabView: NSView {
     @objc private func closePressed() { onClose?() }
 }
 
+/// A terminal that puts what is selected on the pasteboard when "Copy on select" is on. SwiftTerm announces a changed
+/// selection through the open `selectionChanged`.
+final class GobiTerminalView: TerminalView {
+    var copyOnSelect = false
+    private(set) var selectionEvents = 0
+    private var lastCopied = ""
+
+    override func selectionChanged(source: Terminal) {
+        super.selectionChanged(source: source)
+        selectionEvents += 1
+        copyIfEnabled(getSelection())
+    }
+
+    /// Puts the selected text on the pasteboard when the setting is on and the text is new. Returns whether it did.
+    @discardableResult
+    func copyIfEnabled(_ text: String?) -> Bool {
+        guard copyOnSelect, let text, !text.isEmpty, text != lastCopied else { return false }
+        lastCopied = text
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        return true
+    }
+}
+
 /// The Terminal tab of the bottom panel, as in the mock: one tab per shell with a new, shell menu, split and kill control,
 /// the terminal below, and a notice instead when the project is not trusted. SwiftTerm draws and understands the terminal;
 /// gobid runs the shell on its pty channel.
@@ -85,6 +109,8 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         var client: TerminalClient?
         var title: String
         var exited = false
+        /// A second terminal shown beside this one (Split Terminal).
+        var split: Session?
         /// Text typed before the shell connected, sent once it has.
         var pending: [[UInt8]] = []
         init(view: TerminalView, title: String) { self.view = view; self.title = title }
@@ -97,8 +123,18 @@ final class TerminalPane: NSView, TerminalViewDelegate {
     private let strip = NSStackView()
     private let host = NSView()
     private let notice = NSView()
+    private let findField = NSSearchField()
+    private let findLabel = NSTextField(labelWithString: "")
+    private let findBar = NSStackView()
+    private var findMatches: [TerminalMatch] = []
+    private var findIndex = 0
+    private(set) var shells: [String] = []
+    private var loginShell = ""
     var onTrustRequested: (() -> Void)?
+    var onOpenSettings: (() -> Void)?
 
+    /// The folder the newest shell was asked to start in.
+    private(set) var lastStartFolder = ""
     var sessionCount: Int { sessions.count }
     var titles: [String] { sessions.map(\.title) }
     var isShowingNotice: Bool { !notice.isHidden }
@@ -108,11 +144,13 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         self.trusted = trusted
         super.init(frame: .zero)
         build()
+        if trusted { loadShells() }
+        NotificationCenter.default.addObserver(forName: AppPreferences.didChange, object: nil, queue: .main) { [weak self] _ in self?.applySettingsToAll() }
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    deinit { sessions.forEach { $0.client?.close() } }
+    deinit { sessions.forEach { $0.client?.close(); $0.split?.client?.close() } }
 
     /// What the selected terminal shows, as text, for the self-test.
     var screenText: String {
@@ -154,7 +192,23 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         host.translatesAutoresizingMaskIntoConstraints = false
         let rule = NSBox()
         rule.boxType = .separator
-        let column = NSStackView(views: [strip, rule, host])
+        findField.placeholderString = "Find in Terminal"
+        findField.target = self
+        findField.action = #selector(findEntered)
+        findField.sendsSearchStringImmediately = true
+        findField.controlSize = .small
+        findField.widthAnchor.constraint(equalToConstant: 220).isActive = true
+        findLabel.textColor = .secondaryLabelColor
+        findLabel.font = NSFont.systemFont(ofSize: 12)
+        let previous = NSButton(title: "↑", target: self, action: #selector(findPrevious))
+        let next = NSButton(title: "↓", target: self, action: #selector(findNext))
+        let done = NSButton(title: "Done", target: self, action: #selector(closeFind))
+        for b in [previous, next, done] { b.bezelStyle = .rounded; b.controlSize = .small }
+        findBar.setViews([findField, findLabel, previous, next, NSView(), done], in: .leading)
+        findBar.spacing = 8
+        findBar.edgeInsets = NSEdgeInsets(top: 4, left: 10, bottom: 4, right: 10)
+        findBar.isHidden = true
+        let column = NSStackView(views: [strip, rule, findBar, host])
         column.orientation = .vertical
         column.spacing = 0
         column.translatesAutoresizingMaskIntoConstraints = false
@@ -166,7 +220,7 @@ final class TerminalPane: NSView, TerminalViewDelegate {
             column.leadingAnchor.constraint(equalTo: leadingAnchor), column.trailingAnchor.constraint(equalTo: trailingAnchor),
             column.topAnchor.constraint(equalTo: topAnchor), column.bottomAnchor.constraint(equalTo: bottomAnchor),
             strip.widthAnchor.constraint(equalTo: column.widthAnchor), rule.widthAnchor.constraint(equalTo: column.widthAnchor),
-            host.widthAnchor.constraint(equalTo: column.widthAnchor),
+            host.widthAnchor.constraint(equalTo: column.widthAnchor), findBar.widthAnchor.constraint(equalTo: column.widthAnchor),
             notice.leadingAnchor.constraint(equalTo: leadingAnchor), notice.trailingAnchor.constraint(equalTo: trailingAnchor),
             notice.topAnchor.constraint(equalTo: topAnchor), notice.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
@@ -184,7 +238,12 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         text.preferredMaxLayoutWidth = 560
         let trust = NSButton(title: "Trust Project…", target: self, action: #selector(trustPressed))
         trust.keyEquivalent = "\r"
-        let stack = NSStackView(views: [title, text, trust])
+        let learn = NSButton(title: "Learn More", target: self, action: #selector(learnMorePressed))
+        learn.isBordered = false
+        learn.contentTintColor = .controlAccentColor
+        let buttons = NSStackView(views: [trust, learn])
+        buttons.spacing = 12
+        let stack = NSStackView(views: [title, text, buttons])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
@@ -198,6 +257,16 @@ final class TerminalPane: NSView, TerminalViewDelegate {
     }
 
     @objc private func trustPressed() { onTrustRequested?() }
+
+    /// Restricted Mode explained (Terminal extras mock).
+    @objc private func learnMorePressed() {
+        let alert = NSAlert()
+        alert.messageText = "About Restricted Mode"
+        alert.informativeText = "A project you have not trusted can put commands in its files: go generate, cgo, tests, the toolchain line in go.mod.\n\nUntil you trust it, Gobi still edits, navigates and shows diagnostics, but turns off Run, Debug, Test, Profile, terminals, Git and environment profiles."
+        alert.addButton(withTitle: "Close")
+        alert.addButton(withTitle: "Trust Project…")
+        if alert.runModal() == .alertSecondButtonReturn { onTrustRequested?() }
+    }
 
     private func rebuildStrip() {
         strip.arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -246,7 +315,7 @@ final class TerminalPane: NSView, TerminalViewDelegate {
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        sessions.forEach { applyPalette(to: $0.view) }
+        sessions.forEach { applyPalette(to: $0.view); if let split = $0.split { applyPalette(to: split.view) } }
     }
 
     // MARK: sessions
@@ -260,20 +329,31 @@ final class TerminalPane: NSView, TerminalViewDelegate {
 
     func newTerminal() {
         guard trusted else { return }
-        let view = TerminalView(frame: NSRect(x: 0, y: 0, width: 600, height: 200))
-        view.terminalDelegate = self
-        view.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        applyPalette(to: view)
-        let title = TerminalTitle.make(shellPath: ProcessInfo.processInfo.environment["SHELL"], folder: root.lastPathComponent)
-        let session = Session(view: view, title: title)
+        let session = makeSession()
         sessions.append(session)
         select(sessions.count - 1)
-        let rootPath = root.path
+    }
+
+    /// A terminal view and its shell, connecting in the background.
+    private func makeSession() -> Session {
+        let view = GobiTerminalView(frame: NSRect(x: 0, y: 0, width: 600, height: 200))
+        view.terminalDelegate = self
+        // The library fixes the scrollback when the buffer is made, so it is set on a fresh view only.
+        view.getTerminal().options.scrollback = AppPreferences.terminal.scrollback
+        view.getTerminal().resetNormalBuffer()
+        applySettings(to: view)
+        applyPalette(to: view)
+        let chosen = ShellChoice.effective(selected: WindowSettings.terminalShell, shells: shells, login: loginShell)
+        let title = TerminalTitle.make(shellPath: chosen.isEmpty ? ProcessInfo.processInfo.environment["SHELL"] : chosen, folder: root.lastPathComponent)
+        let session = Session(view: view, title: title)
+        let rootPath = AppPreferences.terminal.startIn.folder(project: root.path, home: NSHomeDirectory())
+        lastStartFolder = rootPath
+        let shell = WindowSettings.terminalShell
         DispatchQueue.global(qos: .userInitiated).async { [weak self, weak view] in
             do {
-                let client = try TerminalClient(workspaceRoot: rootPath, trusted: true)
+                let client = try TerminalClient(workspaceRoot: rootPath, trusted: true, shell: shell)
                 DispatchQueue.main.async {
-                    guard let self, let view, self.sessions.contains(where: { $0.view === view }) else { client.close(); return }
+                    guard let self, let view, self.owns(view) else { client.close(); return }
                     session.client = client
                     for queued in session.pending { client.send(queued) }
                     session.pending.removeAll()
@@ -293,31 +373,111 @@ final class TerminalPane: NSView, TerminalViewDelegate {
                 DispatchQueue.main.async { view?.feed(text: "Cannot start a terminal: \(error)\r\n") }
             }
         }
+        return session
+    }
+
+    /// Font size, cursor and Option key from Settings > Terminal.
+    private func applySettings(to view: TerminalView) {
+        let settings = AppPreferences.terminal
+        view.font = NSFont.monospacedSystemFont(ofSize: CGFloat(settings.fontSize), weight: .regular)
+        view.optionAsMetaKey = settings.optionAsMeta
+        (view as? GobiTerminalView)?.copyOnSelect = settings.copyOnSelect
+        let style: CursorStyle
+        switch (settings.cursor, settings.blink) {
+        case (.block, true): style = .blinkBlock
+        case (.block, false): style = .steadyBlock
+        case (.bar, true): style = .blinkBar
+        case (.bar, false): style = .steadyBar
+        case (.underline, true): style = .blinkUnderline
+        case (.underline, false): style = .steadyUnderline
+        }
+        view.getTerminal().setCursorStyle(style)
+    }
+
+    private func applySettingsToAll() {
+        for session in sessions {
+            applySettings(to: session.view)
+            if let split = session.split { applySettings(to: split.view) }
+        }
+    }
+
+    /// For the self-test: the font size and Option setting the focused terminal has.
+    var terminalAppearance: (fontSize: Int, optionAsMeta: Bool)? {
+        guard sessions.indices.contains(selected) else { return nil }
+        let view = sessions[selected].view
+        return (Int(view.font.pointSize), view.optionAsMetaKey)
+    }
+
+    /// For the self-test: the scrollback the selected terminal was made with, and what copy on select has seen.
+    var scrollbackLines: Int? { sessions.indices.contains(selected) ? sessions[selected].view.getTerminal().options.scrollback : nil }
+    var copyOnSelectState: (enabled: Bool, selectionEvents: Int)? {
+        guard sessions.indices.contains(selected), let view = sessions[selected].view as? GobiTerminalView else { return nil }
+        return (view.copyOnSelect, view.selectionEvents)
+    }
+
+    /// For the self-test: selects the whole buffer, which makes SwiftTerm announce a selection.
+    func selectAllForTest() { if sessions.indices.contains(selected) { sessions[selected].view.selectAll(nil) } }
+
+    /// For the self-test: hands the terminal a selected text the way its selection callback does.
+    func copySelectionForTest(_ text: String) -> Bool { (sessions.indices.contains(selected) ? sessions[selected].view as? GobiTerminalView : nil)?.copyIfEnabled(text) ?? false }
+
+    private func owns(_ view: TerminalView) -> Bool { sessions.contains { $0.view === view || $0.split?.view === view } }
+
+    private func loadShells() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let client = try? ControlClient.connect() else { return }
+            defer { client.close() }
+            guard let found = try? client.terminalShells() else { return }
+            DispatchQueue.main.async { self?.shells = found.shells; self?.loginShell = found.login }
+        }
     }
 
     private func select(_ index: Int) {
         guard sessions.indices.contains(index) else { return }
         selected = index
         host.subviews.forEach { $0.removeFromSuperview() }
-        let view = sessions[index].view
-        view.translatesAutoresizingMaskIntoConstraints = false
-        host.addSubview(view)
+        let session = sessions[index]
+        let content: NSView
+        if let split = session.split {
+            let pair = NSSplitView()
+            pair.isVertical = true
+            pair.dividerStyle = .thin
+            pair.addArrangedSubview(session.view)
+            pair.addArrangedSubview(split.view)
+            content = pair
+        } else {
+            content = session.view
+        }
+        content.translatesAutoresizingMaskIntoConstraints = false
+        host.addSubview(content)
         NSLayoutConstraint.activate([
-            view.leadingAnchor.constraint(equalTo: host.leadingAnchor), view.trailingAnchor.constraint(equalTo: host.trailingAnchor),
-            view.topAnchor.constraint(equalTo: host.topAnchor), view.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+            content.leadingAnchor.constraint(equalTo: host.leadingAnchor), content.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+            content.topAnchor.constraint(equalTo: host.topAnchor), content.bottomAnchor.constraint(equalTo: host.bottomAnchor),
         ])
         rebuildStrip()
-        window?.makeFirstResponder(view)
+        window?.makeFirstResponder(session.view)
     }
+
+    /// Split Terminal (⌘\): a second shell beside the selected one, in the same tab.
+    func splitSelected() {
+        guard trusted, sessions.indices.contains(selected), sessions[selected].split == nil else { return }
+        sessions[selected].split = makeSession()
+        select(selected)
+        if let split = sessions[selected].split { window?.makeFirstResponder(split.view) }
+    }
+
+    var isSplit: Bool { sessions.indices.contains(selected) && sessions[selected].split != nil }
 
     @objc private func killPressed() { close(at: selected) }
 
-    /// Ends the shell of tab `index` and removes the tab; the neighbour takes over.
+    /// Ends the shell of tab `index` (and its split) and removes the tab; the neighbour takes over.
     private func close(at index: Int) {
         guard sessions.indices.contains(index) else { return }
         let session = sessions.remove(at: index)
-        session.client?.close()
-        session.view.removeFromSuperview()
+        for part in [session, session.split].compactMap({ $0 }) {
+            part.client?.close()
+            part.view.removeFromSuperview()
+        }
         if sessions.isEmpty {
             host.subviews.forEach { $0.removeFromSuperview() }
             rebuildStrip()
@@ -326,30 +486,136 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         }
     }
 
-    /// The menu of the mock: new, split, kill, clear and the shell. Only new, kill and clear are live.
+    /// The menu of the mock: new, split, kill, clear, find, the shells and the settings.
     @objc private func menuPressed(_ sender: NSButton) {
-        let menu = NSMenu()
-        menu.addItem(withTitle: "New Terminal", action: #selector(newPressed), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Split Terminal", action: nil, keyEquivalent: "")
-        menu.addItem(withTitle: "Kill Terminal", action: #selector(killPressed), keyEquivalent: "").target = self
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Clear", action: #selector(clearPressed), keyEquivalent: "").target = self
-        menu.addItem(.separator())
-        let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/sh"
-        let current = menu.addItem(withTitle: "\((shell as NSString).lastPathComponent) (login shell)", action: nil, keyEquivalent: "")
-        current.state = .on
+        let menu = terminalMenu()
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height), in: sender)
+    }
+
+    func terminalMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        func add(_ title: String, _ shortcut: String, _ action: Selector?) {
+            let item = menu.addItem(withTitle: title, action: action, keyEquivalent: "")
+            item.target = self
+            item.isEnabled = action != nil
+            MainMenuBuilder.applyShortcut(shortcut, to: item)   // shown in the menu; this menu is not in the menu bar, so the keys act only through the pane
+        }
+        add("New Terminal", "⌃⇧`", #selector(newPressed))
+        add("Split Terminal", "⌘\\", isSplit ? nil : #selector(splitPressed))
+        add("Kill Terminal", "⌃D", #selector(killPressed))
+        menu.addItem(.separator())
+        add("Clear", "⌘K", #selector(clearPressed))
+        add("Find in Terminal", "⌘F", #selector(showFind))
+        menu.addItem(.separator())
+        for choice in ShellChoice.menuItems(shells: shells, login: loginShell.isEmpty ? (ProcessInfo.processInfo.environment["SHELL"] ?? "") : loginShell, selected: WindowSettings.terminalShell) {
+            let item = menu.addItem(withTitle: choice.title, action: #selector(shellChosen(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = choice.path
+            item.state = choice.isChecked ? .on : .off
+            item.toolTip = choice.path
+        }
+        menu.addItem(.separator())
+        let settings = menu.addItem(withTitle: "Terminal settings…", action: #selector(settingsPressed), keyEquivalent: "")
+        settings.target = self
+        return menu
+    }
+
+    @objc private func splitPressed() { splitSelected() }
+    @objc private func settingsPressed() { onOpenSettings?() }
+
+    /// Choosing a shell is remembered; it applies to terminals opened from now on.
+    @objc private func shellChosen(_ sender: NSMenuItem) {
+        guard let path = sender.representedObject as? String else { return }
+        WindowSettings.terminalShell = path == loginShell ? "" : path
     }
 
     @objc private func clearPressed() {
         guard sessions.indices.contains(selected) else { return }
-        sessions[selected].view.feed(text: "\u{1b}[2J\u{1b}[3J\u{1b}[H")
-        sessions[selected].client?.send([0x0c])   // the shell redraws its prompt
+        let session = focusedSession ?? sessions[selected]
+        session.view.feed(text: "\u{1b}[2J\u{1b}[3J\u{1b}[H")
+        session.client?.send([0x0c])   // the shell redraws its prompt
+    }
+
+    /// The terminal that has the keyboard (the selected tab's main one or its split).
+    private var focusedSession: Session? {
+        guard sessions.indices.contains(selected) else { return nil }
+        let responder = window?.firstResponder
+        let current = sessions[selected]
+        if let split = current.split, responder === split.view { return split }
+        return current
+    }
+
+    // MARK: find
+
+    @objc func showFind() {
+        guard trusted else { return }
+        findBar.isHidden = false
+        window?.makeFirstResponder(findField)
+        findEntered()
+    }
+
+    @objc private func closeFind() {
+        findBar.isHidden = true
+        findMatches = []
+        if let session = focusedSession ?? sessions.first { window?.makeFirstResponder(session.view) }
+    }
+
+    @objc private func findEntered() {
+        guard let session = focusedSession else { return }
+        let text = String(decoding: session.view.getTerminal().getBufferAsData(), as: UTF8.self)
+        findMatches = TerminalFind.matches(in: text, query: findField.stringValue)
+        findIndex = max(0, findMatches.count - 1)   // start from the newest, at the bottom
+        showFindMatch(in: session, totalLines: text.split(separator: "\n", omittingEmptySubsequences: false).count)
+    }
+
+    @objc private func findNext() { stepFind(forward: true) }
+    @objc private func findPrevious() { stepFind(forward: false) }
+
+    private func stepFind(forward: Bool) {
+        guard let session = focusedSession, !findMatches.isEmpty else { return }
+        findIndex = TerminalFind.next(from: findIndex, count: findMatches.count, forward: forward)
+        let text = String(decoding: session.view.getTerminal().getBufferAsData(), as: UTF8.self)
+        showFindMatch(in: session, totalLines: text.split(separator: "\n", omittingEmptySubsequences: false).count)
+    }
+
+    private func showFindMatch(in session: Session, totalLines: Int) {
+        findLabel.stringValue = findField.stringValue.isEmpty ? "" : TerminalFind.label(index: findIndex, count: findMatches.count)
+        guard findMatches.indices.contains(findIndex) else { return }
+        let rows = session.view.getTerminal().rows
+        guard totalLines > rows else { return }   // nothing to scroll
+        session.view.scroll(toPosition: TerminalFind.scrollPosition(line: findMatches[findIndex].line, totalLines: totalLines, visibleLines: rows))
+    }
+
+    var findStatus: String { findLabel.stringValue }
+    var isFindVisible: Bool { !findBar.isHidden }
+    func search(_ text: String) { findField.stringValue = text; findEntered() }
+
+    /// Keys that mean something only inside a terminal: ⌘\ split, ⌘K clear, ⌘F find, Esc to close the find bar.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let inTerminal = focusedSession.map { window?.firstResponder === $0.view } ?? false
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if inTerminal, flags == .command {
+            switch event.charactersIgnoringModifiers {
+            case "\\": splitSelected(); return true
+            case "k": clearPressed(); return true
+            case "f": showFind(); return true
+            default: break
+            }
+        }
+        if !findBar.isHidden, event.keyCode == 53, flags.isEmpty { closeFind(); return true }
+        return super.performKeyEquivalent(with: event)
     }
 
     // MARK: TerminalViewDelegate
 
-    private func session(for view: TerminalView) -> Session? { sessions.first { $0.view === view } }
+    private func session(for view: TerminalView) -> Session? {
+        for session in sessions {
+            if session.view === view { return session }
+            if let split = session.split, split.view === view { return split }
+        }
+        return nil
+    }
 
     func send(source: TerminalView, data: ArraySlice<UInt8>) { session(for: source)?.client?.send(Array(data)) }
     func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) { session(for: source)?.client?.resize(columns: newCols, rows: newRows) }
@@ -359,7 +625,7 @@ final class TerminalPane: NSView, TerminalViewDelegate {
     func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
         if let url = URL(string: link), ["http", "https"].contains(url.scheme) { NSWorkspace.shared.open(url) }
     }
-    func bell(source: TerminalView) { NSSound.beep() }
+    func bell(source: TerminalView) { if AppPreferences.terminal.bell == .sound { NSSound.beep() } }
     func clipboardCopy(source: TerminalView, content: Data) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setData(content, forType: .string)

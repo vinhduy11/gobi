@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Live settings and git merge</title></head>
+<body>
+<h1>Live settings and git merge</h1>
+<h2>Specs</h2>
+<p>Build the Settings controls that were drawn disabled and have a real local feature behind them (terminal scrollback, start folder, copy on select, quit confirmation, git path, auto-fetch, gopls path, large-file limit), and add Merge into Current Branch to the git channel and the branch menu.</p>
+<h2>Actions</h2>
+<ul>
+<li>Core: <code>gitsvc.Merge</code> (no editor, abort on conflict), <code>gitsvc.Fetch</code>, <code>gitsvc.SetExecutable</code>; git channel kinds 13 and 14; handshake field 9 <code>tool</code> (git path, gopls path) with an admit check; the lsp registry keys a server by its tool path.</li>
+<li>GobiModel: terminal scrollback, start folder, copy on select; confirm quit; git path and fetch interval; advanced settings (gopls path, line limit); wire encodings; tests in LiveSettingsTests, GitStatusTests, WireTests.</li>
+<li>App: settings panes, copy-on-select terminal view, new-terminal scrollback and start folder, quit confirmation, fetch timer, merge menu item and confirmation, editor line limit; self-test checks for each.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>The git path is process-wide in gobid (last git session wins) rather than per session: one person owns the daemon and one setting.</li>
+<li>SwiftTerm fixes scrollback when a view is made, so the setting applies to new terminals only; resetting an open buffer would drop its content.</li>
+<li>Copy on select hooks the open <code>selectionChanged</code> callback; no public selection API exists to drive a real drag in the self-test.</li>
+<li>Merge uses a pick-a-branch confirmation sheet and aborts on conflict instead of leaving a half-merged tree; conflict resolution in the editor is not built.</li>
+</ul>
+</body></html>

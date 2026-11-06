@@ -98,6 +98,89 @@ public final class ControlClient: @unchecked Sendable {
         try call("project/open") { $0.string(1, path) }
     }
 
+    /// Which of the tools Gobi uses are installed.
+    public func toolsCheck() throws -> [ToolStatus] {
+        ToolStatus.parse(try callRaw("tools/check") { _ in }.result)
+    }
+
+    /// Installs a tool with `go install`. Takes a while and uses the network: ask the user first.
+    public func toolsInstall(_ name: String) throws {
+        _ = try callRaw("tools/install") { $0.string(1, name) }
+    }
+
+    /// The Go releases that can be installed (newest patch of each recent minor), newest first. Needs the network.
+    public func toolchainAvailable() throws -> [String] {
+        try callRaw("toolchain/available") { _ in }.result.filter { $0.number == 1 }.map(\.string)
+    }
+
+    /// Downloads a Go version into ~/sdk. Slow and uses the network: ask the user first.
+    public func toolchainInstall(_ version: String) throws {
+        _ = try callRaw("toolchain/install") { $0.string(1, version) }
+    }
+
+    /// Reads a .pprof file (core/internal/pprof): sample types, call tree and top table. `sampleIndex` nil uses the profile's default.
+    public func profileLoad(path: String, sampleIndex: Int? = nil) throws -> ProfileData {
+        try ProfileData.parse(try callRaw("profile/load") { $0.string(1, path); $0.string(2, sampleIndex.map(String.init) ?? "") }.result)
+    }
+
+    /// Per-line cost of one function of a profile (profile/lines).
+    public func profileLines(path: String, sampleIndex: Int?, function: String) throws -> ProfileLines {
+        try ProfileLines.parse(try callRaw("profile/lines") { $0.string(1, path); $0.string(2, sampleIndex.map(String.init) ?? ""); $0.string(3, function) }.result)
+    }
+
+    /// Compares two profile files per function (profile/diff). `type` empty uses the base profile's default sample type.
+    public func profileDiff(base: String, other: String, type: String = "") throws -> ProfileDiff {
+        try ProfileDiff.parse(try callRaw("profile/diff") { $0.string(1, base); $0.string(2, other); $0.string(3, type) }.result)
+    }
+
+    /// Downloads a profile from a program on this machine that serves net/http/pprof, and writes it to `output` (.pprof).
+    public func profileCapture(address: String, kind: String, seconds: Int, output: String) throws {
+        _ = try callRaw("profile/capture") { $0.string(1, address); $0.string(2, kind); $0.string(3, String(seconds)); $0.string(4, output) }
+    }
+
+    /// The shells /etc/shells lists, and the login shell ($SHELL of gobid).
+    public func terminalShells() throws -> (shells: [String], login: String) {
+        let result = try callRaw("terminal/shells") { _ in }.result
+        return (result.filter { $0.number == 1 }.map(\.string), result.first { $0.number == 2 }?.string ?? "")
+    }
+
+    public struct DaemonStatus: Equatable, Sendable {
+        public let pid: Int
+        public let runtime: String
+        public let logLevel: String
+        public let startedAt: Int
+    }
+
+    /// What gobid reports about itself: process id, Go runtime, log level and start time.
+    public func daemonStatus() throws -> DaemonStatus {
+        let fields = try callRaw("daemon/status") { _ in }.result
+        func number(_ n: Int) -> Int { Int(fields.first { $0.number == n }?.uint ?? 0) }
+        func text(_ n: Int) -> String { fields.first { $0.number == n }?.string ?? "" }
+        return DaemonStatus(pid: number(1), runtime: text(2), logLevel: text(3), startedAt: number(4))
+    }
+
+    /// `debug`, `info`, `warn` or `error`.
+    public func setLogLevel(_ level: String) throws { _ = try callRaw("daemon/loglevel") { $0.string(1, level) } }
+
+    /// Shuts gobid down; the next connection starts a new one.
+    public func stopDaemon() throws { _ = try callRaw("daemon/stop") { _ in } }
+
+    /// Find in Files over a project folder. Blocks; run it off the main thread. A replacement, when given, is worked out for every hit.
+    public func searchFiles(root: String, query: String, regex: Bool, caseSensitive: Bool, wholeWord: Bool, include: [String], replacement: String?, limit: Int = 0) throws -> SearchResults {
+        let reply = try callRaw("search/files") {
+            $0.string(1, query)
+            $0.bool(2, regex)
+            $0.bool(3, caseSensitive)
+            $0.bool(4, wholeWord)
+            $0.string(5, replacement ?? "")
+            $0.bool(6, replacement != nil)
+            for glob in include { $0.string(7, glob) }
+            $0.uint(8, UInt64(limit))
+            $0.string(9, root)
+        }
+        return try SearchResults.parse(reply.result)
+    }
+
     private func callRaw(_ method: String, _ params: (inout WireWriter) -> Void) throws -> ControlWire.Reply {
         let id = nextID
         nextID += 1

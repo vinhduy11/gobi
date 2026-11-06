@@ -37,25 +37,27 @@ body{margin:0}
 </helmet>
 <div class="win" style="width: 1440px; height: 900px; {{vars}}">
 
-  <div class="tb">
-    <div style="display:flex;gap:8px;margin-right:14px" aria-hidden="true">
+  <!-- Toolbar (IntelliJ style: flat icon buttons, project and branch on the left, run configuration with Run/Debug/Profile) -->
+  <div class="tb" style="height:44px;gap:4px">
+    <div style="display:flex;gap:8px;margin-right:12px" aria-hidden="true">
       <div class="dot" style="background:#FF5F57"></div><div class="dot" style="background:#FEBC2E"></div><div class="dot" style="background:#28C840"></div>
     </div>
-    <button class="btn" aria-label="Toggle sidebar"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6 3v10"/></svg></button>
-    <button class="btn" aria-label="Stop"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><rect x="4" y="4" width="8" height="8" rx="1.5"/></svg>Stop</button>
-    <button class="btn on" aria-label="Debug"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M8 5a3 3 0 013 3v2a3 3 0 01-6 0V8a3 3 0 013-3zM5 8H2m12 0h-3M5 11l-2 2m8-2l2 2M6 4L5 2m5 2l1-2"/></svg>Debug</button>
-    <button class="btn" aria-label="Profile"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M2.5 11a5.5 5.5 0 1111 0M8 11l2.5-3.5"/></svg>Profile</button>
-    <button class="btn" style="border:1px solid var(--sep);margin-left:6px" aria-label="Run configuration: hello"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>hello &#8250; dlv debug ./cmd/hello</button>
-    <button class="btn" style="border:1px solid var(--sep)" aria-label="Environment: local"><span style="width:8px;height:8px;border-radius:50%;background:#34C759" aria-hidden="true"></span>local &#9662;</button>
-    <button class="btn" style="border:1px solid var(--sep)" aria-label="Go toolchain: auto from go.mod">Go 1.26.5 &#9662;</button>
-    <div style="flex:1;display:flex;justify-content:center">
-      <div style="display:flex;align-items:center;gap:8px;height:28px;padding:0 14px;border-radius:14px;background:var(--hover);font-size:12px">
-        <span style="width:8px;height:8px;border-radius:50%;background:#FF9F0A" aria-hidden="true"></span>
-        <span>Paused at breakpoint</span><span class="t2">&#183; server.go:28</span>
-      </div>
-    </div>
-    <button class="btn" style="border:1px solid var(--sep);min-width:200px;justify-content:flex-start;color:var(--text2)" aria-label="Search and commands"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg>Search&#8230;<span style="margin-left:auto">&#8984;&#8679;P</span></button>
+    <button class="btn" style="width:30px;padding:0" aria-label="Toggle sidebar"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6 3v10"/></svg></button>
+    <button class="btn" style="font-weight:600;gap:4px" aria-label="Project: hello">hello<svg class="ic" style="width:10px;height:10px" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg></button>
+    <button class="btn t2" style="gap:4px" aria-label="Branch: main"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><circle cx="5" cy="3.5" r="1.5"/><circle cx="5" cy="12.5" r="1.5"/><circle cx="11" cy="6" r="1.5"/><path d="M5 5v6M11 7.5c0 3-6 1.5-6 4"/></svg>main<svg class="ic" style="width:10px;height:10px" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg></button>
+    <div style="flex:1"></div>
+    <button class="btn" style="gap:6px;padding:0 8px" aria-label="Run configuration: go run ./cmd/hello"><svg class="ic" style="color:var(--text2)" aria-hidden="true" viewBox="0 0 16 16"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>go run ./cmd/hello<svg class="ic" style="width:10px;height:10px" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg></button>
+    <button class="btn" style="width:30px;padding:0;color:#FF3B30" aria-label="Stop"><svg class="ic" style="width:16px;height:16px;fill:currentColor;stroke:none" aria-hidden="true" viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" rx="1.5"/></svg></button>
+    <button class="btn" style="width:30px;padding:0;opacity:.45" aria-label="Debug (running)"><svg class="ic" style="width:18px;height:18px" aria-hidden="true" viewBox="0 0 16 16"><path d="M8 5a3 3 0 013 3v2a3 3 0 01-6 0V8a3 3 0 013-3zM5 8H2m12 0h-3M5 11l-2 2m8-2l2 2M6 4L5 2m5 2l1-2"/></svg></button>
+    <button class="btn" style="width:30px;padding:0" aria-label="Profile"><svg class="ic" style="width:18px;height:18px" aria-hidden="true" viewBox="0 0 16 16"><path d="M2.5 11a5.5 5.5 0 1111 0M8 11l2.5-3.5"/></svg></button>
+    <div style="width:1px;height:18px;background:var(--sep);margin:0 6px" aria-hidden="true"></div>
+    <button class="btn t2" style="gap:6px" aria-label="Environment: local"><span style="width:8px;height:8px;border-radius:50%;background:#34C759" aria-hidden="true"></span>local<svg class="ic" style="width:10px;height:10px" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg></button>
+    <button class="btn t2" style="gap:4px" aria-label="Go toolchain: auto from go.mod">Go 1.26.5<svg class="ic" style="width:10px;height:10px" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg></button>
+    <div style="flex:1"></div>
+    <button class="btn" style="width:30px;padding:0" aria-label="Search and commands (Shift Command P)"><svg class="ic" style="width:18px;height:18px" aria-hidden="true" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg></button>
+    <button class="btn" style="width:30px;padding:0" aria-label="Toggle inspector"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M10 3v10"/></svg></button>
   </div>
+
 
   <div style="flex:1;display:flex;min-height:0">
 

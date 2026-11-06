@@ -87,7 +87,16 @@ final class StatusBarView: NSView {
         goVersion.stringValue = go.map { "Go " + $0 } ?? ""
     }
 
+    /// The service and language labels for the open file ("JSON · built-in language service" and "JSON · 1 problem").
+    func set(branch text: String?, service: String, languageLabel: String) {
+        branch.stringValue = text.map { "⎇ " + $0 } ?? ""
+        branch.isHidden = text == nil
+        gopls.stringValue = service
+        goVersion.stringValue = languageLabel
+    }
+
     func set(note text: String) { note.stringValue = text }
+    var noteText: String { note.stringValue }
 
     func set(caret text: String?, lineEnding ending: String?) {
         caret.stringValue = text ?? ""
@@ -148,14 +157,11 @@ final class PanelTabButton: NSButton {
 /// The bottom panel of the mock: tab row (Problems, Tests, Terminal, Debug, Profiler, Git, Output) over the active tab's
 /// content. Problems is a list; the tabs whose features are not built yet say so.
 final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate {
-    static let tabNames = ["Problems", "Tests", "Terminal", "Debug", "Profiler", "Git", "Output"]
+    static let tabNames = ["Problems", "Tests", "Terminal", "Debug", "Profiler", "Git", "Output", "Find"]
     private static let notBuilt = [
-        "Tests": "The test runner arrives with Run and Test.",
         "Terminal": "The terminal arrives next.",
         "Debug": "Debugging with dlv comes in a later slice.",
         "Profiler": "Profiling with pprof comes in a later slice.",
-        "Git": "Git status, diff and commit come in a later slice.",
-        "Output": "Command output appears here once Run exists.",
     ]
 
     private var buttons: [NSButton] = []
@@ -167,8 +173,10 @@ final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate 
     var onOpenProblem: ((ProblemItem) -> Void)?
     /// Called each time the Terminal tab is shown, so the first shell can start then.
     var onTerminalShown: (() -> Void)?
-    private let terminalHost = NSView()
-    var isTerminalVisible: Bool { selectedTab == 2 && !terminalHost.isHidden }
+    /// Views hosted by tabs that have their own content (Tests, Terminal, Output), by tab index.
+    private var hosts: [Int: NSView] = [:]
+    private var stack: NSStackView?
+    var isTerminalVisible: Bool { selectedTab == 2 && hosts[2]?.isHidden == false }
 
     var problemCount: Int { problems.count }
     var tabTitles: [String] { buttons.map(\.title) }
@@ -211,8 +219,8 @@ final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate 
         placeholder.isHidden = true
 
         let rule = Hairline()
-        terminalHost.isHidden = true
-        let stack = NSStackView(views: [rule, tabs, Hairline(), scroll, terminalHost])
+        let stack = NSStackView(views: [rule, tabs, Hairline(), scroll])
+        self.stack = stack
         stack.orientation = .vertical
         stack.spacing = 0
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -225,23 +233,33 @@ final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate 
             placeholder.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20), placeholder.topAnchor.constraint(equalTo: topAnchor, constant: 54),
             placeholder.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
         ])
-        for part in [rule, tabs, scroll, terminalHost] { part.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
-        for part in [scroll, terminalHost] { part.setContentHuggingPriority(.defaultLow, for: .vertical) }
+        for part in [rule, tabs, scroll] { part.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
+        scroll.setContentHuggingPriority(.defaultLow, for: .vertical)
         select(tab: 0)
         setProblems([])
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    /// Puts the terminal view in the panel; it shows when the Terminal tab is selected.
-    func install(terminal: NSView) {
-        terminal.translatesAutoresizingMaskIntoConstraints = false
-        terminalHost.addSubview(terminal)
+    /// Puts `view` in the panel as the content of tab `index`; it shows when that tab is selected.
+    func install(_ view: NSView, forTab index: Int) {
+        guard let stack else { return }
+        let host = NSView()
+        host.isHidden = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        host.addSubview(view)
         NSLayoutConstraint.activate([
-            terminal.leadingAnchor.constraint(equalTo: terminalHost.leadingAnchor), terminal.trailingAnchor.constraint(equalTo: terminalHost.trailingAnchor),
-            terminal.topAnchor.constraint(equalTo: terminalHost.topAnchor), terminal.bottomAnchor.constraint(equalTo: terminalHost.bottomAnchor),
+            view.leadingAnchor.constraint(equalTo: host.leadingAnchor), view.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+            view.topAnchor.constraint(equalTo: host.topAnchor), view.bottomAnchor.constraint(equalTo: host.bottomAnchor),
         ])
+        stack.addArrangedSubview(host)
+        host.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        host.setContentHuggingPriority(.defaultLow, for: .vertical)
+        hosts[index] = host
     }
+
+    /// Puts the terminal view in the panel (kept for the terminal's own call sites).
+    func install(terminal: NSView) { install(terminal, forTab: 2) }
 
     func setProblems(_ items: [ProblemItem]) {
         problems = items
@@ -261,16 +279,14 @@ final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate 
 
     private func showContent() {
         let name = Self.tabNames[selectedTab]
-        let showsTerminal = selectedTab == 2 && !terminalHost.subviews.isEmpty
-        terminalHost.isHidden = !showsTerminal
-        if showsTerminal {
+        for (index, host) in hosts { host.isHidden = index != selectedTab }
+        if hosts[selectedTab] != nil {
             scroll.isHidden = true
             placeholder.isHidden = true
-            onTerminalShown?()
+            if selectedTab == 2 { onTerminalShown?() }
         } else if selectedTab == 0 {
-            scroll.isHidden = false
-            placeholder.isHidden = problems.isEmpty ? false : true
             placeholder.stringValue = "No problems"
+            placeholder.isHidden = !problems.isEmpty
             scroll.isHidden = problems.isEmpty
         } else {
             scroll.isHidden = true

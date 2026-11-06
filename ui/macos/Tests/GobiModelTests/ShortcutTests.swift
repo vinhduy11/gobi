@@ -20,6 +20,11 @@ struct ShortcutTests {
         #expect(withModifier.key == .function(5) && withModifier.shift && withModifier.command)
     }
 
+    @Test func theSpaceKey() throws {
+        let shortcut = try #require(Shortcut(parsing: "⇧⌘Space"))
+        #expect(shortcut.key == .space && shortcut.shift && shortcut.command)
+    }
+
     @Test func aLetterFThatIsNotAFunctionKey() throws {
         #expect(try #require(Shortcut(parsing: "⌥⇧F")).key == .character("f"))
     }
@@ -49,8 +54,10 @@ struct ShortcutTests {
         let rows = ShortcutList.rows()
         let find = rows.first { $0.title == "Find…" }
         #expect(find?.menu == "Edit ▸ Find" && find?.shortcut == "⌘F" && find?.isAvailable == true)
-        let debug = rows.first { $0.title == "Start Debugging" }
-        #expect(debug?.isAvailable == false)
+        let debug = rows.first { $0.title == "Debug" }
+        #expect(debug?.isAvailable == true)
+        let toggle = rows.first { $0.title == "Toggle Line Breakpoint" }
+        #expect(toggle?.isAvailable == true)
         #expect(!rows.contains { $0.shortcut.isEmpty })
     }
 }

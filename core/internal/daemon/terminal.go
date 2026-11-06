@@ -5,6 +5,9 @@ package daemon
 import (
 	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"gobi/core/internal/ipc"
 	"gobi/core/internal/pty"
@@ -37,13 +40,52 @@ func terminalAdmit(hello ipc.Hello) string {
 	if hello.Channel == "pty" && !hello.Trusted {
 		return "terminals are off in Restricted Mode; trust the project first"
 	}
-	return ""
+	if reason := shellAdmit(hello, shellsFile); reason != "" {
+		return reason
+	}
+	return runAdmit(hello)
+}
+
+const shellsFile = "/etc/shells"
+
+// listedShells reads the shells a user may choose: absolute paths in the shells file that exist, once each.
+func listedShells(file string) []string {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return nil
+	}
+	var shells []string
+	seen := map[string]bool{}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") || !filepath.IsAbs(line) || seen[line] {
+			continue
+		}
+		if info, err := os.Stat(line); err == nil && !info.IsDir() {
+			seen[line] = true
+			shells = append(shells, line)
+		}
+	}
+	return shells
+}
+
+// shellAdmit refuses a terminal that asks for a shell the system does not list, so the handshake cannot start any program.
+func shellAdmit(hello ipc.Hello, file string) string {
+	if hello.Channel != "pty" || hello.Shell == "" {
+		return ""
+	}
+	for _, shell := range listedShells(file) {
+		if shell == hello.Shell {
+			return ""
+		}
+	}
+	return hello.Shell + " is not listed in /etc/shells"
 }
 
 // serveTerminal attaches a login shell to the connection until either side ends it.
 func serveTerminal(session *ipc.Session, logger *slog.Logger) {
 	hello := session.Hello
-	shell, err := pty.Start(pty.Options{Dir: hello.WorkspaceRoot, Cols: 80, Rows: 24})
+	shell, err := pty.Start(pty.Options{Dir: hello.WorkspaceRoot, Shell: hello.Shell, Cols: 80, Rows: 24})
 	if err != nil {
 		logger.Info("terminal could not start", "root", hello.WorkspaceRoot, "error", err)
 		var message wire.Writer

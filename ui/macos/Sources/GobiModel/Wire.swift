@@ -99,7 +99,7 @@ public struct WireField: Equatable {
 public enum Handshake {
     public static let protocolVersion: UInt64 = 1
 
-    public static func encodeHello(clientVersion: String, channel: String, workspaceRoot: String, trusted: Bool, language: String?) -> [UInt8] {
+    public static func encodeHello(clientVersion: String, channel: String, workspaceRoot: String, trusted: Bool, language: String?, goRoot: String = "", shell: String = "", tool: String = "") -> [UInt8] {
         var writer = WireWriter()
         writer.uint(1, protocolVersion)
         writer.string(2, clientVersion)
@@ -107,6 +107,9 @@ public enum Handshake {
         writer.string(4, workspaceRoot)
         writer.bool(5, trusted)
         writer.string(6, language ?? "")
+        writer.string(7, goRoot)
+        writer.string(8, shell)
+        writer.string(9, tool)
         return writer.bytes
     }
 
@@ -196,6 +199,82 @@ public enum TerminalWire {
         switch kind {
         case 1: return .output(data)
         case 3: return .exit(code: Int(code), message: String(decoding: data, as: UTF8.self))
+        default: return .ignored
+        }
+    }
+}
+
+public struct TestEvent: Equatable {
+    public var action: String
+    public var package: String
+    /// Empty for a whole package.
+    public var test: String
+    public var elapsedMilliseconds: UInt64
+    public var output: String
+
+    public init(action: String, package: String, test: String, elapsedMilliseconds: UInt64, output: String) {
+        self.action = action
+        self.package = package
+        self.test = test
+        self.elapsedMilliseconds = elapsedMilliseconds
+        self.output = output
+    }
+}
+
+/// The run channel messages (core/internal/daemon/run.go): to the server 1 kind (1 start, 2 stop), 2 command, 3 package
+/// (repeated), 4 test filter, 5 argument (repeated), 6 environment file; from the server 1 kind (1 output, 2 test, 3 exit), 2 data, 6 stream,
+/// 7 action, 8 package, 9 test, 10 elapsed milliseconds, 11 output text, 12 exit code, 13 message.
+public enum RunWire {
+    public enum Event: Equatable {
+        case output([UInt8], stream: Int)
+        case test(TestEvent)
+        case exit(code: Int, message: String)
+        case ignored
+    }
+
+    /// `goRoot`: the Go folder to use (empty: the go on PATH). `envFile`: empty uses the project's .env when there is one, "-" uses none, anything else names a file in the project.
+    public static func start(command: String, packages: [String], filter: String = "", arguments: [String] = [], envFile: String = "", goRoot: String = "", environment: [String] = []) -> [UInt8] {
+        var writer = WireWriter()
+        writer.uint(1, 1)
+        writer.string(2, command)
+        for package in packages { writer.string(3, package) }
+        writer.string(4, filter)
+        for argument in arguments { writer.string(5, argument) }
+        if !envFile.isEmpty { writer.string(6, envFile) }
+        if !goRoot.isEmpty { writer.string(7, goRoot) }
+        for entry in environment { writer.string(8, entry) }
+        return writer.bytes
+    }
+
+    public static func stop() -> [UInt8] {
+        var writer = WireWriter()
+        writer.uint(1, 2)
+        return writer.bytes
+    }
+
+    public static func parse(_ payload: [UInt8]) throws -> Event {
+        var kind: UInt64 = 0, stream: UInt64 = 0, elapsed: UInt64 = 0, code: UInt64 = 0
+        var data: [UInt8] = []
+        var action = "", package = "", test = "", output = "", message = ""
+        for field in try WireField.parse(payload) {
+            switch field.number {
+            case 1: kind = field.uint
+            case 2: data = field.bytes
+            case 6: stream = field.uint
+            case 7: action = field.string
+            case 8: package = field.string
+            case 9: test = field.string
+            case 10: elapsed = field.uint
+            case 11: output = field.string
+            case 12: code = field.uint
+            case 13: message = field.string
+            default: break
+            }
+        }
+        switch kind {
+        case 1: return .output(data, stream: Int(stream))
+        case 2: return .test(TestEvent(action: action, package: package, test: test, elapsedMilliseconds: elapsed, output: output))
+        case 3: return .exit(code: Int(code), message: message)
         default: return .ignored
         }
     }

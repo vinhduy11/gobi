@@ -97,6 +97,11 @@ public struct TrustList: Equatable, Codable, Sendable {
         if !paths.contains(clean) { paths.append(clean) }
     }
 
+    public mutating func remove(path: String) {
+        let clean = Self.withoutTrailingSlash(path)
+        paths.removeAll { $0 == clean }
+    }
+
     public func isTrusted(path: String) -> Bool {
         let clean = Self.withoutTrailingSlash(path)
         return paths.contains { clean == $0 || clean.hasPrefix($0 + "/") }

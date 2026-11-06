@@ -17,11 +17,14 @@ public final class GobiSession: @unchecked Sendable {
         channel: String,
         workspaceRoot: String,
         language: String? = nil,
+        goRoot: String = "",
+        shell: String = "",
+        tool: String = "",
         trusted: Bool = false,
         clientVersion: String = GobiClientVersion.current
     ) throws -> GobiSession {
         let session = GobiSession(connection: try UnixConnection(path: socketPath))
-        try session.send(Handshake.encodeHello(clientVersion: clientVersion, channel: channel, workspaceRoot: workspaceRoot, trusted: trusted, language: language))
+        try session.send(Handshake.encodeHello(clientVersion: clientVersion, channel: channel, workspaceRoot: workspaceRoot, trusted: trusted, language: language, goRoot: goRoot, shell: shell, tool: tool))
 
         guard let answer = try session.nextMessage() else { throw ConnectionError.closed }
         let reply = try Handshake.decodeReply(answer)
@@ -76,12 +79,15 @@ public enum Gobid {
         channel: String,
         workspaceRoot: String,
         language: String? = nil,
+        goRoot: String = "",
+        shell: String = "",
+        tool: String = "",
         trusted: Bool = false,
         autostart: Bool = true
     ) throws -> GobiSession {
         let socketPath = defaultSocketPath()
         func attempt() throws -> GobiSession {
-            try GobiSession.connect(socketPath: socketPath, channel: channel, workspaceRoot: workspaceRoot, language: language, trusted: trusted)
+            try GobiSession.connect(socketPath: socketPath, channel: channel, workspaceRoot: workspaceRoot, language: language, goRoot: goRoot, shell: shell, tool: tool, trusted: trusted)
         }
         do { return try attempt() } catch let error as ConnectionError {
             guard autostart, case .system(_, let code) = error, code == ENOENT || code == ECONNREFUSED else { throw error }

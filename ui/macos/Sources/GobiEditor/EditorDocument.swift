@@ -21,7 +21,7 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
     /// (89 ms with painting), 1,000,000 about 100 ms. 550,000 keeps a keystroke under 100 ms including painting.
     public static let editableLineLimit = 550_000
     /// True when the file was opened with a line over `editableLineLimit`; the editor then does not accept edits.
-    public let isReadOnlyByLineLength: Bool
+    public private(set) var isReadOnlyByLineLength: Bool
     /// True once the file has had a line over the limit (opened or typed). Sticky until the file is reopened.
     public private(set) var hasOverlongLine: Bool
     public var client: LSPClient?
@@ -30,24 +30,36 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
         didSet { if oldValue != isEdited { onEditedChanged?(isEdited) } }
     }
     public var onEditedChanged: ((Bool) -> Void)?
+    /// Called after every edit (each keystroke), for work that follows the text, such as refreshing an outline.
+    public var onTextChanged: (() -> Void)?
     /// Called after an edit with the lines whose tokens changed, including lines below the edit.
     var onSyntaxChanged: ((_ editedLines: Range<Int>, _ changedLines: Range<Int>) -> Void)?
     private var syncKind: Int { client?.syncKind ?? 1 }
 
     public var uri: String { fileURL.absoluteString }
 
-    public init(fileURL: URL, text: String) {
+    /// `lineLimit`: a line longer than this (UTF-16 units) opens the file read-only (default `editableLineLimit`).
+    public init(fileURL: URL, text: String, lineLimit: Int = EditorDocument.editableLineLimit) {
         self.fileURL = fileURL
         self.language = EditorDocument.language(for: fileURL)
         let units = Array(text.utf16)
         let index = LineIndex(utf16: units)
         self.lineIndex = index
         self.hasOverlongLine = (0 ..< index.lineCount).contains { index.lineRange($0).count > Self.overlongLineLimit }
-        self.isReadOnlyByLineLength = (0 ..< index.lineCount).contains { index.lineRange($0).count > Self.editableLineLimit }
+        self.isReadOnlyByLineLength = (0 ..< index.lineCount).contains { index.lineRange($0).count > lineLimit }
         self.syntaxIndex = SyntaxIndex(language: EditorDocument.syntaxLanguage(for: language), lineCount: index.lineCount) { line in
             Array(units[index.lineRange(line)])
         }
         super.init()
+    }
+
+    /// Judges the current text against a new limit (Settings > Advanced > Large files). True when the read-only state changed.
+    /// Like the opening check it looks at the lines as they are now.
+    @discardableResult
+    public func applyLineLimit(_ limit: Int) -> Bool {
+        let readOnly = (0 ..< lineIndex.lineCount).contains { lineIndex.lineRange($0).count > limit }
+        defer { isReadOnlyByLineLength = readOnly }
+        return readOnly != isReadOnlyByLineLength
     }
 
     public static func language(for fileURL: URL) -> String {
@@ -82,6 +94,7 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
     public func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions, range editedRange: NSRange, changeInLength delta: Int) {
         guard editedMask.contains(.editedCharacters) else { return }
         isEdited = true
+        onTextChanged?()
         let oldRange = editedRange.location ..< editedRange.location + editedRange.length - delta
         let inserted = (textStorage.string as NSString).substring(with: editedRange)
         let insertedUnits = Array(inserted.utf16)

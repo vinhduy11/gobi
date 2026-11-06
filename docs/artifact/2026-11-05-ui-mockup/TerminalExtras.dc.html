@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi terminal extras</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.board{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--desk);padding:28px;display:flex;gap:28px;align-items:flex-start}
+.cap{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+.panel{background:var(--bg);border:1px solid var(--sep);border-radius:10px;overflow:hidden}
+.strip{display:flex;gap:6px;align-items:center;padding:5px 10px;border-bottom:1px solid var(--sep);background:var(--bar)}
+.tab{padding:3px 10px;border-radius:6px;font-size:12px;color:var(--text2)}.tab.a{background:var(--accentBg);color:var(--accentT);font-weight:600}
+.find{display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--sep);background:var(--bar)}
+.fld{height:24px;border:1px solid var(--sep);border-radius:6px;padding:0 8px;display:flex;align-items:center;background:var(--field);min-width:220px;font-size:12px}
+.term{font:12px/18px ui-monospace,"SF Mono",Menlo,monospace;background:var(--term);color:var(--termText);padding:8px 10px;white-space:pre}
+.hit{background:rgba(255,214,10,.45);color:var(--termText)}
+.t2{color:var(--text2)}
+.btn{height:28px;padding:0 14px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.pop{background:var(--bg);border:1px solid var(--sep);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.25);padding:16px 18px;width:360px}
+</style>
+</helmet>
+<div class="board" style="width: 1300px; height: 420px; {{vars}}">
+  <div>
+    <div class="cap">Find in Terminal</div>
+    <div class="panel" style="width:560px">
+      <div class="strip"><span class="tab a">zsh &#183; hello</span><span class="tab">zsh &#183; scripts</span></div>
+      <div class="find"><div class="fld">listen</div><span class="t2">2 of 5</span><button class="btn" style="height:24px;padding:0 10px">&#8593;</button><button class="btn" style="height:24px;padding:0 10px">&#8595;</button><span style="margin-left:auto" class="t2">Esc closes</span></div>
+      <div class="term">$ go run ./cmd/hello
+server <span class="hit">listen</span>ing on :8080
+request GET /health 200 1ms
+$ </div>
+    </div>
+    <div class="cap" style="margin-top:20px">Split Terminal (&#8984;\)</div>
+    <div class="panel" style="width:560px">
+      <div class="strip"><span class="tab a">zsh &#183; hello</span></div>
+      <div style="display:flex"><div class="term" style="flex:1;min-height:90px">$ go test ./...
+ok  hello/internal/server</div><div style="width:1px;background:var(--sep)"></div><div class="term" style="flex:1">$ tail -f app.log
+</div></div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Restricted Mode: Learn More</div>
+    <div class="pop">
+      <div style="font-weight:700;font-size:15px">About Restricted Mode</div>
+      <div class="t2" style="margin:6px 0 10px">A project you have not trusted can put commands in its files: <span style="font-family:ui-monospace,Menlo,monospace">go generate</span>, cgo, tests, the toolchain line in go.mod, .gobi tasks.</div>
+      <div style="margin-bottom:10px">Until you trust it, Gobi still edits, navigates and shows diagnostics, but turns off Run, Debug, Test, Profile, terminals, Git and environment profiles.</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn">Close</button><button class="btn pri">Trust Project&#8230;</button></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1300,"height":420}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {desk:'#E4E4E8',bg:'#FFFFFF',bar:'#ECECEF',field:'#FFFFFF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)',term:'#FFFFFF',termText:'#383A42'};
+    const D = {desk:'#161617',bg:'#1E1E1E',bar:'#2A2A2C',field:'#1A1A1C',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)',term:'#1E1F22',termText:'#BCBEC4'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

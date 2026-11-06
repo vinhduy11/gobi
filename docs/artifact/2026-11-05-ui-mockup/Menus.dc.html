@@ -26,8 +26,8 @@ body{margin:0}
 .sepline{height:1px;background:var(--sep);margin:4px 6px}
 </style>
 </helmet>
-<div class="board" style="width: 1500px; height: 960px; {{vars}}">
-  <div class="bar"><b>Gobi</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Run</span><span>Debug</span><span>Window</span><span>Help</span></div>
+<div class="board" style="width: 1500px; height: 1700px; {{vars}}">
+  <div class="bar"><b>Gobi</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Build</span><span>Run</span><span>Git</span><span>Window</span><span>Help</span></div>
   <div class="grid">
 
     <div><div class="cap">Gobi</div><div class="menu">
@@ -46,16 +46,24 @@ body{margin:0}
 
     <div><div class="cap">Edit</div><div class="menu">
       <div class="mi">Undo<span class="k">&#8984;Z</span></div><div class="mi">Redo<span class="k">&#8679;&#8984;Z</span></div><div class="sepline"></div>
-      <div class="mi">Cut<span class="k">&#8984;X</span></div><div class="mi">Copy<span class="k">&#8984;C</span></div><div class="mi">Paste<span class="k">&#8984;V</span></div><div class="mi">Select All<span class="k">&#8984;A</span></div><div class="sepline"></div>
+      <div class="mi">Cut<span class="k">&#8984;X</span></div><div class="mi">Copy<span class="k">&#8984;C</span></div><div class="mi">Paste<span class="k">&#8984;V</span></div><div class="mi off">Paste from History&#8230;<span class="k">&#8679;&#8984;V</span></div><div class="mi off">Paste as Plain Text<span class="k">&#8997;&#8679;&#8984;V</span></div><div class="mi">Select All<span class="k">&#8984;A</span></div><div class="sepline"></div>
       <div class="mi">Find<span class="k">&#9656;</span></div><div class="mi">Find in Files&#8230;<span class="k">&#8679;&#8984;F</span></div><div class="sepline"></div>
-      <div class="mi">Format Document<span class="k">&#8997;&#8679;F</span></div><div class="mi">Organize Imports<span class="k">&#8963;&#8997;O</span></div>
-      <div class="mi">Rename Symbol&#8230;<span class="k">F2</span></div><div class="mi">Code Actions&#8230;<span class="k">&#8984;.</span></div><div class="mi">Toggle Comment<span class="k">&#8984;/</span></div></div></div>
+      <div class="mi off">Copy Path<span class="k">&#8679;&#8984;C</span></div><div class="mi off">Copy Reference<span class="k">&#8997;&#8679;&#8984;C</span></div><div class="sepline"></div>
+      <div class="mi off">Sort Lines</div><div class="mi off">Reverse Lines</div><div class="sepline"></div>
+      <div class="mi off">Column Selection Mode<span class="k">&#8679;&#8984;8</span></div><div class="sepline"></div>
+      <div class="mi">Format Document<span class="k">&#8997;&#8679;F</span></div><div class="mi">Organize Imports<span class="k">&#8963;&#8997;O</span></div><div class="mi">Rename Symbol&#8230;<span class="k">F2</span></div><div class="mi">Code Actions&#8230;<span class="k">&#8984;.</span></div><div class="mi">Parameter Info<span class="k">&#8679;&#8984;Space</span></div><div class="mi">Toggle Comment<span class="k">&#8984;/</span></div><div class="sepline"></div>
+      <div class="mi">Macros<span class="k">&#9656;</span></div><div class="mi">Bookmarks<span class="k">&#9656;</span></div><div class="sepline"></div>
+      <div class="mi">AutoFill<span class="k">&#9656;</span></div><div class="mi">Start Dictation&#8230;</div><div class="mi">Emoji &amp; Symbols</div></div></div>
 
     <div><div class="cap">View</div><div class="menu">
-      <div class="mi">Toggle Sidebar<span class="k">&#8984;0</span></div><div class="mi">Toggle Inspector<span class="k">&#8997;&#8984;0</span></div><div class="mi">Toggle Bottom Panel<span class="k">&#8984;J</span></div><div class="sepline"></div>
-      <div class="mi"><span class="chk">&#10003;</span>Outline</div><div class="mi">Markdown Preview<span class="k">&#8679;&#8984;V</span></div><div class="mi">Editor Layout<span class="k">&#9656;</span></div><div class="sepline"></div>
-      <div class="mi">Zoom In<span class="k">&#8984;+</span></div><div class="mi">Zoom Out<span class="k">&#8984;&#8722;</span></div><div class="mi">Actual Size<span class="k">&#8984;0</span></div><div class="sepline"></div>
-      <div class="mi">Enter Full Screen<span class="k">&#8963;&#8984;F</span></div></div></div>
+      <div class="mi">Tool Windows<span class="k">&#9656;</span></div><div class="mi">Appearance<span class="k">&#9656;</span></div><div class="sepline"></div>
+      <div class="mi">Toggle Sidebar<span class="k">&#8984;0</span></div><div class="mi">Toggle Inspector<span class="k">&#8997;&#8984;0</span></div><div class="mi">Toggle Bottom Panel<span class="k">&#8984;J</span></div><div class="mi">New Terminal<span class="k">&#8963;&#8679;`</span></div><div class="sepline"></div>
+      <div class="mi off">Quick Definition<span class="k">&#8997;Space</span></div><div class="mi off">Quick Type Definition</div><div class="sepline"></div>
+      <div class="mi off">Recent Locations<span class="k">&#8679;&#8984;E</span></div><div class="mi off">Recent Files<span class="k">&#8984;E</span></div><div class="mi off">Recent Changes<span class="k">&#8997;&#8679;C</span></div><div class="sepline"></div>
+      <div class="mi off">Compare with Clipboard</div><div class="sepline"></div>
+      <div class="mi">Markdown Preview<span class="k">&#8679;&#8984;V</span></div><div class="mi">Editor Layout<span class="k">&#9656;</span></div><div class="mi">Quick Switch Scheme&#8230;<span class="k">&#8963;`</span></div><div class="sepline"></div>
+      <div class="mi">Zoom In<span class="k">&#8984;+</span></div><div class="mi">Zoom Out<span class="k">&#8984;&#8722;</span></div><div class="mi">Actual Size<span class="k">&#8984;0</span></div><div class="mi off">Reset Font Size in All Editors</div><div class="sepline"></div>
+      <div class="mi">Notifications</div><div class="mi">Enter Full Screen<span class="k">&#8963;&#8984;F</span></div></div></div>
 
     <div><div class="cap">Go</div><div class="menu">
       <div class="mi">Back<span class="k">&#8984;[</span></div><div class="mi">Forward<span class="k">&#8984;]</span></div><div class="sepline"></div>
@@ -63,25 +71,46 @@ body{margin:0}
       <div class="mi">Go to Definition<span class="k">F12</span></div><div class="mi">Go to Implementation<span class="k">&#8984;F12</span></div><div class="mi">Find References<span class="k">&#8679;F12</span></div><div class="mi">Go to Test<span class="k">&#8679;&#8984;T</span></div><div class="sepline"></div>
       <div class="mi">Next Problem<span class="k">F8</span></div><div class="mi">Previous Problem<span class="k">&#8679;F8</span></div></div></div>
 
+    <div><div class="cap">Build</div><div class="menu">
+      <div class="mi">Build Project<span class="k">&#8984;F9</span></div><div class="mi">Build Module<span class="k">&#8679;&#8984;F9</span></div><div class="mi">Rebuild Project</div><div class="sepline"></div>
+      <div class="mi">Build Artifacts</div></div></div>
+
     <div><div class="cap">Run</div><div class="menu">
-      <div class="mi">Run<span class="k">&#8984;R</span></div><div class="mi">Run Tests<span class="k">&#8984;U</span></div><div class="mi">Run Test at Cursor<span class="k">&#8997;&#8984;U</span></div>
-      <div class="mi">Run on Multiple Go Versions&#8230;</div><div class="mi">Profile<span class="k">&#8984;I</span></div><div class="sepline"></div>
-      <div class="mi">Environment<span class="k">&#9656;</span></div><div class="mi">Go Toolchain<span class="k">&#9656;</span></div><div class="sepline"></div>
-      <div class="mi">Edit Run Configurations&#8230;</div><div class="mi">Manage Environments&#8230;</div><div class="mi">Manage Go Toolchains&#8230;</div></div></div>
+      <div class="mi">Run<span class="k">&#8984;R</span></div><div class="mi">Debug<span class="k">&#8984;D</span></div><div class="mi">Run Context Configuration<span class="k">&#8963;&#8679;R</span></div><div class="mi">Debug Context Configuration<span class="k">&#8963;&#8679;D</span></div><div class="mi">Run with Coverage</div><div class="mi">Profile<span class="k">&#8984;I</span></div><div class="mi off">Stop<span class="k">&#8984;F2</span></div><div class="sepline"></div>
+      <div class="mi">Run&#8230;<span class="k">&#8963;&#8997;R</span></div><div class="mi">Debug&#8230;<span class="k">&#8963;&#8997;D</span></div><div class="mi">Run Anything&#8230;<span class="k">&#8963;&#8963;</span></div><div class="mi">Edit Configurations&#8230;<span class="k">&#8963;&#8997;&#8679;R</span></div><div class="mi off">Update Application<span class="k">&#8984;F10</span></div><div class="mi">Attach to Process&#8230;<span class="k">&#8997;&#8679;F5</span></div><div class="sepline"></div>
+      <div class="mi off">Resume Program<span class="k">&#8997;&#8984;R</span></div><div class="mi off">Pause Program</div><div class="mi off">Step Over<span class="k">F8</span></div><div class="mi off">Force Step Over<span class="k">&#8997;&#8679;F8</span></div><div class="mi off">Step Into<span class="k">F7</span></div><div class="mi off">Force Step Into<span class="k">&#8997;&#8679;F7</span></div><div class="mi off">Smart Step Into<span class="k">&#8679;F7</span></div><div class="mi off">Step Out<span class="k">&#8679;F8</span></div><div class="mi off">Run to Cursor<span class="k">&#8997;F9</span></div><div class="mi off">Force Run to Cursor<span class="k">&#8997;&#8984;F9</span></div><div class="mi off">Show Execution Point<span class="k">&#8997;F10</span></div><div class="mi off">Reset Frame</div><div class="mi off">Evaluate Expression&#8230;<span class="k">&#8997;F8</span></div><div class="mi off">Quick Evaluate Expression<span class="k">&#8997;&#8984;F8</span></div><div class="mi">Debugging Actions<span class="k">&#9656;</span></div><div class="sepline"></div>
+      <div class="mi off">Hide Coverage</div><div class="sepline"></div>
+      <div class="mi">Toggle Line Breakpoint<span class="k">&#8984;F8</span></div><div class="mi">Toggle Temporary Line Breakpoint<span class="k">&#8997;&#8679;&#8984;F8</span></div><div class="mi">Toggle Method Breakpoint</div><div class="mi">Toggle Field Watchpoint</div><div class="mi">Add Conditional Breakpoint&#8230;</div><div class="mi">View Breakpoints&#8230;<span class="k">&#8679;&#8984;F8</span></div><div class="mi">Show Goroutines</div><div class="sepline"></div>
+      <div class="mi">Run Tests<span class="k">&#8984;U</span></div><div class="mi">Run Test at Cursor<span class="k">&#8997;&#8984;U</span></div><div class="mi">Run on Multiple Go Versions&#8230;</div><div class="sepline"></div>
+      <div class="mi">Environment<span class="k">&#9656;</span></div><div class="mi">Go Toolchain<span class="k">&#9656;</span></div><div class="mi">Manage Environments&#8230;</div><div class="mi">Manage Go Toolchains&#8230;</div></div></div>
 
-    <div><div class="cap">Debug</div><div class="menu">
-      <div class="mi">Start Debugging<span class="k">F5</span></div><div class="mi off">Stop<span class="k">&#8679;F5</span></div><div class="mi off">Restart<span class="k">&#8679;&#8984;F5</span></div><div class="sepline"></div>
-      <div class="mi off">Continue<span class="k">F5</span></div><div class="mi off">Step Over<span class="k">F10</span></div><div class="mi off">Step Into<span class="k">F11</span></div><div class="mi off">Step Out<span class="k">&#8679;F11</span></div><div class="sepline"></div>
-      <div class="mi">Toggle Breakpoint<span class="k">&#8984;\</span></div><div class="mi">Add Conditional Breakpoint&#8230;</div><div class="mi">Attach to Process&#8230;</div><div class="mi">Show Goroutines</div></div></div>
+    <div><div class="cap">Git</div><div class="menu">
+      <div class="mi">Commit&#8230;<span class="k">&#8984;K</span></div><div class="mi">Push&#8230;<span class="k">&#8679;&#8984;K</span></div><div class="mi">Update Project&#8230;<span class="k">&#8997;&#8984;T</span></div><div class="mi">Pull&#8230;</div><div class="mi">Fetch</div><div class="sepline"></div>
+      <div class="mi">Merge&#8230;</div><div class="mi off">Abort Merge</div><div class="mi">Rebase&#8230;</div><div class="mi off">Abort Rebase</div><div class="mi off">Continue Rebase</div><div class="mi off">Skip Commit</div><div class="mi off">Resolve Conflicts&#8230;</div><div class="sepline"></div>
+      <div class="mi">Branches&#8230;</div><div class="mi">New Branch&#8230;<span class="k">&#8997;&#8984;N</span></div><div class="mi">New Tag&#8230;</div><div class="mi">Reset HEAD&#8230;</div><div class="sepline"></div>
+      <div class="mi">New Worktree&#8230;</div><div class="mi">Worktrees&#8230;</div><div class="sepline"></div>
+      <div class="mi">Show Git Log</div><div class="mi">Patch<span class="k">&#9656;</span></div><div class="mi">Uncommitted Changes<span class="k">&#9656;</span></div><div class="mi">Current File<span class="k">&#9656;</span></div><div class="sepline"></div>
+      <div class="mi">Manage Remotes&#8230;</div><div class="mi">Clone&#8230;</div><div class="sepline"></div>
+      <div class="mi off">Continue Revert</div><div class="mi off">Abort Revert</div><div class="mi off">Continue Cherry-Pick</div><div class="mi off">Abort Cherry-Pick</div></div></div>
+    <div><div class="cap">Git submenus</div><div class="menu">
+      <div class="t2" style="padding:2px 10px;font-size:11px">Patch</div><div class="mi">Create Patch from Changes&#8230;</div><div class="mi">Apply Patch&#8230;</div><div class="sepline"></div>
+      <div class="t2" style="padding:2px 10px;font-size:11px">Uncommitted Changes</div><div class="mi">Stash Changes&#8230;</div><div class="mi">Unstash Changes&#8230;</div><div class="mi">Roll Back All&#8230;</div><div class="sepline"></div>
+      <div class="t2" style="padding:2px 10px;font-size:11px">Current File</div><div class="mi">Show Diff</div><div class="mi">Show History</div><div class="mi">Annotate (Blame)</div><div class="mi">Stage / Unstage</div><div class="mi">Roll Back&#8230;</div></div></div>
 
-    <div><div class="cap">Window and Help</div><div class="menu">
-      <div class="mi">Minimize<span class="k">&#8984;M</span></div><div class="mi">Zoom</div><div class="mi">Move Tab to New Window</div><div class="mi">Bring All to Front</div><div class="sepline"></div>
-      <div class="mi">Search<span class="k">&#8679;&#8984;/</span></div><div class="mi">Gobi Help</div><div class="mi">Release Notes</div><div class="mi">Keyboard Shortcuts</div><div class="mi">Report an Issue&#8230;</div></div></div>
+    <div><div class="cap">Window</div><div class="menu">
+      <div class="mi">Minimize<span class="k">&#8984;M</span></div><div class="mi">Zoom</div><div class="sepline"></div>
+      <div class="mi">Tool Window Layouts<span class="k">&#9656;</span></div><div class="sepline"></div>
+      <div class="mi">Active Tool Window<span class="k">&#9656;</span></div><div class="mi">Editor Tabs<span class="k">&#9656;</span></div><div class="sepline"></div>
+      <div class="mi">New Window</div><div class="mi off">Merge All Project Windows</div><div class="mi off">Move Tab to New Window</div><div class="mi off">Next Project Tab<span class="k">&#8997;&#8984;&#8675;</span></div><div class="mi off">Previous Project Tab<span class="k">&#8997;&#8984;&#8673;</span></div><div class="mi">Next Project Window<span class="k">&#8984;`</span></div><div class="mi">Previous Project Window<span class="k">&#8679;&#8984;`</span></div><div class="sepline"></div>
+      <div class="mi">Bring All to Front</div></div></div>
+
+    <div><div class="cap">Help</div><div class="menu">
+      <div class="mi">Search<span class="k">&#8679;&#8984;/</span></div><div class="mi">Gobi Help</div><div class="mi">Release Notes</div><div class="mi">Keyboard Shortcuts</div><div class="mi">Check Setup&#8230;</div><div class="mi">Report an Issue&#8230;</div></div></div>
 
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1500,"height":960}}'>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1500,"height":1700}}'>
 class Component extends DCLogic {
   renderVals() {
     const L = {desk:'#E4E4E8',bar:'#F5F5F7',menu:'#F8F8FA',text:'#1D1D1F',text2:'#5C5C61',sep:'#D0D0D5',accent:'#007AFF'};

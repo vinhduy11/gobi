@@ -375,18 +375,35 @@ final class WelcomeWindowController: NSWindowController, NSTableViewDataSource, 
 /// Finds the user's Go toolchain for the version line on the Welcome window.
 enum GoTool {
     static func version() -> String? {
+        run(["env", "GOVERSION"]).flatMap { GoVersion.display(fromGoEnv: $0) }
+    }
+
+    /// The `go` found on PATH (or in the usual places): its version and GOROOT.
+    static func system() -> GoInstall? {
+        guard let version = version(), let root = run(["env", "GOROOT"]) else { return nil }
+        return GoInstall(version: version, source: "System", location: root.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    /// Installs kept by golang.org/dl under ~/sdk.
+    static func sdkInstalls() -> [GoInstall] {
+        let directory = NSHomeDirectory() + "/sdk"
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory)) ?? []
+        return GoInstalls.fromSDK(folderNames: names, directory: "~/sdk")
+    }
+
+    private static func run(_ arguments: [String]) -> String? {
         let extra = ["/usr/local/go/bin", "/opt/homebrew/bin", "/usr/local/bin", NSHomeDirectory() + "/go/bin"]
         let path = ((ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").map(String.init) + extra)
         guard let go = path.map({ $0 + "/go" }).first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return nil }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: go)
-        process.arguments = ["env", "GOVERSION"]
+        process.arguments = arguments
         process.environment = ["GOTOOLCHAIN": "local", "HOME": NSHomeDirectory()]
         let output = Pipe()
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice
         guard (try? process.run()) != nil else { return nil }
         process.waitUntilExit()
-        return GoVersion.display(fromGoEnv: String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self))
+        return String(decoding: output.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
     }
 }

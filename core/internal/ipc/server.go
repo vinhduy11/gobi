@@ -23,7 +23,7 @@ const (
 )
 
 // Channels are separate connections, never multiplexed on one stream.
-var knownChannels = map[string]bool{"control": true, "lsp": true, "dap": true, "pty": true}
+var knownChannels = map[string]bool{"control": true, "lsp": true, "dap": true, "pty": true, "run": true, "git": true}
 
 // Hello is the first message a client sends on a new connection.
 type Hello struct {
@@ -35,6 +35,13 @@ type Hello struct {
 	Trusted bool `json:"trusted,omitempty"`
 	// Language selects the language service on the lsp channel ("go", "json", "markdown"); empty means "go".
 	Language string `json:"language,omitempty"`
+	// GoRoot is the Go installation the language server should use (a folder holding bin/go); empty uses the go on PATH.
+	GoRoot string `json:"go_root,omitempty"`
+	// Shell is the shell a terminal starts (an absolute path listed in /etc/shells); empty uses the user's login shell.
+	Shell string `json:"shell,omitempty"`
+	// Tool is an absolute path that replaces the program the channel runs: git on the git channel, gopls on the lsp channel (Go).
+	// Empty uses the one on PATH.
+	Tool string `json:"tool,omitempty"`
 }
 
 // Reply answers a Hello.

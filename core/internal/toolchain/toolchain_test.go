@@ -1,6 +1,7 @@
 package toolchain
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -99,5 +100,53 @@ func TestMissingOptionalToolIsNotFlagged(t *testing.T) {
 	reports := Check(finder, []Tool{{Name: "dlv", VersionArgs: []string{"version"}}})
 	if reports[0].Found || HasMissingRequired(reports) {
 		t.Fatalf("optional missing tool: %+v", reports[0])
+	}
+}
+
+func TestInstallCommandKnowsTheGoInstallableTools(t *testing.T) {
+	args, ok := InstallArgs("gopls")
+	if !ok || strings.Join(args, " ") != "install golang.org/x/tools/gopls@latest" {
+		t.Errorf("gopls = %v %v", args, ok)
+	}
+	args, ok = InstallArgs("dlv")
+	if !ok || strings.Join(args, " ") != "install github.com/go-delve/delve/cmd/dlv@latest" {
+		t.Errorf("dlv = %v %v", args, ok)
+	}
+	if _, ok := InstallArgs("go"); ok {
+		t.Error("go cannot be installed with go install")
+	}
+}
+
+func TestHintTellsHowToGetATheToolsThatCannotBeAutoInstalled(t *testing.T) {
+	for _, name := range []string{"go", "git"} {
+		if Hint(name) == "" {
+			t.Errorf("no hint for %s", name)
+		}
+	}
+}
+
+func TestInstallRunsGoInstallThroughTheFinder(t *testing.T) {
+	dir := t.TempDir()
+	record := filepath.Join(dir, "args.txt")
+	script := "#!/bin/sh\necho \"$@\" > " + record + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "go"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := Install(context.Background(), Finder{Env: map[string]string{"PATH": dir}}, "dlv"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(record)
+	if strings.TrimSpace(string(got)) != "install github.com/go-delve/delve/cmd/dlv@latest" {
+		t.Errorf("go was run with %q", got)
+	}
+}
+
+func TestInstallNeedsGo(t *testing.T) {
+	err := Install(context.Background(), Finder{Env: map[string]string{"PATH": t.TempDir()}}, "dlv")
+	if err == nil || !strings.Contains(err.Error(), "go") {
+		t.Errorf("err = %v", err)
+	}
+	if err := Install(context.Background(), Finder{}, "go"); err == nil {
+		t.Error("go itself must not be auto-installed")
 	}
 }

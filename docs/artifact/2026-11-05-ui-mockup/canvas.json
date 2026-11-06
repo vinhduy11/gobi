@@ -1,172 +1,292 @@
 {
-  "v": 3,
-  "attachments": {},
-  "boards": {
-    "Debug.dc.html": {
-      "h": 900,
-      "title": "Debug (dlv)",
-      "w": 1440,
-      "x": 1520,
-      "y": 0
-    },
-    "Environments.dc.html": {
-      "h": 800,
-      "title": "Environments",
-      "w": 1200,
-      "x": 0,
-      "y": 1020
-    },
-    "Main.dc.html": {
-      "h": 900,
-      "title": "Edit",
-      "w": 1440,
-      "x": 0,
-      "y": 0
-    },
-    "NewProject.dc.html": {
-      "h": 680,
-      "title": "New Project",
-      "w": 1000,
-      "x": 1180,
-      "y": 1940
-    },
-    "Profiler.dc.html": {
-      "h": 900,
-      "title": "Profile (pprof)",
-      "w": 1440,
-      "x": 3040,
-      "y": 0
-    },
-    "Toolchains.dc.html": {
-      "h": 800,
-      "title": "Go toolchains",
-      "w": 1200,
-      "x": 1280,
-      "y": 1020
-    },
-    "Trust.dc.html": {
-      "h": 400,
-      "title": "Workspace trust",
-      "w": 560,
-      "x": 2260,
-      "y": 1940
-    },
-    "Welcome.dc.html": {
-      "h": 680,
-      "title": "Welcome (new / open / clone / import)",
-      "w": 1100,
-      "x": 0,
-      "y": 1940
-    },
-    "JsonEditor.dc.html": {
-      "h": 900,
-      "title": "JSON editing",
-      "w": 1440,
-      "x": 0,
-      "y": 2740
-    },
-    "MarkdownPreview.dc.html": {
-      "h": 900,
-      "title": "Markdown preview",
-      "w": 1440,
-      "x": 1520,
-      "y": 2740
-    },
-    "Menus.dc.html": {
-      "h": 960,
-      "title": "Menu bar",
-      "w": 1500,
-      "x": 0,
-      "y": 3760
-    },
-    "SettingsEditor.dc.html": {
-      "h": 640,
-      "title": "Settings: Editor",
-      "w": 880,
-      "x": 1580,
-      "y": 3760
-    },
-    "SettingsLanguages.dc.html": {
-      "h": 640,
-      "title": "Settings: Languages",
-      "w": 880,
-      "x": 2540,
-      "y": 3760
-    },
-    "Find.dc.html": {
-      "h": 380,
-      "title": "Find in file and read-only notice",
-      "w": 1440,
-      "x": 0,
-      "y": 4800
-    },
-    "CloneImport.dc.html": {
-      "h": 300,
-      "title": "Clone and Import dialogs",
-      "w": 1640,
-      "x": 0,
-      "y": 5360
-    },
-    "Terminal.dc.html": {
-      "h": 720,
-      "title": "Terminal panel",
-      "w": 1440,
-      "x": 1700,
-      "y": 4800
-    },
-    "TerminalRestricted.dc.html": {
-      "h": 360,
-      "title": "Terminal in Restricted Mode",
-      "w": 1000,
-      "x": 0,
-      "y": 5760
-    },
-    "ContextMenus.dc.html": {
-      "h": 520,
-      "title": "Context menus (right click)",
-      "w": 1100,
-      "x": 2900,
-      "y": 4800
-    }
+ "v": 3,
+ "attachments": {},
+ "boards": {
+  "Debug.dc.html": {
+   "h": 900,
+   "title": "Debug (dlv)",
+   "w": 1440,
+   "x": 1520,
+   "y": 0
   },
-  "createdOnFiles": {
-    "at": "2026-11-05T12:00:00Z",
-    "v": 1
+  "Environments.dc.html": {
+   "h": 800,
+   "title": "Environments",
+   "w": 1200,
+   "x": 0,
+   "y": 1020
   },
-  "designSystems": [],
-  "launch": {
-    "view": "canvas"
+  "Main.dc.html": {
+   "h": 900,
+   "title": "Edit",
+   "w": 1440,
+   "x": 0,
+   "y": 0
   },
-  "notes": {
-    "title": {
-      "kind": "title1",
-      "maxW": 4480,
-      "text": "Gobi: macOS window, Apple HIG (AppKit look)",
-      "w": 240,
-      "x": 0,
-      "y": -260
-    }
+  "NewProject.dc.html": {
+   "h": 680,
+   "title": "New Project",
+   "w": 1000,
+   "x": 1180,
+   "y": 1940
   },
-  "order": [
-    "Main.dc.html",
-    "Debug.dc.html",
-    "Profiler.dc.html",
-    "Environments.dc.html",
-    "Toolchains.dc.html",
-    "Welcome.dc.html",
-    "NewProject.dc.html",
-    "Trust.dc.html",
-    "JsonEditor.dc.html",
-    "MarkdownPreview.dc.html",
-    "Menus.dc.html",
-    "SettingsEditor.dc.html",
-    "SettingsLanguages.dc.html",
-    "Find.dc.html",
-    "CloneImport.dc.html",
-    "Terminal.dc.html",
-    "TerminalRestricted.dc.html",
-    "ContextMenus.dc.html"
-  ],
-  "pages": [],
-  "title": "Gobi IDE Mockup"
+  "Profiler.dc.html": {
+   "h": 900,
+   "title": "Profile (pprof)",
+   "w": 1440,
+   "x": 3040,
+   "y": 0
+  },
+  "Toolchains.dc.html": {
+   "h": 800,
+   "title": "Go toolchains",
+   "w": 1200,
+   "x": 1280,
+   "y": 1020
+  },
+  "Trust.dc.html": {
+   "h": 400,
+   "title": "Workspace trust",
+   "w": 560,
+   "x": 2260,
+   "y": 1940
+  },
+  "Welcome.dc.html": {
+   "h": 680,
+   "title": "Welcome (new / open / clone / import)",
+   "w": 1100,
+   "x": 0,
+   "y": 1940
+  },
+  "JsonEditor.dc.html": {
+   "h": 900,
+   "title": "JSON editing",
+   "w": 1440,
+   "x": 0,
+   "y": 2740
+  },
+  "MarkdownPreview.dc.html": {
+   "h": 900,
+   "title": "Markdown preview",
+   "w": 1440,
+   "x": 1520,
+   "y": 2740
+  },
+  "Menus.dc.html": {
+   "h": 1700,
+   "title": "Menu bar",
+   "w": 1500,
+   "x": 0,
+   "y": 10700
+  },
+  "SettingsEditor.dc.html": {
+   "h": 640,
+   "title": "Settings: Editor",
+   "w": 880,
+   "x": 1580,
+   "y": 3760
+  },
+  "SettingsLanguages.dc.html": {
+   "h": 640,
+   "title": "Settings: Languages",
+   "w": 880,
+   "x": 2540,
+   "y": 3760
+  },
+  "Find.dc.html": {
+   "h": 380,
+   "title": "Find in file and read-only notice",
+   "w": 1440,
+   "x": 0,
+   "y": 4800
+  },
+  "CloneImport.dc.html": {
+   "h": 300,
+   "title": "Clone and Import dialogs",
+   "w": 1640,
+   "x": 0,
+   "y": 5360
+  },
+  "Terminal.dc.html": {
+   "h": 720,
+   "title": "Terminal panel",
+   "w": 1440,
+   "x": 1700,
+   "y": 4800
+  },
+  "TerminalRestricted.dc.html": {
+   "h": 360,
+   "title": "Terminal in Restricted Mode",
+   "w": 1000,
+   "x": 0,
+   "y": 5760
+  },
+  "ContextMenus.dc.html": {
+   "h": 520,
+   "title": "Context menus (right click)",
+   "w": 1100,
+   "x": 2900,
+   "y": 4800
+  },
+  "TestsPanel.dc.html": {
+   "h": 300,
+   "title": "Tests panel",
+   "w": 1000,
+   "x": 0,
+   "y": 6300
+  },
+  "OutputPanel.dc.html": {
+   "h": 300,
+   "title": "Output panel",
+   "w": 1000,
+   "x": 1080,
+   "y": 6300
+  },
+  "Setup.dc.html": {
+   "h": 470,
+   "title": "Setup check (missing tools)",
+   "w": 640,
+   "x": 2920,
+   "y": 1940
+  },
+  "SettingsGeneral.dc.html": {
+   "h": 640,
+   "title": "Settings: General",
+   "w": 880,
+   "x": 0,
+   "y": 6760
+  },
+  "SettingsKeymap.dc.html": {
+   "h": 640,
+   "title": "Settings: Keymap",
+   "w": 880,
+   "x": 960,
+   "y": 6760
+  },
+  "SettingsTerminal.dc.html": {
+   "h": 640,
+   "title": "Settings: Terminal",
+   "w": 880,
+   "x": 1920,
+   "y": 6760
+  },
+  "SettingsGit.dc.html": {
+   "h": 640,
+   "title": "Settings: Git",
+   "w": 880,
+   "x": 2880,
+   "y": 6760
+  },
+  "SettingsAdvanced.dc.html": {
+   "h": 640,
+   "title": "Settings: Advanced",
+   "w": 880,
+   "x": 3840,
+   "y": 6760
+  },
+  "EditorOptions.dc.html": {
+   "h": 620,
+   "title": "Editor options (font, spacing, ruler, invisibles, wrap, auto save)",
+   "w": 1500,
+   "x": 0,
+   "y": 7560
+  },
+  "ToolchainMenus.dc.html": {
+   "h": 560,
+   "title": "Go toolchain: menu, install, update, multi-version run",
+   "w": 1500,
+   "x": 1700,
+   "y": 7560
+  },
+  "DebugDialogs.dc.html": {
+   "h": 520,
+   "title": "Debug: conditional breakpoint, attach, navigator, inline values",
+   "w": 1500,
+   "x": 0,
+   "y": 8300
+  },
+  "GitPanel.dc.html": {
+   "h": 800,
+   "title": "Git: changes, log, diff, branch menu, commit, gutter marks",
+   "w": 1500,
+   "x": 0,
+   "y": 9000
+  },
+  "TerminalExtras.dc.html": {
+   "h": 420,
+   "title": "Terminal: find, split, Learn More",
+   "w": 1300,
+   "x": 1700,
+   "y": 9000
+  },
+  "FindInFiles.dc.html": {
+   "h": 520,
+   "title": "Find and replace in files",
+   "w": 1300,
+   "x": 0,
+   "y": 9800
+  },
+  "ExternalChange.dc.html": {
+   "h": 760,
+   "title": "External changes, read-only notice, session",
+   "w": 1260,
+   "x": 1400,
+   "y": 9800
+  }
+ },
+ "createdOnFiles": {
+  "at": "2026-11-05T12:00:00Z",
+  "v": 1
+ },
+ "designSystems": [],
+ "launch": {
+  "view": "canvas"
+ },
+ "notes": {
+  "title": {
+   "kind": "title1",
+   "maxW": 4480,
+   "text": "Gobi: macOS window, Apple HIG (AppKit look)",
+   "w": 240,
+   "x": 0,
+   "y": -260
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Debug.dc.html",
+  "Profiler.dc.html",
+  "Environments.dc.html",
+  "Toolchains.dc.html",
+  "Welcome.dc.html",
+  "NewProject.dc.html",
+  "Trust.dc.html",
+  "JsonEditor.dc.html",
+  "MarkdownPreview.dc.html",
+  "Menus.dc.html",
+  "SettingsEditor.dc.html",
+  "SettingsLanguages.dc.html",
+  "Find.dc.html",
+  "CloneImport.dc.html",
+  "Terminal.dc.html",
+  "TerminalRestricted.dc.html",
+  "ContextMenus.dc.html",
+  "TestsPanel.dc.html",
+  "OutputPanel.dc.html",
+  "Setup.dc.html",
+  "SettingsGeneral.dc.html",
+  "SettingsKeymap.dc.html",
+  "SettingsTerminal.dc.html",
+  "SettingsGit.dc.html",
+  "SettingsAdvanced.dc.html",
+  "EditorOptions.dc.html",
+  "ToolchainMenus.dc.html",
+  "DebugDialogs.dc.html",
+  "GitPanel.dc.html",
+  "TerminalExtras.dc.html",
+  "FindInFiles.dc.html",
+  "ExternalChange.dc.html"
+ ],
+ "pages": [],
+ "title": "Gobi IDE Mockup"
 }

@@ -2,7 +2,7 @@ import AppKit
 import GobiModel
 
 /// One menu item's behaviour. The item keeps it alive through `representedObject` (an item's `target` is weak).
-private final class MenuAction: NSObject {
+final class MenuAction: NSObject {
     let run: () -> Void
     init(_ run: @escaping () -> Void) { self.run = run }
     // Not named `perform`: that collides with NSObject.perform(_:) and the selector resolves to the wrong method.

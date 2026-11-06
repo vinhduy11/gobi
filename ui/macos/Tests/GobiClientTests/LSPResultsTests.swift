@@ -55,6 +55,11 @@ struct LSPResultsTests {
         #expect(items[1].replaces == nil)
     }
 
+    @Test func insertTextFormatTwoMarksASnippet() {
+        let items = LSPResults.completions([["label": "helper", "insertTextFormat": 2, "insertText": "helper(${1:a int})"], ["label": "x", "insertTextFormat": 1]])
+        #expect(items.map(\.isSnippet) == [true, false])
+    }
+
     @Test func completionsAreOrderedBySortTextThenLabel() {
         let items = LSPResults.completions([["label": "b", "sortText": "2"], ["label": "a", "sortText": "3"], ["label": "c", "sortText": "1"]])
         #expect(items.map(\.label) == ["c", "b", "a"])
@@ -70,3 +75,83 @@ struct LSPResultsTests {
 
 /// `NSNull` without importing Foundation: any non-collection value stands for JSON null here.
 private enum NSNullLike { static let value: Any = 0 }
+
+@Suite("Reading edits and code actions")
+struct LSPEditResultsTests {
+    private func range(_ a: Int, _ b: Int, _ c: Int, _ d: Int) -> [String: Any] {
+        ["start": ["line": a, "character": b], "end": ["line": c, "character": d]]
+    }
+
+    @Test func workspaceEditWithChangesByFile() {
+        let edit: [String: Any] = ["changes": ["file:///a.go": [["range": range(0, 0, 0, 3), "newText": "foo"]], "file:///b.go": [["range": range(1, 0, 1, 3), "newText": "foo"]]]]
+        let changes = LSPResults.workspaceEdit(edit)
+        #expect(changes.count == 2)
+        #expect(changes["file:///a.go"]?.first?.newText == "foo")
+    }
+
+    @Test func workspaceEditWithDocumentChanges() {
+        let edit: [String: Any] = ["documentChanges": [["textDocument": ["uri": "file:///a.go", "version": 3], "edits": [["range": range(0, 0, 0, 1), "newText": "x"]]]]]
+        #expect(LSPResults.workspaceEdit(edit)["file:///a.go"]?.count == 1)
+    }
+
+    @Test func fileOperationsInADocumentChangesListAreIgnored() {
+        let edit: [String: Any] = ["documentChanges": [["kind": "rename", "oldUri": "file:///a", "newUri": "file:///b"]]]
+        #expect(LSPResults.workspaceEdit(edit).isEmpty)
+    }
+
+    @Test func noEditGivesNothing() {
+        #expect(LSPResults.workspaceEdit(nil).isEmpty)
+        #expect(LSPResults.workspaceEdit([] as [Any]).isEmpty)
+    }
+
+    @Test func codeActionsCarryTheirTitleKindAndEdit() {
+        let action: [String: Any] = ["title": "Organize Imports", "kind": "source.organizeImports", "edit": ["changes": ["file:///a.go": [["range": range(2, 0, 4, 0), "newText": "import \"fmt\"\n"]]]]]
+        let found = LSPResults.codeActions([action])
+        #expect(found.count == 1)
+        #expect(found[0].title == "Organize Imports" && found[0].kind == "source.organizeImports")
+        #expect(found[0].edits["file:///a.go"]?.count == 1)
+    }
+
+    @Test func actionsThatOnlyRunACommandAreLeftOut() {
+        let commandOnly: [String: Any] = ["title": "Run go mod tidy", "command": ["command": "gopls.tidy", "title": "Tidy"]]
+        #expect(LSPResults.codeActions([commandOnly]).isEmpty)
+    }
+
+    @Test func referencesAreLocations() {
+        let found = LSPResults.locations([["uri": "file:///a.go", "range": range(3, 1, 3, 4)], ["uri": "file:///b.go", "range": range(9, 2, 9, 5)]])
+        #expect(found.map(\.start.line) == [3, 9])
+    }
+}
+
+@Suite("Reading symbols")
+struct LSPSymbolResultsTests {
+    private func range(_ a: Int, _ b: Int, _ c: Int, _ d: Int) -> [String: Any] {
+        ["start": ["line": a, "character": b], "end": ["line": c, "character": d]]
+    }
+
+    @Test func aDocumentSymbolTreeKeepsItsChildren() {
+        let result: [Any] = [["name": "Server", "kind": 23, "range": range(3, 0, 20, 1), "selectionRange": range(3, 5, 3, 11), "children": [["name": "Run", "kind": 6, "range": range(10, 0, 15, 1), "selectionRange": range(10, 17, 10, 20)]]]]
+        let symbols = LSPResults.documentSymbols(result)
+        #expect(symbols.count == 1)
+        #expect(symbols[0].name == "Server" && symbols[0].line == 3 && symbols[0].kind == .type)
+        #expect(symbols[0].children.first?.name == "Run" && symbols[0].children.first?.line == 10)
+    }
+
+    @Test func symbolInformationIsFlat() {
+        let result: [Any] = [["name": "main", "kind": 12, "location": ["uri": "file:///a.go", "range": range(7, 0, 9, 1)]]]
+        let symbols = LSPResults.documentSymbols(result)
+        #expect(symbols.map(\.name) == ["main"] && symbols[0].line == 7)
+    }
+
+    @Test func workspaceSymbolsCarryTheirLocation() {
+        let result: [Any] = [["name": "NewServer", "kind": 12, "containerName": "server", "location": ["uri": "file:///x/server.go", "range": range(4, 5, 4, 14)]]]
+        let found = LSPResults.workspaceSymbols(result)
+        #expect(found.count == 1)
+        #expect(found[0].name == "NewServer" && found[0].container == "server" && found[0].location.start.line == 4)
+    }
+
+    @Test func nothingGivesNothing() {
+        #expect(LSPResults.documentSymbols(nil).isEmpty)
+        #expect(LSPResults.workspaceSymbols(nil).isEmpty)
+    }
+}

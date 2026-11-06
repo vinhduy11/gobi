@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gobi external changes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+.board{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--text);background:var(--desk);padding:28px;display:flex;gap:28px;align-items:flex-start}
+.cap{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+.ed{background:var(--bg);border:1px solid var(--sep);border-radius:10px;overflow:hidden;width:520px}
+.banner{display:flex;align-items:center;gap:10px;padding:7px 12px;font-size:12px;border-bottom:1px solid var(--sep)}
+.banner.warn{background:rgba(255,159,10,.16)}
+.banner.err{background:rgba(255,59,48,.14)}
+.banner.info{background:rgba(0,122,255,.12)}
+.btn{height:24px;padding:0 10px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;font-size:12px}
+.code{font:13px/20px ui-monospace,"SF Mono",Menlo,monospace;padding:8px 12px;white-space:pre;color:var(--text)}
+.t2{color:var(--text2)}
+</style>
+</helmet>
+<div class="board" style="width: 1260px; height: 760px; {{vars}}">
+  <div>
+    <div class="cap">The file changed on disk, and you have unsaved edits</div>
+    <div class="ed"><div class="banner warn"><span style="flex:1"><b>server.go</b> changed on disk while you were editing it.</span><button class="btn">Reload from Disk</button><button class="btn">Keep Mine</button></div><div class="code">func (s *Server) Run(ctx context.Context) error {
+    errc := make(chan error, 1)</div></div>
+    <div class="cap" style="margin-top:20px">The file was deleted</div>
+    <div class="ed"><div class="banner err"><span style="flex:1"><b>old.go</b> was deleted on disk. Save to create it again.</span><button class="btn">Close Tab</button><button class="btn">Keep Open</button></div><div class="code">package old</div></div>
+  </div>
+  <div>
+    <div class="cap">Read-only notice (a very long line)</div>
+    <div class="ed"><div class="banner info"><span style="flex:1">Read-only: a line is over 550,000 characters, too long to edit smoothly. Syntax colours are off for it.</span></div><div class="code">{"items":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27…</div></div>
+    <div class="cap" style="margin-top:20px">A file you did not edit changed on disk</div>
+    <div class="ed"><div class="banner info"><span style="flex:1"><b>config.json</b> was updated from disk.</span><button class="btn">Undo</button></div><div class="code t2">Reloaded without asking: nothing of yours was lost. The caret stays where it was.</div></div>
+    <div class="cap" style="margin-top:20px">Session</div>
+    <div class="ed" style="padding:10px 12px;font-size:12px" class="t2">Gobi reopens each project with its tabs, the tab you were on, the caret and scroll position of every tab, the bottom panel and the sidebar tab. Unsaved edits are kept aside (outside the project) when the window closes or Gobi quits, and come back on the next open with the notices below.</div>
+    <div class="cap" style="margin-top:20px">Restored unsaved changes</div>
+    <div class="ed"><div class="banner info"><span style="flex:1">Restored unsaved changes to <b>server.go</b>.</span><button class="btn">Keep</button><button class="btn">Discard</button></div><div class="code">func (s *Server) Run(ctx context.Context) error {
+    // half-written thought</div></div>
+    <div class="cap" style="margin-top:20px">Restored, but the file changed on disk since</div>
+    <div class="ed"><div class="banner warn"><span style="flex:1">Restored unsaved changes to <b>server.go</b>, but it changed on disk since.</span><button class="btn">Keep Mine</button><button class="btn">Reload from Disk</button></div><div class="code">func (s *Server) Run(ctx context.Context) error {
+    // half-written thought</div></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1260,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {desk:'#E4E4E8',bg:'#FFFFFF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA'};
+    const D = {desk:'#161617',bg:'#1E1E1E',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script>
+</body>
+</html>

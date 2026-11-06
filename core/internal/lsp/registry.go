@@ -12,6 +12,10 @@ type Workspace struct {
 	Root     string
 	Language string
 	Trusted  bool
+	// GoRoot is the Go installation the server runs with; a different one is a different server.
+	GoRoot string
+	// Tool replaces the language server program (an absolute path); a different one is a different server.
+	Tool string
 }
 
 type registryEntry struct {

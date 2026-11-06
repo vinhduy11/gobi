@@ -9,6 +9,8 @@ final class EditorPane: NSViewController {
     let editor: EditorView
     /// Whether the user trusted the project; untrusted projects run gopls restricted.
     var trusted = false
+    /// The Go installation gopls runs with (a folder with bin/go); empty uses the go on PATH.
+    var goRoot = ""
     var editorFile: EditorDocument { editor.document }
     var textView: NSTextView { editor.textView }
     private let problemsView = NSTextView()
@@ -28,12 +30,32 @@ final class EditorPane: NSViewController {
     /// Called when the caret moves, with a zero-based line and column.
     var onCaret: ((Int, Int) -> Void)?
     private(set) var isConnected = false
+    /// The code lens above declarations (references, implementations, run test).
+    private(set) var lens: CodeLensFeed!
     private var selectionObserver: NSObjectProtocol?
+    private var preferencesObserver: NSObjectProtocol?
+    private var appPreferencesObserver: NSObjectProtocol?
+    private var appliedAdvanced = AppPreferences.advanced
+    private var lastStatus = ""
+    var statusText: String { statusLabel.stringValue }
+    private var textObserver: NSObjectProtocol?
+    private var runTextObserver: NSObjectProtocol?
+    private var previewTimer: Timer?
+    /// The Source | Split | Preview switch, for a Markdown file in a project window.
+    private(set) var markdownHost: MarkdownHostView?
+    var onPreviewModeChanged: ((MarkdownPreviewMode) -> Void)?
 
     /// With `embedsPanels` false the pane is just the editor; the host window draws problems and status itself.
     init(fileURL: URL, text: String, embedsPanels: Bool = true) {
-        editor = EditorView(fileURL: fileURL, text: text)
+        editor = EditorView(fileURL: fileURL, text: text, settings: EditorPreferences.current, lineLimit: AppPreferences.advanced.lineLimit)
         super.init(nibName: nil, bundle: nil)
+        editor.apply(EditorPreferences.current)
+        appPreferencesObserver = NotificationCenter.default.addObserver(forName: AppPreferences.didChange, object: nil, queue: .main) { [weak self] _ in
+            self?.applyAdvancedChanges()
+        }
+        preferencesObserver = NotificationCenter.default.addObserver(forName: EditorPreferences.didChange, object: nil, queue: .main) { [weak self] _ in
+            self?.editor.apply(EditorPreferences.current)
+        }
 
         let problemsScroll = NSScrollView()
         problemsScroll.hasVerticalScroller = true
@@ -54,7 +76,39 @@ final class EditorPane: NSViewController {
         stack.spacing = 4
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 6, right: 0)
         stack.distribution = .fill
-        view = embedsPanels ? stack : editor.view
+        // The view is set once: a Markdown file's editor goes inside its Source | Split | Preview host first, because swapping a
+        // controller's view afterwards leaves the old one in the responder chain.
+        var markdown: MarkdownHostView?
+        if !embedsPanels, editor.document.language == "markdown" {
+            let host = MarkdownHostView(editorView: editor.view, mode: WindowSettings.markdownPreviewMode)
+            host.onModeChanged = { [weak self] mode in
+                WindowSettings.markdownPreviewMode = mode
+                self?.onPreviewModeChanged?(mode)
+                if mode.showsPreview { self?.refreshPreview() }
+            }
+            markdownHost = host
+            markdown = host
+            textObserver = NotificationCenter.default.addObserver(forName: NSText.didChangeNotification, object: textView, queue: .main) { [weak self] _ in
+                self?.previewTimer?.invalidate()
+                self?.previewTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: false) { _ in self?.refreshPreview() }
+            }
+        }
+        view = embedsPanels ? stack : (markdown ?? editor.view)
+        editor.completion?.provider = { [weak self] position, done in
+            guard let self, let client = self.editorFile.client, !self.editorFile.isReadOnlyByLineLength else { done([]); return }
+            client.completion(uri: self.editorFile.uri, at: position) { items in DispatchQueue.main.async { done(items) } }
+        }
+        editor.signature?.provider = { [weak self] position, done in
+            guard let self, let client = self.editorFile.client, !self.editorFile.isReadOnlyByLineLength else { done(nil); return }
+            client.signatureHelp(uri: self.editorFile.uri, at: position) { text in DispatchQueue.main.async { done(text) } }
+        }
+        editor.hover?.provider = { [weak self] position, done in
+            guard let self, let client = self.editorFile.client else { done(nil); return }
+            client.hover(uri: self.editorFile.uri, at: position) { text in DispatchQueue.main.async { done(text) } }
+        }
+        lens = CodeLensFeed(pane: self)
+        refreshRunButtons()
+        runTextObserver = NotificationCenter.default.addObserver(forName: NSText.didChangeNotification, object: textView, queue: .main) { [weak self] _ in self?.scheduleRunButtons() }
         selectionObserver = NotificationCenter.default.addObserver(forName: NSTextView.didChangeSelectionNotification, object: editor.textView, queue: .main) { [weak self] _ in
             guard let self else { return }
             let position = self.editorFile.lineIndex.position(at: self.textView.selectedRange().location)
@@ -75,7 +129,7 @@ final class EditorPane: NSViewController {
     func formatDocument() {
         guard let client = editorFile.client, !editorFile.isReadOnlyByLineLength else { return }
         let version = editorFile.version
-        client.formatting(uri: editorFile.uri, tabSize: 4) { [weak self] edits in
+        client.formatting(uri: editorFile.uri, tabSize: editorFile.language == "json" ? 2 : 4, insertSpaces: editorFile.language == "json") { [weak self] edits in
             DispatchQueue.main.async {
                 guard let self, !edits.isEmpty, self.editorFile.version == version else { return }
                 self.apply(edits, named: "Format Document")
@@ -100,6 +154,12 @@ final class EditorPane: NSViewController {
         textView.undoManager?.endUndoGrouping()
     }
 
+    /// Puts the caret on a zero-based line and column without taking focus (a tab that is not shown yet).
+    func placeCaret(line: Int, character: Int) {
+        let offset = editorFile.lineIndex.offset(of: LSPPosition(line: line, character: character))
+        textView.setSelectedRange(NSRange(location: offset, length: 0))
+    }
+
     /// Moves the caret to a zero-based line and column and brings it into view.
     func reveal(line: Int, character: Int) {
         let offset = editorFile.lineIndex.offset(of: LSPPosition(line: line, character: character))
@@ -111,11 +171,27 @@ final class EditorPane: NSViewController {
     required init?(coder: NSCoder) { fatalError("not used") }
 
     /// Writes the text to the file as UTF-8. Returns false (and says why in the status line) when it cannot.
+    ///
+    /// `automatic` (auto save, save on focus loss) never overwrites a file that changed or went on disk since it was read, or one
+    /// whose conflict notice is still open: it returns false and lets the notice appear. ⌘S, Save All and closing a tab are explicit
+    /// and write whatever the answer to "Keep Mine" was.
     @discardableResult
-    func save() -> Bool {
+    func save(automatic: Bool = false) -> Bool {
+        if automatic {
+            let url = editorFile.fileURL
+            let state = DiskCheck.state(known: diskSignature, current: Self.signature(of: url), digest: { Self.contentDigest(of: url) })
+            guard SaveGuard.allowed(dirty: editorFile.isEdited, state: state, userInitiated: false, conflictPending: diskNotified) else {
+                if state != .same { checkDisk() }
+                return false
+            }
+        }
+        applySaveTransform()
         do {
             try textView.string.write(to: editorFile.fileURL, atomically: true, encoding: .utf8)
             editorFile.isEdited = false
+            diskSignature = Self.signature(of: editorFile.fileURL, digestOf: textView.string)
+            hideDiskNotice()
+            formatAfterSave()
             return true
         } catch {
             setStatus("Cannot save \(editorFile.fileURL.lastPathComponent): \(error.localizedDescription)")
@@ -123,16 +199,216 @@ final class EditorPane: NSViewController {
         }
     }
 
+    /// Trailing whitespace and the final newline, per Settings. Replaces the text only when it changes, keeping the caret's place.
+    private func applySaveTransform() {
+        guard !editorFile.isReadOnlyByLineLength, WindowSettings.trimTrailingWhitespace || WindowSettings.finalNewline else { return }
+        let current = textView.string
+        let changed = SaveTransform.apply(current, trimTrailingWhitespace: WindowSettings.trimTrailingWhitespace, finalNewline: WindowSettings.finalNewline)
+        guard changed != current else { return }
+        let caret = textView.selectedRange().location
+        let whole = NSRange(location: 0, length: (current as NSString).length)
+        guard textView.shouldChangeText(in: whole, replacementString: changed) else { return }
+        textView.undoManager?.beginUndoGrouping()
+        textView.undoManager?.setActionName("Clean Up on Save")
+        textView.textStorage?.replaceCharacters(in: whole, with: changed)
+        textView.didChangeText()
+        textView.undoManager?.endUndoGrouping()
+        textView.setSelectedRange(NSRange(location: min(caret, (changed as NSString).length), length: 0))
+    }
+
+    /// Format on save: the file is written first (so a slow or absent gopls never blocks saving), then gofmt's edits are applied
+    /// and the file written again. Skipped for non-Go files and when the switch in the inspector is off.
+    private func formatAfterSave() {
+        let language = editorFile.language
+        let enabled = language == "go" ? WindowSettings.formatOnSave : (language == "json" ? WindowSettings.formatJSONOnSave : false)
+        guard enabled, let client = editorFile.client, !editorFile.isReadOnlyByLineLength else { return }
+        let version = editorFile.version
+        client.formatting(uri: editorFile.uri, tabSize: editorFile.language == "json" ? 2 : 4, insertSpaces: editorFile.language == "json") { [weak self] edits in
+            DispatchQueue.main.async {
+                guard let self, !edits.isEmpty, self.editorFile.version == version else { return }
+                self.apply(edits, named: "Format on Save")
+                try? self.textView.string.write(to: self.editorFile.fileURL, atomically: true, encoding: .utf8)
+                self.editorFile.isEdited = false
+                self.diskSignature = Self.signature(of: self.editorFile.fileURL, digestOf: self.textView.string)
+            }
+        }
+    }
+
+    // MARK: run buttons
+
+    private var runLinesTimer: Timer?
+
+    /// Puts a Run button in the gutter on each test function of a _test.go file; recomputed shortly after typing stops.
+    func refreshRunButtons() {
+        guard editorFile.fileURL.lastPathComponent.hasSuffix("_test.go") else { return }
+        editor.runnableLines = Set(TestAtCursor.signatureLines(in: textView.string))
+    }
+
+    private func scheduleRunButtons() {
+        guard editorFile.fileURL.lastPathComponent.hasSuffix("_test.go") else { return }
+        runLinesTimer?.invalidate()
+        runLinesTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in self?.refreshRunButtons() }
+    }
+
+    // MARK: changes on disk
+
+    /// What the file looked like when this pane last read or wrote it.
+    private(set) var diskSignature: FileSignature?
+    private var diskNotified = false
+
+    /// The file's modification time, size and inode; `digestOf` adds the digest of the text that was read or written.
+    static func signature(of url: URL, digestOf text: String? = nil) -> FileSignature? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path) else { return nil }
+        let modified = (attributes[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+        let identity = (attributes[.systemFileNumber] as? NSNumber)?.uint64Value ?? 0
+        return FileSignature(modified: modified, size: (attributes[.size] as? Int) ?? 0, identity: identity, digest: text.map(FileDigest.of))
+    }
+
+    /// Digest of the file's text as the editor reads it (UTF-8); nil when it cannot be read. Reads the whole file: ask only for open files.
+    static func contentDigest(of url: URL) -> UInt64? {
+        (try? String(contentsOf: url, encoding: .utf8)).map(FileDigest.of)
+    }
+
+    /// Remembers the file as it is now (with the digest of its text); call after the first load.
+    func markDiskKnown() {
+        diskSignature = Self.signature(of: editorFile.fileURL, digestOf: try? String(contentsOf: editorFile.fileURL, encoding: .utf8))
+        diskNotified = false
+    }
+
+    /// Compares the file with what was read: a clean buffer reloads quietly, an edited one or a deleted file asks.
+    /// Returns what it did.
+    @discardableResult
+    /// `verifyContent` also compares the content digest when the metadata is equal (after a file-system event); the slow poll leaves it off.
+    func checkDisk(verifyContent: Bool = true) -> DiskAction {
+        let current = Self.signature(of: editorFile.fileURL)
+        let url = editorFile.fileURL
+        let state = DiskCheck.state(known: diskSignature, current: current, digest: verifyContent ? { Self.contentDigest(of: url) } : nil)
+        let action = DiskCheck.action(dirty: editorFile.isEdited, state: state, notified: diskNotified)
+        let name = editorFile.fileURL.lastPathComponent
+        switch action {
+        case .none: break
+        case .reload:
+            reloadFromDisk()
+        case .conflict:
+            diskNotified = true
+            editor.showNotice("\(name) changed on disk and you have unsaved edits.", style: .warning, actions: [
+                NoticeAction(title: "Reload from Disk") { [weak self] in self?.reloadFromDisk() },
+                NoticeAction(title: "Keep Mine") { [weak self] in self?.keepMine() },
+            ])
+        case .deleted:
+            diskNotified = true
+            editor.showNotice("\(name) was deleted on disk.", style: .error, actions: [
+                NoticeAction(title: "Close Tab") { [weak self] in self?.onDeletedClose?() },
+                NoticeAction(title: "Keep Open") { [weak self] in self?.keepMine() },
+            ])
+        }
+        return action
+    }
+
+    /// Called when the person chooses Close Tab on the "deleted" notice.
+    var onDeletedClose: (() -> Void)?
+    /// Called after a quiet reload so the host can say "updated from disk".
+    var onReloaded: (() -> Void)?
+
+    /// Replaces the text with the file's, keeping the caret near where it was.
+    func reloadFromDisk() {
+        guard let text = try? String(contentsOf: editorFile.fileURL, encoding: .utf8), let storage = textView.textStorage else { return }
+        let caret = textView.selectedRange().location
+        let whole = NSRange(location: 0, length: (textView.string as NSString).length)
+        if text != textView.string, textView.shouldChangeText(in: whole, replacementString: text) {
+            storage.replaceCharacters(in: whole, with: text)
+            textView.didChangeText()
+            textView.setSelectedRange(NSRange(location: min(caret, (text as NSString).length), length: 0))
+        }
+        editorFile.isEdited = false
+        markDiskKnown()
+        hideDiskNotice()
+        onReloaded?()
+    }
+
+    /// Puts kept unsaved text back, marked as edited, with the notice bar saying so. The buffer file goes away when the edit mark
+    /// clears (saved, reloaded or discarded).
+    func restoreUnsaved(_ text: String, changedOnDisk: Bool) {
+        guard let storage = textView.textStorage else { return }
+        let whole = NSRange(location: 0, length: (textView.string as NSString).length)
+        if textView.shouldChangeText(in: whole, replacementString: text) {
+            storage.replaceCharacters(in: whole, with: text)
+            textView.didChangeText()
+        }
+        editorFile.isEdited = true
+        markDiskKnown()
+        let name = editorFile.fileURL.lastPathComponent
+        if changedOnDisk {
+            diskNotified = true   // an automatic save waits for the answer
+            editor.showNotice("Restored unsaved changes to \(name), but it changed on disk since.", style: .warning, actions: [
+                NoticeAction(title: "Keep Mine") { [weak self] in self?.hideDiskNotice() },
+                NoticeAction(title: "Reload from Disk") { [weak self] in self?.reloadFromDisk() },
+            ])
+        } else {
+            editor.showNotice("Restored unsaved changes to \(name).", style: .info, actions: [
+                NoticeAction(title: "Keep") { [weak self] in self?.hideDiskNotice() },
+                NoticeAction(title: "Discard") { [weak self] in self?.reloadFromDisk() },
+            ])
+        }
+    }
+
+    /// Keeps the buffer; the next save overwrites the file. The state is remembered so the notice does not come back.
+    private func keepMine() {
+        diskSignature = Self.signature(of: editorFile.fileURL, digestOf: try? String(contentsOf: editorFile.fileURL, encoding: .utf8))
+        hideDiskNotice()
+    }
+
+    private func hideDiskNotice() { diskNotified = false; editor.hideNotice() }
+
+    // MARK: Markdown preview
+
+    var previewMode: MarkdownPreviewMode { markdownHost?.mode ?? .source }
+
+    /// Asks gobid's Markdown service for the HTML of the text it has and shows it.
+    func refreshPreview() {
+        guard let host = markdownHost, host.mode.showsPreview, let client = editorFile.client else { return }
+        client.request("gobi/markdownPreview", params: ["textDocument": ["uri": editorFile.uri]]) { [weak host] result in
+            guard case .success(let value) = result, let html = (value as? [String: Any])?["html"] as? String else { return }
+            DispatchQueue.main.async { host?.preview.show(html: html) }
+        }
+    }
+
     // MARK: server connection
+
+    /// Settings > Advanced applies to the open file at once: a new large-file limit re-judges the text (read-only past it, editable
+    /// again under it), a new gopls path reconnects Go files so gobid serves them with that program.
+    func applyAdvancedChanges() {
+        let now = AppPreferences.advanced
+        let before = appliedAdvanced
+        appliedAdvanced = now
+        if now.lineLimit != before.lineLimit, editor.applyLineLimit(now.lineLimit) { setStatus(lastStatus) }
+        if now.goplsPath != before.goplsPath, editorFile.language == "go" { reconnect(reason: "Restarting the language server with the new gopls…") }
+    }
+
+    /// Drops the language server connection and makes a new one, for when the Go installation or the gopls program changes:
+    /// gobid then starts (or shares) the gopls that runs with them.
+    func reconnect(reason: String = "Restarting the language server with the new Go…") {
+        guard let old = editorFile.client else { connect(); return }
+        old.onDisconnect = nil
+        old.didClose(uri: editorFile.uri)
+        old.close()
+        editorFile.client = nil
+        isConnected = false
+        show([])   // the old server's problems are stale; the new one reports its own
+        setStatus(reason)
+        connect()
+    }
 
     /// Connects to gobid on a background thread so the window shows immediately.
     func connect() {
         let editorFile = self.editorFile
         let trusted = self.trusted
+        let goRoot = self.goRoot
+        let goplsPath = AppPreferences.advanced.goplsPath
         let initialText = textView.string
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             do {
-                let session = try Gobid.connect(channel: "lsp", workspaceRoot: editorFile.workspaceRoot, language: editorFile.language, trusted: trusted)
+                let session = try Gobid.connect(channel: "lsp", workspaceRoot: editorFile.workspaceRoot, language: editorFile.language, goRoot: editorFile.language == "go" ? goRoot : "", tool: editorFile.language == "go" ? goplsPath : "", trusted: trusted)
                 let client = LSPClient(session: session)
                 client.onDiagnostics = { uri, diagnostics in
                     guard uri == editorFile.uri else { return }
@@ -149,9 +425,11 @@ final class EditorPane: NSViewController {
                     self?.connectedAt = Date()
                     self?.isConnected = true
                     self?.onConnected?()
+                    self?.lens.schedule(after: 1.0)
                     // Anything typed while connecting is covered by sending the current text, not the original.
                     let current = self?.textView.string ?? initialText
                     client.didOpen(uri: editorFile.uri, languageID: editorFile.language, version: editorFile.version, text: current)
+                    self?.refreshPreview()
                     self?.setStatus("Connected (\(editorFile.language), sync \(client.syncKind == 2 ? "incremental" : "full"))")
                 }
             } catch {
@@ -162,19 +440,21 @@ final class EditorPane: NSViewController {
 
     /// What the user needs to know about the file's longest line: read-only, or colours off.
     private var lineLimitNotice: String {
-        if editorFile.isReadOnlyByLineLength { return ", read-only: a line is over \(EditorDocument.editableLineLimit) characters" }
+        if editorFile.isReadOnlyByLineLength { return ", read-only: a line is over \(AppPreferences.advanced.lineLimit) characters" }
         if editorFile.hasOverlongLine { return ", colours off for a line over \(EditorDocument.overlongLineLimit) characters" }
         return ""
     }
 
     private func setStatus(_ text: String) {
+        lastStatus = text
         statusLabel.stringValue = text + lineLimitNotice
         onStatus?(text + lineLimitNotice)
     }
 
     // MARK: diagnostics
 
-    private func show(_ diagnostics: [LSPDiagnostic]) {
+    private func show(_ shown: [LSPDiagnostic]) {
+        let diagnostics = editorFile.language == "json" && !WindowSettings.reportJSONErrors ? [] : shown
         diagnosticCount = diagnostics.count
         diagnosticsSeenAt = Date()
         if firstDiagnosticsAt == nil { firstDiagnosticsAt = Date() }

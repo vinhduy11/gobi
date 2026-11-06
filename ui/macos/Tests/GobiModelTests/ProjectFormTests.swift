@@ -40,4 +40,13 @@ struct ProjectFormTests {
         #expect(ProjectForm.problem(withCloneURL: "ext::sh -c id") != nil)
         #expect(ProjectForm.problem(withCloneURL: "-oProxyCommand=x") != nil)
     }
+
+    @Test func goIdentifiers() {
+        #expect(ProjectForm.isGoIdentifier("newName"))
+        #expect(ProjectForm.isGoIdentifier("_x1"))
+        #expect(!ProjectForm.isGoIdentifier(""))
+        #expect(!ProjectForm.isGoIdentifier("1abc"))
+        #expect(!ProjectForm.isGoIdentifier("has space"))
+        #expect(!ProjectForm.isGoIdentifier("a-b"))
+    }
 }

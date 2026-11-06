@@ -13,8 +13,9 @@ public final class TerminalClient: @unchecked Sendable {
     public var onExit: ((Int, String) -> Void)?
 
     /// Connects and starts reading. Throws when gobid refuses, for example for a workspace that is not trusted.
-    public init(workspaceRoot: String, trusted: Bool) throws {
-        session = try Gobid.connect(channel: "pty", workspaceRoot: workspaceRoot, trusted: trusted)
+    /// `shell`: an absolute path listed in /etc/shells; empty starts the login shell.
+    public init(workspaceRoot: String, trusted: Bool, shell: String = "") throws {
+        session = try Gobid.connect(channel: "pty", workspaceRoot: workspaceRoot, shell: shell, trusted: trusted)
     }
 
     public func start() {

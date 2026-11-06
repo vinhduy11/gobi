@@ -12,8 +12,15 @@ extension LSPClient {
         }
     }
 
-    public func formatting(uri: String, tabSize: Int, completion: @escaping ([TextEdit]) -> Void) {
-        let body: [String: Any] = ["textDocument": ["uri": uri], "options": ["tabSize": tabSize, "insertSpaces": false]]
+    public func implementation(uri: String, at position: LSPPosition, completion: @escaping ([SourceLocation]) -> Void) {
+        _ = request("textDocument/implementation", params: params(uri: uri, position)) { result in
+            if case .success(let value) = result { completion(LSPResults.locations(value)) } else { completion([]) }
+        }
+    }
+
+    /// `insertSpaces` false indents with tabs (Go); JSON uses two spaces.
+    public func formatting(uri: String, tabSize: Int, insertSpaces: Bool = false, completion: @escaping ([TextEdit]) -> Void) {
+        let body: [String: Any] = ["textDocument": ["uri": uri], "options": ["tabSize": tabSize, "insertSpaces": insertSpaces]]
         _ = request("textDocument/formatting", params: body) { result in
             if case .success(let value) = result { completion(LSPResults.textEdits(value)) } else { completion([]) }
         }
@@ -25,9 +32,54 @@ extension LSPClient {
         }
     }
 
+    public func signatureHelp(uri: String, at position: LSPPosition, completion: @escaping (SignatureText?) -> Void) {
+        _ = request("textDocument/signatureHelp", params: params(uri: uri, position)) { result in
+            if case .success(let value) = result { completion(SignatureHelp.parse(value)) } else { completion(nil) }
+        }
+    }
+
     public func hover(uri: String, at position: LSPPosition, completion: @escaping (String?) -> Void) {
         _ = request("textDocument/hover", params: params(uri: uri, position)) { result in
             if case .success(let value) = result { completion(LSPResults.hoverText(value)) } else { completion(nil) }
+        }
+    }
+
+    public func references(uri: String, at position: LSPPosition, completion: @escaping ([SourceLocation]) -> Void) {
+        var body = params(uri: uri, position)
+        body["context"] = ["includeDeclaration": true]
+        _ = request("textDocument/references", params: body) { result in
+            if case .success(let value) = result { completion(LSPResults.locations(value)) } else { completion([]) }
+        }
+    }
+
+    /// Renames the symbol at `position` everywhere; `completion` gets the edits by file, or the server's message on failure.
+    public func rename(uri: String, at position: LSPPosition, to name: String, completion: @escaping (Result<[String: [TextEdit]], LSPResponseError>) -> Void) {
+        var body = params(uri: uri, position)
+        body["newName"] = name
+        _ = request("textDocument/rename", params: body) { result in
+            completion(result.map { LSPResults.workspaceEdit($0) })
+        }
+    }
+
+    /// The code actions for a range, limited to the given kinds (for example `source.organizeImports`).
+    public func codeActions(uri: String, from start: LSPPosition, to end: LSPPosition, kinds: [String], completion: @escaping ([CodeAction]) -> Void) {
+        let range: [String: Any] = ["start": ["line": start.line, "character": start.character], "end": ["line": end.line, "character": end.character]]
+        var context: [String: Any] = ["diagnostics": [] as [Any]]
+        if !kinds.isEmpty { context["only"] = kinds }
+        _ = request("textDocument/codeAction", params: ["textDocument": ["uri": uri], "range": range, "context": context]) { result in
+            if case .success(let value) = result { completion(LSPResults.codeActions(value)) } else { completion([]) }
+        }
+    }
+
+    public func documentSymbols(uri: String, completion: @escaping ([OutlineSymbol]) -> Void) {
+        _ = request("textDocument/documentSymbol", params: ["textDocument": ["uri": uri]]) { result in
+            if case .success(let value) = result { completion(LSPResults.documentSymbols(value)) } else { completion([]) }
+        }
+    }
+
+    public func workspaceSymbols(query: String, completion: @escaping ([WorkspaceSymbol]) -> Void) {
+        _ = request("workspace/symbol", params: ["query": query]) { result in
+            if case .success(let value) = result { completion(LSPResults.workspaceSymbols(value)) } else { completion([]) }
         }
     }
 }

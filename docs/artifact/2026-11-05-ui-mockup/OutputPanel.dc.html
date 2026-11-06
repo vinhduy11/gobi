@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Gobi tests and output</title><script src="./support.js"></script></head>
+<body><x-dc><helmet><style>
+body{margin:0}*{box-sizing:border-box}
+.win{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;color:var(--text);background:var(--bg);border-radius:12px;border:1px solid var(--sep);overflow:hidden;display:flex;flex-direction:column}
+.mono{font:12px/20px ui-monospace,"SF Mono",Menlo,monospace}
+.ptabs{display:flex;align-items:center;border-bottom:1px solid var(--sep);background:var(--bar);padding:0 8px;flex:none}
+.ptab{padding:0 12px;height:30px;display:flex;align-items:center;color:var(--text2);border-bottom:2px solid transparent}
+.ptab.on{color:var(--text);font-weight:600;border-bottom-color:var(--accent)}
+.bar{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--sep);flex:none}
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:11px;font-size:12px;background:var(--hover)}
+.btn{height:26px;padding:0 12px;border:1px solid var(--sep);border-radius:6px;background:var(--bg);color:var(--text);font:inherit}
+.row{display:flex;align-items:center;gap:8px;height:26px;padding:0 12px}
+.row.sel{background:var(--accentBg)}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.skip{color:var(--warn)}.t2{color:var(--text2)}
+.out{padding:8px 14px;white-space:pre;overflow:hidden;background:var(--term);color:var(--termText);flex:1}
+</style></helmet>
+<div class="win" style="width: 1000px; height: 300px; {{vars}}"><div class="ptabs"><div class="ptab">Problems 2</div><div class="ptab">Tests</div><div class="ptab">Terminal</div><div class="ptab">Debug</div><div class="ptab">Profiler</div><div class="ptab">Git</div><div class="ptab on">Output</div></div><div class="bar"><span class="pill">go test ./...</span><span class="pill ok">exit 0</span><span class="t2">1.82 s</span><span style="flex:1"></span><button class="btn">Clear</button><button class="btn">Stop</button></div>
+<div class="out mono">$ go test ./... -run TestRun
+ok  &#160;&#160;hello/internal/server &#160;0.412s
+--- FAIL: TestRunShutsDownGracefully (1.20s)
+&#160;&#160;&#160;&#160;server_test.go:58: shutdown took 1.2s, want under 1s
+FAIL
+FAIL &#160;hello/internal/server &#160;1.4s
+ok  &#160;&#160;hello/cmd/hello &#160;&#160;&#160;&#160;&#160;0.188s</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1000,"height":300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#FFFFFF',bar:'#ECECEF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentBg:'rgba(0,122,255,.14)',term:'#FFFFFF',termText:'#383A42',ok:'#1B7F3B',bad:'#C93A45',warn:'#9A6700'};
+    const D = {bg:'#1E1E1E',bar:'#2A2A2C',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',hover:'rgba(255,255,255,.08)',accent:'#0A84FF',accentBg:'rgba(10,132,255,.28)',term:'#1E1F22',termText:'#BCBEC4',ok:'#7BC47F',bad:'#E2767D',warn:'#E5C07B'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script></body></html>

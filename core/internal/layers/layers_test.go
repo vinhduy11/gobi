@@ -17,7 +17,7 @@ const module = "gobi/core/"
 // Layer of every package. A package may import only packages in a lower layer, and the rules below narrow that further.
 var layerOf = map[string]int{
 	"internal/wire": 0, "internal/rpc": 0, "internal/textlines": 0, // foundation: no internal imports
-	"internal/lsp": 1, "internal/langsvc": 1, "internal/project": 1, "internal/pty": 1, "internal/toolchain": 1, // services
+	"internal/lsp": 1, "internal/langsvc": 1, "internal/project": 1, "internal/pty": 1, "internal/runner": 1, "internal/search": 1, "internal/pprof": 1, "internal/debugger": 1, "internal/gitsvc": 1, "internal/toolchain": 1, // services
 	"internal/ipc":    2, // transport
 	"internal/daemon": 3, // composition: wires transport to services
 	"cmd/gobid":       4, // entry point
@@ -83,7 +83,7 @@ func TestCoreFollowsTheLayers(t *testing.T) {
 			}
 			dir, _ := filepath.Rel(root, filepath.Dir(path))
 			dir = filepath.ToSlash(dir)
-			if dir == "internal/layers" || strings.HasSuffix(dir, "/fakelsp") || strings.Contains(dir, "/testdata") {
+			if dir == "internal/layers" || strings.HasSuffix(dir, "/fakelsp") || strings.HasSuffix(dir, "/fakedap") || strings.Contains(dir, "/testdata") {
 				return nil
 			}
 			file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)

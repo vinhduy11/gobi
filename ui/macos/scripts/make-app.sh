@@ -1,7 +1,7 @@
 #!/bin/sh
 # Assembles dist/Gobi.app from the release build, bundles gobid next to the app binary, and signs ad hoc.
 # SwiftPM builds the executable only; the bundle, Info.plist and signing are done here (works with the
-# Command Line Tools alone). Developer ID signing and notarization come later.
+# Command Line Tools alone). Release signing: SIGN_IDENTITY; notarization: scripts/notarize.sh.
 set -eu
 cd "$(dirname "$0")/.."
 ROOT=$(pwd)
@@ -42,8 +42,13 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-# Sign the helper first, then the bundle. Ad hoc ("-") is enough to run locally.
-codesign --force --sign - "$CONTENTS/MacOS/gobid"
-codesign --force --sign - "$APP"
+# Sign the helper first, then the bundle. Ad hoc ("-") is enough to run locally; set SIGN_IDENTITY to a Developer ID
+# Application identity (name from `security find-identity -v -p codesigning`) for a release build, which also turns on the
+# hardened runtime that notarization requires.
+IDENTITY=${SIGN_IDENTITY:--}
+OPTIONS=""
+[ "$IDENTITY" != "-" ] && OPTIONS="--options runtime --timestamp"
+codesign --force --sign "$IDENTITY" $OPTIONS "$CONTENTS/MacOS/gobid"
+codesign --force --sign "$IDENTITY" $OPTIONS "$APP"
 codesign --verify --strict --verbose=2 "$APP"
 echo "built $APP"

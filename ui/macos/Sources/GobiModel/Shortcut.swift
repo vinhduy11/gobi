@@ -7,6 +7,7 @@ public struct Shortcut: Equatable {
         case function(Int)
         case returnKey
         case backspace
+        case space
     }
 
     public var control = false
@@ -39,6 +40,8 @@ public struct Shortcut: Equatable {
             key = .returnKey
         } else if rest == "⌫" {
             key = .backspace
+        } else if rest == "Space" {
+            key = .space
         } else if rest == "−" {
             key = .character("-")
         } else if rest.count == 1 {
@@ -60,12 +63,13 @@ public struct ShortcutRow: Equatable {
 
 public enum ShortcutList {
     /// Every menu item with a shortcut, in menu order, for the Keyboard Shortcuts window.
-    public static func rows() -> [ShortcutRow] {
+    public static func rows(overrides: KeymapOverrides = KeymapOverrides()) -> [ShortcutRow] {
         var rows: [ShortcutRow] = []
         func add(_ menu: String, _ entries: [MenuEntry]) {
             for entry in entries where !entry.isSeparator {
-                if !entry.shortcut.isEmpty {
-                    rows.append(ShortcutRow(menu: menu, title: entry.title, shortcut: entry.shortcut, isAvailable: entry.action != nil))
+                let shortcut = overrides.shortcut(for: menu + " ▸ " + entry.title, default: entry.shortcut)
+                if !shortcut.isEmpty {
+                    rows.append(ShortcutRow(menu: menu, title: entry.title, shortcut: shortcut, isAvailable: entry.action != nil))
                 }
                 if !entry.children.isEmpty { add(menu + " ▸ " + entry.title, entry.children) }
             }
@@ -73,4 +77,32 @@ public enum ShortcutList {
         for definition in MenuSpec.all { add(definition.title, definition.entries) }
         return rows
     }
+}
+
+/// One menu item as the Keymap settings list it.
+public struct KeymapItem: Equatable, Sendable {
+    /// "Run ▸ Run", the key of an override.
+    public let id: String
+    public let title: String
+    public let menu: String
+    public let defaultShortcut: String
+    /// False when the feature behind the item is not built yet (it cannot take a shortcut).
+    public let isLive: Bool
+}
+
+public enum KeymapItems {
+    /// Every menu item that has a shortcut or a feature behind it, in menu order.
+    public static let all: [KeymapItem] = {
+        var items: [KeymapItem] = []
+        func add(_ menu: String, _ entries: [MenuEntry]) {
+            for entry in entries where !entry.isSeparator {
+                if entry.children.isEmpty, entry.action != nil || !entry.shortcut.isEmpty {
+                    items.append(KeymapItem(id: menu + " ▸ " + entry.title, title: entry.title, menu: menu, defaultShortcut: entry.shortcut, isLive: entry.action != nil))
+                }
+                if !entry.children.isEmpty { add(menu + " ▸ " + entry.title, entry.children) }
+            }
+        }
+        for definition in MenuSpec.all { add(definition.title, definition.entries) }
+        return items
+    }()
 }

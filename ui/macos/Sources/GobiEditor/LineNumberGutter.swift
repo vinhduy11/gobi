@@ -15,6 +15,18 @@ final class LineNumberGutter: NSView {
         .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
         .foregroundColor: NSColor.secondaryLabelColor,
     ]
+    /// Lines (1-based) that carry a breakpoint, drawn as red dots; a click on the gutter asks to toggle one.
+    var breakpoints: Set<Int> = [] { didSet { needsDisplay = true } }
+    var conditional: Set<Int> = [] { didSet { needsDisplay = true } }
+    var onToggleBreakpoint: ((Int) -> Void)?
+    /// Lines with a Run button (a green triangle right of the breakpoint dot) and what a click on it does.
+    var runnable: Set<Int> = [] { didSet { needsDisplay = true } }
+    var onRunLine: ((Int) -> Void)?
+    private static let runButtonRange: ClosedRange<CGFloat> = 18 ... 32
+    /// What changed since the last commit, by 1-based line (added: green bar, modified: blue bar, deleted: red mark).
+    var gitAdded: Set<Int> = [] { didSet { needsDisplay = true } }
+    var gitModified: Set<Int> = [] { didSet { needsDisplay = true } }
+    var gitDeletedAfter: Set<Int> = [] { didSet { needsDisplay = true } }
     private(set) var drawCount = 0
     private(set) var lastDrawMilliseconds = 0.0
 
@@ -36,6 +48,43 @@ final class LineNumberGutter: NSView {
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
+    override func mouseDown(with event: NSEvent) {
+        guard let textView, let layout = textView.textLayoutManager, let viewport = layout.textViewportLayoutController.viewportRange else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        let origin = textView.textContainerOrigin
+        var hit: Int?
+        layout.enumerateTextLayoutFragments(from: viewport.location, options: []) { fragment in
+            let frame = fragment.layoutFragmentFrame
+            let top = convert(NSPoint(x: 0, y: frame.minY + origin.y), from: textView).y
+            if point.y < top { return false }
+            if point.y < top + frame.height {
+                let offset = layout.offset(from: layout.documentRange.location, to: fragment.rangeInElement.location)
+                hit = document.lineIndex.position(at: offset).line + 1
+                return false
+            }
+            return true
+        }
+        guard let hit else { return }
+        if runnable.contains(hit), Self.runButtonRange.contains(point.x) { onRunLine?(hit) } else { onToggleBreakpoint?(hit) }
+    }
+
+    private func drawGitMark(for line: Int, top: CGFloat, height: CGFloat) {
+        if gitAdded.contains(line) || gitModified.contains(line) {
+            (gitAdded.contains(line) ? NSColor.systemGreen : NSColor.systemBlue).setFill()
+            NSBezierPath(roundedRect: NSRect(x: bounds.maxX - 6, y: top + 1, width: 3, height: height - 2), xRadius: 1.5, yRadius: 1.5).fill()
+        }
+        // Removed lines: a small red wedge at the top of the line that follows them (the first line when they were at the top).
+        if gitDeletedAfter.contains(line - 1) {
+            NSColor.systemRed.setFill()
+            let wedge = NSBezierPath()
+            wedge.move(to: NSPoint(x: bounds.maxX - 8, y: top - 3))
+            wedge.line(to: NSPoint(x: bounds.maxX - 1, y: top))
+            wedge.line(to: NSPoint(x: bounds.maxX - 8, y: top + 3))
+            wedge.close()
+            wedge.fill()
+        }
+    }
+
     @objc private func contentChanged(_ notification: Notification) { needsDisplay = true }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -56,12 +105,31 @@ final class LineNumberGutter: NSView {
             let frame = fragment.layoutFragmentFrame
             if frame.minY + origin.y > visibleBottom { return false }
             let offset = layout.offset(from: layout.documentRange.location, to: fragment.rangeInElement.location)
-            let number = "\(document.lineIndex.position(at: offset).line + 1)" as NSString
+            let lineNumber = document.lineIndex.position(at: offset).line + 1
+            drawGitMark(for: lineNumber, top: convert(NSPoint(x: 0, y: frame.minY + origin.y), from: textView).y, height: frame.height)
+            let number = "\(lineNumber)" as NSString
             let size = number.size(withAttributes: attributes)
             let top = convert(NSPoint(x: 0, y: frame.minY + origin.y), from: textView).y
-            // Align the number with the first text line of the paragraph.
-            let lineHeight = fragment.textLineFragments.first?.typographicBounds.height ?? size.height
-            number.draw(at: NSPoint(x: bounds.maxX - size.width - 8, y: top + (lineHeight - size.height) / 2), withAttributes: attributes)
+            // Put the number's baseline on the baseline of the paragraph's first text line.
+            if let line = fragment.textLineFragments.first {
+                let baseline = top + line.typographicBounds.minY + line.glyphOrigin.y
+                number.draw(at: NSPoint(x: bounds.maxX - size.width - 8, y: baseline - (attributes[.font] as? NSFont ?? NSFont.systemFont(ofSize: 11)).ascender), withAttributes: attributes)
+                if runnable.contains(lineNumber) {
+                    let middle = top + line.typographicBounds.minY + line.typographicBounds.height / 2
+                    NSColor.systemGreen.setFill()
+                    let triangle = NSBezierPath()
+                    triangle.move(to: NSPoint(x: 20, y: middle - 5))
+                    triangle.line(to: NSPoint(x: 30, y: middle))
+                    triangle.line(to: NSPoint(x: 20, y: middle + 5))
+                    triangle.close()
+                    triangle.fill()
+                }
+                if breakpoints.contains(lineNumber) {
+                    (conditional.contains(lineNumber) ? NSColor.systemOrange : NSColor.systemRed).setFill()
+                    let middle = top + line.typographicBounds.minY + line.typographicBounds.height / 2
+                    NSBezierPath(ovalIn: NSRect(x: 6, y: middle - 5, width: 10, height: 10)).fill()
+                }
+            }
             return true
         }
     }

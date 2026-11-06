@@ -14,6 +14,9 @@ const (
 	helloWorkspaceRoot = 4
 	helloTrusted       = 5
 	helloLanguage      = 6
+	helloGoRoot        = 7
+	helloShell         = 8
+	helloTool          = 9
 
 	replyOK       = 1
 	replyProtocol = 2
@@ -29,6 +32,9 @@ func EncodeHello(hello Hello) []byte {
 	w.String(helloWorkspaceRoot, hello.WorkspaceRoot)
 	w.Bool(helloTrusted, hello.Trusted)
 	w.String(helloLanguage, hello.Language)
+	w.String(helloGoRoot, hello.GoRoot)
+	w.String(helloShell, hello.Shell)
+	w.String(helloTool, hello.Tool)
 	return w.Bytes()
 }
 
@@ -53,6 +59,12 @@ func DecodeHello(data []byte) (Hello, error) {
 			hello.Trusted = field.Uint != 0
 		case helloLanguage:
 			hello.Language = string(field.Bytes)
+		case helloGoRoot:
+			hello.GoRoot = string(field.Bytes)
+		case helloShell:
+			hello.Shell = string(field.Bytes)
+		case helloTool:
+			hello.Tool = string(field.Bytes)
 		}
 	}
 	return hello, nil

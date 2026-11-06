@@ -4,7 +4,7 @@ import GobiModel
 /// Help > Keyboard Shortcuts: every shortcut of the menu bar, from the same data the menus are built from, so the list cannot
 /// drift from what the keys do. Items whose feature is not built yet are grey.
 final class ShortcutsWindowController: NSWindowController, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
-    private let allRows = ShortcutList.rows()
+    private let allRows = ShortcutList.rows(overrides: AppPreferences.keymap)
     private var rows: [ShortcutRow]
     private let table = NSTableView()
     private let search = NSSearchField()

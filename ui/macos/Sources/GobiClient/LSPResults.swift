@@ -49,7 +49,8 @@ public enum LSPResults {
             }
             return CompletionItem(
                 label: label, kind: CompletionKind(lspKind: dictionary["kind"] as? Int), detail: dictionary["detail"] as? String ?? "",
-                insertText: dictionary["insertText"] as? String ?? label, replaces: replaces, sortText: dictionary["sortText"] as? String ?? label)
+                insertText: dictionary["insertText"] as? String ?? label, replaces: replaces, sortText: dictionary["sortText"] as? String ?? label,
+                isSnippet: dictionary["insertTextFormat"] as? Int == 2)
         }
         return items.sorted { ($0.sortText, $0.label) < ($1.sortText, $1.label) }
     }
@@ -67,5 +68,59 @@ public enum LSPResults {
             return parts.isEmpty ? nil : parts.joined(separator: "\n\n")
         }
         return text(contents).flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// A WorkspaceEdit as edits by file URI: `changes`, or the text edits of `documentChanges` (file create, rename and
+    /// delete operations are not handled and are left out).
+    public static func workspaceEdit(_ result: Any?) -> [String: [TextEdit]] {
+        guard let edit = result as? [String: Any] else { return [:] }
+        var byFile: [String: [TextEdit]] = [:]
+        if let changes = edit["changes"] as? [String: Any] {
+            for (uri, list) in changes { byFile[uri, default: []] += textEdits(list) }
+        }
+        if let documents = edit["documentChanges"] as? [Any] {
+            for entry in documents {
+                guard let change = entry as? [String: Any], let document = change["textDocument"] as? [String: Any], let uri = document["uri"] as? String else { continue }
+                byFile[uri, default: []] += textEdits(change["edits"])
+            }
+        }
+        return byFile.filter { !$0.value.isEmpty }
+    }
+
+    /// Code actions that come with an edit. Ones that only run a server command are left out.
+    public static func codeActions(_ result: Any?) -> [CodeAction] {
+        guard let list = result as? [Any] else { return [] }
+        return list.compactMap { entry in
+            guard let action = entry as? [String: Any], let title = action["title"] as? String else { return nil }
+            let edits = workspaceEdit(action["edit"])
+            guard !edits.isEmpty else { return nil }
+            return CodeAction(title: title, kind: action["kind"] as? String ?? "", edits: edits)
+        }
+    }
+
+    /// DocumentSymbol[] (a tree, positioned at the symbol's name) or SymbolInformation[] (flat).
+    public static func documentSymbols(_ result: Any?) -> [OutlineSymbol] {
+        guard let list = result as? [Any] else { return [] }
+        return list.compactMap { entry in
+            guard let symbol = entry as? [String: Any], let name = symbol["name"] as? String else { return nil }
+            let kind = OutlineSymbol.Kind(lspKind: symbol["kind"] as? Int ?? 0)
+            if let selection = range(symbol["selectionRange"] ?? symbol["range"]) {
+                return OutlineSymbol(name: name, kind: kind, line: selection.0.line, children: documentSymbols(symbol["children"]))
+            }
+            if let location = symbol["location"] as? [String: Any], let place = range(location["range"]) {
+                return OutlineSymbol(name: name, kind: kind, line: place.0.line, children: [])
+            }
+            return nil
+        }
+    }
+
+    public static func workspaceSymbols(_ result: Any?) -> [WorkspaceSymbol] {
+        guard let list = result as? [Any] else { return [] }
+        return list.compactMap { entry in
+            guard let symbol = entry as? [String: Any], let name = symbol["name"] as? String, let location = symbol["location"] as? [String: Any],
+                  let uri = location["uri"] as? String, let place = range(location["range"]) else { return nil }
+            return WorkspaceSymbol(name: name, kind: OutlineSymbol.Kind(lspKind: symbol["kind"] as? Int ?? 0), container: symbol["containerName"] as? String ?? "",
+                                   location: SourceLocation(uri: uri, start: place.0, end: place.1))
+        }
     }
 }

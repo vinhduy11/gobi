@@ -108,3 +108,12 @@ public enum PreviewTree {
         return lines
     }
 }
+
+extension ProjectForm {
+    /// A Go identifier: a letter or underscore, then letters, digits and underscores (ASCII, which is what a rename dialog accepts).
+    public static func isGoIdentifier(_ text: String) -> Bool {
+        guard let first = text.unicodeScalars.first else { return false }
+        func letter(_ scalar: Unicode.Scalar) -> Bool { scalar == "_" || (scalar.value >= 65 && scalar.value <= 90) || (scalar.value >= 97 && scalar.value <= 122) }
+        return letter(first) && text.unicodeScalars.allSatisfy { letter($0) || ($0.value >= 48 && $0.value <= 57) }
+    }
+}

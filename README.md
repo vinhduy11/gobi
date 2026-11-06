@@ -45,6 +45,7 @@ handshake; untrusted workspaces run gopls with `GOTOOLCHAIN=local`.
 cd ui/macos
 ./scripts/test.sh                      # Swift tests (works with the Command Line Tools only)
 ./scripts/make-app.sh                  # builds dist/Gobi.app with gobid bundled, signed ad hoc
+./scripts/make-dmg.sh                  # packs dist/Gobi-<version>.dmg (drag to Applications)
 open dist/Gobi.app                                   # Welcome window: Open… a folder, or pick a recent project
 open dist/Gobi.app --args Fixtures/broken/main.go   # a single file
 swift build -c release --product gobi-bench && .build/release/gobi-bench    # editor measurements
@@ -60,7 +61,13 @@ python3 scripts/make-fixtures.py OUT_DIR                            # 100k-line 
 
 ## Status
 
-Slice 1 (core bootstrap) is implemented: framing codec, tool check, unix-socket transport with handshake, gopls
-broker with restart and document replay, and `gobid serve`. The Swift UI, debugger, test runner, environment
-profiles, Go version manager, terminal, Git and profiler are designed (see `docs/architect/` and the mockups in
-`docs/artifact/`) but not built. See `CHANGELOG.md` and `docs/implement/core-bootstrap.md` for open items.
+Built: the core (framing, handshake, gopls broker, JSON/Markdown service, run and test, debugger over `dlv dap`, git, pprof,
+search, toolchain and environment services) and the macOS app (project window with explorer, tabs, editor, Problems, Tests,
+Terminal, Debug, Profiler, Git, Output and Find tabs; Go toolchains and environments; Settings; session restore; changes made
+on disk by other programs). Release scripts exist (`make-app.sh` signing with `SIGN_IDENTITY`, `notarize.sh`, `make-dmg.sh`, `scripts/ci.sh`, `.gitlab-ci.yml`) but have not been run with a real signing identity or on a CI runner. Not built: VoiceOver and trackpad checks, Windows and Linux UIs.
+Editor keystroke time in `gobi-bench`: about 3 ms on a 100k-line file (budget 16 ms).
+See `CHANGELOG.md` and the docs under `docs/implement/` for details.
+
+Self-tests of the app (quiet, no window in front): `GobiApp FOLDER --selftest-session` and its siblings `-run`, `-debug`,
+`-git`, `-find`, `-env`, `-settings`, `-toolchain`, `-profile`, `-terminal`, `-setup`, `-lang`, `-codehelp`, `-trust`,
+`-newproject`, `-welcome`; each needs a small fixture folder described above its function in `AppDelegate.swift`.

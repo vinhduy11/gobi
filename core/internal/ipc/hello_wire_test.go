@@ -13,7 +13,7 @@ import (
 )
 
 func TestHelloRoundTrips(t *testing.T) {
-	hello := Hello{Protocol: 1, ClientVersion: "0.1", Channel: "lsp", WorkspaceRoot: "/work/héllo", Trusted: true, Language: "go"}
+	hello := Hello{Protocol: 1, ClientVersion: "0.1", Channel: "lsp", WorkspaceRoot: "/work/héllo", Trusted: true, Language: "go", GoRoot: "/sdk/go1.25.10", Shell: "/bin/bash", Tool: "/opt/tools/gopls"}
 	decoded, err := DecodeHello(EncodeHello(hello))
 	if err != nil || decoded != hello {
 		t.Fatalf("got %+v (%v), want %+v", decoded, err, hello)

@@ -8,7 +8,6 @@ final class ProjectStore {
     private let defaults: UserDefaults
     private let recentsKey = "gobi.recentProjects"
     private let trustKey = "gobi.trustedFolders"
-    private let welcomeKey = "gobi.showWelcomeAtLaunch"
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
@@ -24,8 +23,8 @@ final class ProjectStore {
 
     /// Off by default: Gobi reopens the newest project instead of showing the Welcome window.
     var showWelcomeAtLaunch: Bool {
-        get { defaults.bool(forKey: welcomeKey) }
-        set { defaults.set(newValue, forKey: welcomeKey) }
+        get { AppPreferences.general.onLaunch == .welcome }
+        set { AppPreferences.update(\.general) { $0.onLaunch = newValue ? .welcome : .reopenLast } }
     }
 
     private func load<Value: Decodable>(_ key: String) -> Value? {

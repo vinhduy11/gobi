@@ -1,0 +1,10 @@
+# The core needs only Go. The app needs a macOS runner with the Swift toolchain; tag it `macos`.
+core:
+  image: golang:1.26
+  script:
+    - cd core && go vet ./... && go test -race ./...
+
+macos:
+  tags: [macos]
+  script:
+    - ./scripts/ci.sh

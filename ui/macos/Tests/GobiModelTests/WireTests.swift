@@ -45,6 +45,12 @@ struct WireTests {
     }
 
     // The same vectors as the Go tests (internal/ipc/hello_wire_test.go and internal/daemon/control_test.go).
+    @Test func helloCarriesTheToolPathInField9() {
+        let without = Handshake.encodeHello(clientVersion: "t", channel: "git", workspaceRoot: "/w", trusted: true, language: nil)
+        let with = Handshake.encodeHello(clientVersion: "t", channel: "git", workspaceRoot: "/w", trusted: true, language: nil, tool: "/opt/git")
+        #expect(with == without + [0x4a, 0x08] + Array("/opt/git".utf8))
+    }
+
     @Test func helloMatchesTheGoBytes() {
         let hello = Handshake.encodeHello(clientVersion: "t", channel: "control", workspaceRoot: "", trusted: false, language: nil)
         #expect(hello == [0x08, 0x01, 0x12, 0x01, 0x74, 0x1a, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x28, 0x00])
@@ -82,5 +88,26 @@ struct WireTests {
         failure.string(2, "name has a slash")
         let failed = try ControlWire.parseReply(failure.bytes)
         #expect(failed.failure == "name has a slash")
+    }
+}
+
+@Suite("Handshake Go folder")
+struct HandshakeGoRootTests {
+    @Test func theGoFolderIsField7AndAbsentWhenEmpty() {
+        let without = Handshake.encodeHello(clientVersion: "t", channel: "lsp", workspaceRoot: "/w", trusted: true, language: "go")
+        let with = Handshake.encodeHello(clientVersion: "t", channel: "lsp", workspaceRoot: "/w", trusted: true, language: "go", goRoot: "/sdk/go1.25.10")
+        #expect(with.count > without.count)
+        #expect(Array(with.prefix(without.count)) == without)
+        #expect(Array(with.suffix(from: without.count)) == [0x3a, 0x0e] + Array("/sdk/go1.25.10".utf8))
+    }
+}
+
+@Suite("Handshake shell")
+struct HandshakeShellTests {
+    @Test func theShellIsField8AndAbsentWhenEmpty() {
+        let without = Handshake.encodeHello(clientVersion: "t", channel: "pty", workspaceRoot: "/w", trusted: true, language: nil)
+        let with = Handshake.encodeHello(clientVersion: "t", channel: "pty", workspaceRoot: "/w", trusted: true, language: nil, shell: "/bin/bash")
+        #expect(Array(with.prefix(without.count)) == without)
+        #expect(Array(with.suffix(from: without.count)) == [0x42, 0x09] + Array("/bin/bash".utf8))
     }
 }
