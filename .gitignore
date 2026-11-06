@@ -10,3 +10,15 @@ coverage.*
 !.env.example
 .build/
 *.xcodeproj/xcuserdata/
+
+# From the GitHub Go template
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+!coverage.go
+*.coverprofile
+profile.cov
+go.work
+go.work.sum
