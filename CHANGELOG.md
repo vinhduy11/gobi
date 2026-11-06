@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-11-06
+
 ### Added
 - Explorer > New > File…, Folder…, Go File… and Go Test File… make the entry in the clicked folder (or next to the clicked file), refresh the explorer and open a new file. A Go file takes the package of the Go files already in the folder, else the folder's name; a test file gets the `_test.go` suffix and a `testing` import; a name that exists, is empty or contains `/` is refused with a note in the status bar.
 - Versioning for releases: the `VERSION` file (Semantic Versioning, now `0.1.0-alpha.1`) is the one source. `make-app.sh` writes it, the build number (the number of commits) and the commit into Gobi.app and into `gobid` (`gobid version`); About Gobi shows them; the DMG is named `Gobi-<version>.dmg` with a `.sha256`. `scripts/release.sh VERSION` cuts a release on `main` (VERSION, CHANGELOG section with compare links, commit, annotated tag `vVERSION`), `scripts/release-notes.sh` writes GitHub release notes (summary, Download table with checksums, What's new, All changes, Full Changelog) and `scripts/publish-release.sh` creates the GitHub release (pre-release for alpha, beta and rc) with the GitHub CLI. See `docs/release.md`.
@@ -188,3 +190,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - The macOS UI moved from `ui-macos/` to `ui/macos/`, so `ui/windows/` and `ui/linux/` can sit beside it. Older entries below keep the old name.
 - The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.
+
+
+
+[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.1...HEAD
+[0.1.0-alpha.1]: https://github.com/vinhduy11/gobi/releases/tag/v0.1.0-alpha.1
