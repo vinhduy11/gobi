@@ -284,7 +284,6 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         // would make Auto Layout shrink the window instead of stretching the editor.
         centre.setHoldingPriority(.defaultLow, forSubviewAt: 0)
         centre.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 1)   // above 250 keeps its height on window resize, below 500 still lets the divider move it
-        centre.autosaveName = "gobi.centreSplit"
         bottomPanel.heightAnchor.constraint(greaterThanOrEqualToConstant: 90).isActive = true
         editorColumn.heightAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
         centreSplit = centre
@@ -310,7 +309,6 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         let filesColumn = NSSplitView()
         filesColumn.isVertical = false
         filesColumn.dividerStyle = .thin
-        filesColumn.autosaveName = "gobi.filesSplit"
         filesColumn.addArrangedSubview(sidebar)
         filesColumn.addArrangedSubview(sourceControl)
         filesColumn.setHoldingPriority(.defaultLow, forSubviewAt: 0)
@@ -390,15 +388,15 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private func placeFilesDivider() {
         guard !placedFilesDivider, let split = filesSplit, !sourceControl.isHidden, split.bounds.height > 400 else { return }
         placedFilesDivider = true
-        if UserDefaults.standard.object(forKey: "NSSplitView Subview Frames gobi.filesSplit") != nil { return }
+        split.layoutSubtreeIfNeeded()   // the frames are only valid after a layout pass; setPosition on stale ones lands in the wrong place
         split.setPosition(split.bounds.height - 240, ofDividerAt: 0)
     }
 
-    /// The bottom panel starts 210 pt tall unless the person has dragged the divider before (the position is remembered).
+    /// The bottom panel starts 210 pt tall unless the person has dragged the divider before .
     private func placeCentreDivider() {
         guard !placedCentreDivider, let split = centreSplit, split.bounds.height > 400 else { return }
         placedCentreDivider = true
-        if UserDefaults.standard.object(forKey: "NSSplitView Subview Frames gobi.centreSplit") != nil { return }
+        split.layoutSubtreeIfNeeded()
         split.setPosition(split.bounds.height - 210, ofDividerAt: 0)
     }
 
