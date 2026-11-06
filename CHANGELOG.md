@@ -5,6 +5,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ## [Unreleased]
 
 ### Changed
+- Internals: the bottom panel keeps its tabs by id (`PanelTab`), so adding a tab no longer shifts saved sessions or call sites (old sessions migrate); the language client advertises hierarchical document symbols and reads symbols with ranges, detail and document version (`DocumentSymbolInfo`). References, Implementations and hover answers that were overtaken by a newer request or an edit are dropped (code lens counts and completion already were).
 - Every menu item starts with an icon (SF Symbol): the menu bar, the right-click menus, the ⋮ menu and the lists of branches, recent files and projects, toolchains and environments. macOS 26 drew icons only on items with a system action (Cut, Copy, Paste, Hide, Quit, Minimize…), so the menus looked uneven; those items now carry an explicit icon like the rest. Names are in `GobiModel/MenuIcons.swift` (one entry per menu title, tested), and the self-test checks that no item is bare.
 
 ## [0.1.0-alpha.2] - 2026-11-06

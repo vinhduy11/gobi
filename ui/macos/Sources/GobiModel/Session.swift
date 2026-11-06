@@ -10,7 +10,7 @@ public struct SessionState: Equatable, Sendable {
     public var tabs: [SessionTab] = []
     public var activePath: String?
     public var bottomHidden = false
-    public var bottomTab = 0
+    public var bottomTab: PanelTab = .problems
     public var sidebarTab = 0
     public var inspectorHidden = false
     public init() {}
@@ -18,7 +18,7 @@ public struct SessionState: Equatable, Sendable {
     public func encoded() -> String {
         var lines = tabs.map { "tab=\($0.line),\($0.character),\($0.path)" }
         if let activePath { lines.append("active=" + activePath) }
-        lines += ["bottomHidden=\(bottomHidden)", "bottomTab=\(bottomTab)", "sidebarTab=\(sidebarTab)", "inspectorHidden=\(inspectorHidden)"]
+        lines += ["bottomHidden=\(bottomHidden)", "bottomTab=\(bottomTab.rawValue)", "sidebarTab=\(sidebarTab)", "inspectorHidden=\(inspectorHidden)"]
         return lines.joined(separator: "\n")
     }
 
@@ -33,7 +33,7 @@ public struct SessionState: Equatable, Sendable {
                 if parts.count == 3, let l = Int(parts[0]), let c = Int(parts[1]), !parts[2].isEmpty { s.tabs.append(SessionTab(path: String(parts[2]), line: l, character: c)) }
             case "active": s.activePath = value
             case "bottomHidden": s.bottomHidden = value == "true"
-            case "bottomTab": s.bottomTab = Int(value) ?? 0
+            case "bottomTab": s.bottomTab = PanelTab(stored: value)
             case "sidebarTab": s.sidebarTab = Int(value) ?? 0
             case "inspectorHidden": s.inspectorHidden = value == "true"
             default: break

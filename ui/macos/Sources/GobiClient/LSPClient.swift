@@ -100,22 +100,26 @@ public final class LSPClient: @unchecked Sendable {
 
     // MARK: protocol helpers
 
+    /// What this client tells the server it supports.
+    public static let clientCapabilities: [String: Any] = [
+        "textDocument": [
+            "synchronization": ["didSave": false],
+            "publishDiagnostics": ["relatedInformation": false],
+            "hover": ["contentFormat": ["plaintext", "markdown"]],
+            "completion": ["completionItem": ["snippetSupport": true]],
+            "signatureHelp": ["signatureInformation": ["documentationFormat": ["plaintext"], "parameterInformation": ["labelOffsetSupport": true]]],
+            "documentSymbol": ["hierarchicalDocumentSymbolSupport": true],
+        ],
+        "general": ["positionEncodings": ["utf-16"]],
+    ]
+
     @discardableResult
     public func initialize(rootPath: String) throws -> [String: Any] {
         let params: [String: Any] = [
             "processId": Int(ProcessInfo.processInfo.processIdentifier),
             "clientInfo": ["name": "Gobi", "version": GobiClientVersion.current],
             "rootUri": URL(fileURLWithPath: rootPath).absoluteString,
-            "capabilities": [
-                "textDocument": [
-                    "synchronization": ["didSave": false],
-                    "publishDiagnostics": ["relatedInformation": false],
-                    "hover": ["contentFormat": ["plaintext", "markdown"]],
-                    "completion": ["completionItem": ["snippetSupport": true]],
-                    "signatureHelp": ["signatureInformation": ["documentationFormat": ["plaintext"], "parameterInformation": ["labelOffsetSupport": true]]],
-                ],
-                "general": ["positionEncodings": ["utf-16"]],
-            ],
+            "capabilities": Self.clientCapabilities,
         ]
         let answer = try requestAndWait("initialize", params: params) as? [String: Any] ?? [:]
         if let capabilities = answer["capabilities"] as? [String: Any] {

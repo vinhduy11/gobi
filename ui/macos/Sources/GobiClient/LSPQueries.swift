@@ -77,6 +77,13 @@ extension LSPClient {
         }
     }
 
+    /// The symbols of a document with ranges and detail, read at `version`.
+    public func documentSymbolInfos(uri: String, version: Int, completion: @escaping ([DocumentSymbolInfo]) -> Void) {
+        _ = request("textDocument/documentSymbol", params: ["textDocument": ["uri": uri]]) { result in
+            if case .success(let value) = result { completion(LSPResults.documentSymbolInfos(value, uri: uri, version: version)) } else { completion([]) }
+        }
+    }
+
     public func workspaceSymbols(query: String, completion: @escaping ([WorkspaceSymbol]) -> Void) {
         _ = request("workspace/symbol", params: ["query": query]) { result in
             if case .success(let value) = result { completion(LSPResults.workspaceSymbols(value)) } else { completion([]) }

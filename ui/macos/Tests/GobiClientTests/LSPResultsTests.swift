@@ -155,3 +155,60 @@ struct LSPSymbolResultsTests {
         #expect(LSPResults.workspaceSymbols(nil).isEmpty)
     }
 }
+
+@Suite("Reading document symbols in full")
+struct LSPDocumentSymbolTreeTests {
+    private func range(_ a: Int, _ b: Int, _ c: Int, _ d: Int) -> [String: Any] {
+        ["start": ["line": a, "character": b], "end": ["line": c, "character": d]]
+    }
+    private func parse(_ result: Any?) -> [DocumentSymbolInfo] { LSPResults.documentSymbolInfos(result, uri: "file:///a.go", version: 7) }
+
+    @Test func nestedDeclarationsKeepRangesDetailAndVersion() {
+        let result: [Any] = [["name": "Server", "kind": 23, "detail": "struct{...}", "range": range(3, 0, 20, 1), "selectionRange": range(3, 5, 3, 11),
+                              "children": [["name": "Addr", "kind": 8, "detail": "string", "range": range(4, 1, 4, 12), "selectionRange": range(4, 1, 4, 5)]]]]
+        let symbols = parse(result)
+        #expect(symbols.count == 1 && symbols[0].uri == "file:///a.go" && symbols[0].version == 7)
+        #expect(symbols[0].range.1.line == 20 && symbols[0].selection.0.character == 5 && symbols[0].detail == "struct{...}")
+        #expect(symbols[0].children.first?.name == "Addr" && symbols[0].children.first?.detail == "string" && symbols[0].children.first?.kind == .field)
+        #expect(symbols[0].children.first?.version == 7)
+    }
+
+    @Test func methodsWithReceiversAndEmbeddedFieldsAndGenericsKeepTheirNames() {
+        let result: [Any] = [
+            ["name": "(*Server).Run", "kind": 6, "range": range(10, 0, 12, 1), "selectionRange": range(10, 16, 10, 19)],
+            ["name": "Stack[T]", "kind": 23, "range": range(14, 0, 18, 1), "selectionRange": range(14, 5, 14, 10),
+             "children": [["name": "Base", "kind": 8, "range": range(15, 1, 15, 5), "selectionRange": range(15, 1, 15, 5)]]],
+        ]
+        let symbols = parse(result)
+        #expect(symbols.map(\.name) == ["(*Server).Run", "Stack[T]"] && symbols[0].kind == .method)
+        #expect(symbols[1].children.map(\.name) == ["Base"])
+    }
+
+    @Test func severalDeclarationsOnOneLineStayApart() {
+        let result: [Any] = [["name": "a", "kind": 13, "range": range(2, 4, 2, 9), "selectionRange": range(2, 4, 2, 5)], ["name": "b", "kind": 13, "range": range(2, 11, 2, 16), "selectionRange": range(2, 11, 2, 12)]]
+        let symbols = parse(result)
+        #expect(symbols.map(\.selection.0.character) == [4, 11])
+    }
+
+    @Test func theFlatFallbackHasNoChildrenOrDetail() {
+        let result: [Any] = [["name": "main", "kind": 12, "location": ["uri": "file:///a.go", "range": range(7, 0, 9, 1)]]]
+        let symbols = parse(result)
+        #expect(symbols.count == 1 && symbols[0].children.isEmpty && symbols[0].detail.isEmpty && symbols[0].range.1.line == 9 && symbols[0].selection.0.line == 7)
+    }
+
+    @Test func nothingGivesNothing() { #expect(parse(nil).isEmpty) }
+
+    @Test func theOutlineStillComesOutTheSame() {
+        let result: [Any] = [["name": "Server", "kind": 23, "range": range(3, 0, 20, 1), "selectionRange": range(3, 5, 3, 11), "children": [["name": "Run", "kind": 6, "range": range(10, 0, 15, 1), "selectionRange": range(10, 17, 10, 20)]]]]
+        #expect(parse(result).map(\.outline) == LSPResults.documentSymbols(result))
+    }
+}
+
+@Suite("What the client advertises")
+struct LSPCapabilitiesTests {
+    @Test func hierarchicalDocumentSymbolsAreAdvertised() {
+        let textDocument = LSPClient.clientCapabilities["textDocument"] as? [String: Any]
+        let symbol = textDocument?["documentSymbol"] as? [String: Any]
+        #expect(symbol?["hierarchicalDocumentSymbolSupport"] as? Bool == true)
+    }
+}

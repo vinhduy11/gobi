@@ -24,9 +24,10 @@ extension ProjectWindowController {
     /// Find References (⇧F12): gopls lists the uses; one is opened at once, several are offered in a menu at the caret.
     func findReferences() {
         guard let pane = currentPane, let client = pane.editorFile.client, let position = caretPosition else { NSSound.beep(); return }
+        let ticket = locationGate.begin(version: pane.editorFile.version)
         client.references(uri: pane.editorFile.uri, at: position) { [weak self] locations in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, self.locationGate.accepts(ticket, version: pane.editorFile.version) else { return }
                 let inProject = locations.filter { URL(string: $0.uri)?.isFileURL == true }
                 self.lastListedLocations = inProject.count
                 if inProject.isEmpty { self.showNote("No references found"); NSSound.beep(); return }
@@ -39,9 +40,10 @@ extension ProjectWindowController {
     /// Go to Implementation (⌘F12): the types that implement the interface (or the methods that implement its method) at the caret.
     func goToImplementation() {
         guard let pane = currentPane, let client = pane.editorFile.client, let position = caretPosition else { NSSound.beep(); return }
+        let ticket = locationGate.begin(version: pane.editorFile.version)
         client.implementation(uri: pane.editorFile.uri, at: position) { [weak self] locations in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, self.locationGate.accepts(ticket, version: pane.editorFile.version) else { return }
                 let inProject = locations.filter { URL(string: $0.uri)?.isFileURL == true }
                 self.lastListedLocations = inProject.count
                 if inProject.isEmpty { self.showNote("No implementations found"); NSSound.beep(); return }

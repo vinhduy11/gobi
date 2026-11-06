@@ -378,15 +378,15 @@ extension ProjectWindowController {
 
     // MARK: Build and Run menus
 
-    func buildProject() { begin(command: "build", packages: ["./..."], filter: "", arguments: [], tab: 6) }
+    func buildProject() { begin(command: "build", packages: ["./..."], filter: "", arguments: [], tab: .output) }
 
     /// `go build` in the folder of the open file (the project folder when no file is open).
     func buildModule() {
         let package = currentPane.map { RunTarget.testPackage(forFile: relativePath(of: $0.editorFile.fileURL)) } ?? "."
-        begin(command: "build", packages: [package], filter: "", arguments: [], tab: 6)
+        begin(command: "build", packages: [package], filter: "", arguments: [], tab: .output)
     }
 
-    func rebuildProject() { begin(command: "build", packages: ["./..."], filter: "", arguments: ["-a"], tab: 6) }
+    func rebuildProject() { begin(command: "build", packages: ["./..."], filter: "", arguments: ["-a"], tab: .output) }
 
     /// Run > Stop: the debug session when one is going, otherwise the run.
     func stopEverything() {
@@ -395,13 +395,13 @@ extension ProjectWindowController {
 
     func evaluateExpression() {
         bottomPanel.isHidden = false
-        bottomPanel.select(tab: 3)
+        bottomPanel.select(tab: .debug)
         debugPanel.addWatchPressed()
     }
 
     func viewBreakpoints() {
         bottomPanel.isHidden = false
-        bottomPanel.select(tab: 3)
+        bottomPanel.select(tab: .debug)
         selectSidebarTab(3)
     }
 

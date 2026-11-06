@@ -1041,7 +1041,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("Step Over and Continue are enabled while paused, and the status says where (\(controller.debugStatusText))", controller.debugEnabledActions.isSuperset(of: ["over", "into", "out", "continue", "stop"]) && controller.debugStatusText.hasPrefix("Paused at breakpoint"))
         check("Run > Stop and Evaluate Expression are enabled while paused", MenuAvailability.isEnabled("stop", in: controller.menuContext) == true && MenuAvailability.isEnabled("evaluateExpression", in: controller.menuContext) == true)
         controller.viewBreakpoints()
-        check("View Breakpoints opens the Debug tab and the navigator (\(controller.selectedPanelTab))", controller.selectedPanelTab == 3 && controller.sidebarTabIndex == 3)
+        check("View Breakpoints opens the Debug tab and the navigator (\(controller.selectedPanelTab))", controller.selectedPanelTab == .debug && controller.sidebarTabIndex == 3)
         check("the navigator lists the stack, the goroutines and the breakpoint (\(controller.debugFrameTitles.count) frames, \(controller.debugGoroutinesHeader), \(controller.debugNavigatorBreakpoints.count) breakpoint)", controller.debugFrameTitles.first?.hasPrefix("main.add") == true && controller.debugGoroutinesHeader.hasPrefix("GOROUTINES (") && controller.debugNavigatorBreakpoints.map(\.line) == [8])
         check("the paused line shows its values inline (\(controller.currentPane?.editor.inlineValues ?? [:]))", controller.currentPane?.editor.inlineValues[8]?.contains("a = 20") == true)
         controller.addWatch("a * b")
@@ -1205,7 +1205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("the gutter marks the changed, added and removed lines (\(String(describing: marks)))", marks?.modified == [2] && marks?.added == [5, 6] && marks?.deletedAfter == [3])
         controller.showDiff(path: "a.go")
         settle(10) { controller.gitPanelDiff.contains("+") }
-        check("the bottom Diff tab shows the diff of the selected file (\(controller.panelTabTitles[controller.selectedPanelTab]))", controller.selectedPanelTab == 5 && controller.panelTabTitles[5] == "Diff" && controller.gitPanelDiff.contains("-line2") && controller.gitPanelDiff.contains("+line2 edited") && controller.gitPanelDiffTitle.hasPrefix("a.go"))
+        check("the bottom Diff tab shows the diff of the selected file (\(controller.selectedPanelTab.title))", controller.selectedPanelTab == .diff && controller.gitPanelDiff.contains("-line2") && controller.gitPanelDiff.contains("+line2 edited") && controller.gitPanelDiffTitle.hasPrefix("a.go"))
         check("the Commit tab lists the changes in Changes and Unversioned Files (\(controller.gitPanelSections), \(controller.gitPanelFiles))", controller.gitPanelSections == ["Changes", "Unversioned Files"] && controller.gitPanelFiles.contains("a.go") && controller.gitPanelFiles.contains("fresh.go") && controller.commitPanelView.checkState(of: "a.go") == .unchecked)
         controller.commitPanelView.toggleFile("a.go")
         settle(10) { controller.commitPanelView.checkState(of: "a.go") == .checked }
@@ -1828,7 +1828,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         first.openFile(a)
         first.currentPane?.reveal(line: 3, character: 2)
         first.openFile(b)
-        first.setBottomPanel(hidden: true, tab: 3)
+        first.setBottomPanel(hidden: true, tab: .debug)
         first.selectSidebarTab(1)
         first.saveSession()
         first.window?.close()
@@ -1838,7 +1838,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("a reopened project has the same tabs and the same one active (\(second.tabs.paths.map { URL(fileURLWithPath: $0).lastPathComponent }))", second.tabs.paths == [a.path, b.path] && second.tabs.active == b.path)
         let caret = second.openPane(for: a.path).map { $0.editorFile.lineIndex.position(at: $0.textView.selectedRange().location) }
         check("each tab keeps its caret (\(caret.map { "\($0.line):\($0.character)" } ?? "none"))", caret?.line == 3 && caret?.character == 2)
-        check("the panel and sidebar layout come back", second.isBottomPanelHidden && second.selectedPanelTab == 3 && second.sidebarTabIndex == 1)
+        check("the panel and sidebar layout come back", second.isBottomPanelHidden && second.selectedPanelTab == .debug && second.sidebarTabIndex == 1)
         second.window?.close()
         try? FileManager.default.removeItem(at: b)
         let third = ProjectWindowController(root: root, kind: .module, isTrusted: true)
@@ -2130,7 +2130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settle { !controller.isRunning && controller.testCounts.passed + controller.testCounts.failed + controller.testCounts.skipped > 0 }
         settle(5) { false }
         check("Run Tests counts one passed, one failed, one skipped (\(controller.testCounts))", controller.testCounts == (1, 1, 1))
-        check("it opens the Tests tab and lists the tests (\(controller.testRowTitles))", controller.selectedPanelTab == 1 && ["TestOK", "TestBad", "TestSkipped"].allSatisfy(controller.testRowTitles.contains))
+        check("it opens the Tests tab and lists the tests (\(controller.testRowTitles))", controller.selectedPanelTab == .tests && ["TestOK", "TestBad", "TestSkipped"].allSatisfy(controller.testRowTitles.contains))
         check("the failure's message shows under the failed test", controller.testFailureLines.contains { $0.contains("broken on purpose") })
         controller.testFilterText = "testbad"
         check("the filter box narrows the tree to the matching test and its package (\(controller.testRowTitles))", controller.testRowTitles.count == 2 && controller.testRowTitles.last == "TestBad" && controller.testFailureLines.contains { $0.contains("broken on purpose") })
@@ -2178,12 +2178,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.runProject()
         settle { !controller.isRunning && controller.runOutputText.contains("hello from main") }
         settle(3) { false }
-        check("Run runs the open main package and shows its output (\(controller.runCommandText))", controller.runOutputText.contains("hello from main") && controller.selectedPanelTab == 6 && controller.runStateText == "exit 0")
+        check("Run runs the open main package and shows its output (\(controller.runCommandText))", controller.runOutputText.contains("hello from main") && controller.selectedPanelTab == .output && controller.runStateText == "exit 0")
 
         // Build menu: go build through the run channel, output in the Output tab.
         controller.buildProject()
         settle { !controller.isRunning && controller.runStateText.hasPrefix("exit") }
-        check("Build Project runs go build ./... and ends with exit 0 (\(controller.runCommandText), \(controller.runStateText))", controller.runCommandText == "go build ./..." && controller.runStateText == "exit 0" && controller.selectedPanelTab == 6)
+        check("Build Project runs go build ./... and ends with exit 0 (\(controller.runCommandText), \(controller.runStateText))", controller.runCommandText == "go build ./..." && controller.runStateText == "exit 0" && controller.selectedPanelTab == .output)
         controller.openFile(root.appendingPathComponent("main.go"))
         controller.buildModule()
         settle { !controller.isRunning && controller.runCommandText.hasPrefix("go build .") }
@@ -2368,7 +2368,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("Open Recent lists this project first (\(recentMenu?.items.prefix(3).map(\.title) ?? []))", recentMenu?.items.first?.title.hasPrefix(controller.root.lastPathComponent) == true)   // a second project with the same folder name makes the menu add its location
         check("Open Recent ends with Clear Menu", recentMenu?.items.last?.title == "Clear Menu")
         check("the status bar shows the project, not a stale line (\(controller.statusBarTexts.filter { !$0.isEmpty }))", controller.statusBarTexts.contains { $0.hasPrefix("gopls") })
-        check("the bottom panel has the mock's eight tabs", controller.panelTabTitles.count == 8 && controller.panelTabTitles.last == "Find")
+        check("the bottom panel has the mock's eight tabs", controller.panelTabTitles.count == PanelTab.order.count && controller.panelTabTitles.last == "Find")
         check("the explorer lists the folder (\(controller.explorerRowCount) rows)", controller.explorerRowCount > 0)
         let first = names.first { name in
             var isFolder: ObjCBool = false

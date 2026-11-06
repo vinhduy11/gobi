@@ -8,7 +8,7 @@ struct SessionTests {
         s.tabs = [SessionTab(path: "/p/main.go", line: 12, character: 4), SessionTab(path: "/p/with space/a=b.go", line: 0, character: 0)]
         s.activePath = "/p/main.go"
         s.bottomHidden = true
-        s.bottomTab = 3
+        s.bottomTab = .debug
         s.sidebarTab = 1
         s.inspectorHidden = true
         return s

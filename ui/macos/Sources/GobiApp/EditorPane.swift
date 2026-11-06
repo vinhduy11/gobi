@@ -104,7 +104,8 @@ final class EditorPane: NSViewController {
         }
         editor.hover?.provider = { [weak self] position, done in
             guard let self, let client = self.editorFile.client else { done(nil); return }
-            client.hover(uri: self.editorFile.uri, at: position) { text in DispatchQueue.main.async { done(text) } }
+            let version = self.editorFile.version
+            client.hover(uri: self.editorFile.uri, at: position) { text in DispatchQueue.main.async { done(self.editorFile.version == version ? text : nil) } }
         }
         lens = CodeLensFeed(pane: self)
         refreshRunButtons()

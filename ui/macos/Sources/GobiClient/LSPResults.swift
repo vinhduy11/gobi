@@ -98,6 +98,23 @@ public enum LSPResults {
         }
     }
 
+    /// The same answer with ranges, detail and the version it was read at.
+    public static func documentSymbolInfos(_ result: Any?, uri: String, version: Int) -> [DocumentSymbolInfo] {
+        guard let list = result as? [Any] else { return [] }
+        return list.compactMap { entry in
+            guard let symbol = entry as? [String: Any], let name = symbol["name"] as? String else { return nil }
+            let kind = OutlineSymbol.Kind(lspKind: symbol["kind"] as? Int ?? 0)
+            if let full = range(symbol["range"]), let selection = range(symbol["selectionRange"]) {
+                return DocumentSymbolInfo(uri: uri, name: name, detail: symbol["detail"] as? String ?? "", kind: kind, range: full, selection: selection,
+                                          children: documentSymbolInfos(symbol["children"], uri: uri, version: version), version: version)
+            }
+            if let location = symbol["location"] as? [String: Any], let place = range(location["range"]) {
+                return DocumentSymbolInfo(uri: uri, name: name, detail: "", kind: kind, range: place, selection: place, children: [], version: version)
+            }
+            return nil
+        }
+    }
+
     /// DocumentSymbol[] (a tree, positioned at the symbol's name) or SymbolInformation[] (flat).
     public static func documentSymbols(_ result: Any?) -> [OutlineSymbol] {
         guard let list = result as? [Any] else { return [] }

@@ -157,11 +157,10 @@ final class PanelTabButton: NSButton {
 /// The bottom panel of the mock: tab row (Problems, Tests, Terminal, Debug, Profiler, Diff, Output) over the active tab's
 /// content. Problems is a list; the tabs whose features are not built yet say so.
 final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate {
-    static let tabNames = ["Problems", "Tests", "Terminal", "Debug", "Profiler", "Diff", "Output", "Find"]
-    private static let notBuilt = [
-        "Terminal": "The terminal arrives next.",
-        "Debug": "Debugging with dlv comes in a later slice.",
-        "Profiler": "Profiling with pprof comes in a later slice.",
+    private static let notBuilt: [PanelTab: String] = [
+        .terminal: "The terminal arrives next.",
+        .debug: "Debugging with dlv comes in a later slice.",
+        .profiler: "Profiling with pprof comes in a later slice.",
     ]
 
     private var buttons: [NSButton] = []
@@ -169,14 +168,14 @@ final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate 
     private let scroll = NSScrollView()
     private let placeholder = NSTextField(wrappingLabelWithString: "")
     private var problems: [ProblemItem] = []
-    private(set) var selectedTab = 0
+    private(set) var selectedTab: PanelTab = .problems
     var onOpenProblem: ((ProblemItem) -> Void)?
     /// Called each time the Terminal tab is shown, so the first shell can start then.
     var onTerminalShown: (() -> Void)?
-    /// Views hosted by tabs that have their own content (Tests, Terminal, Output), by tab index.
-    private var hosts: [Int: NSView] = [:]
+    /// Views hosted by tabs that have their own content (Tests, Terminal, Output), by tab.
+    private var hosts: [PanelTab: NSView] = [:]
     private var stack: NSStackView?
-    var isTerminalVisible: Bool { selectedTab == 2 && hosts[2]?.isHidden == false }
+    var isTerminalVisible: Bool { selectedTab == .terminal && hosts[.terminal]?.isHidden == false }
 
     var problemCount: Int { problems.count }
     var tabTitles: [String] { buttons.map(\.title) }
@@ -191,8 +190,8 @@ final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate 
         let tabs = NSStackView()
         tabs.spacing = 2
         tabs.edgeInsets = NSEdgeInsets(top: 0, left: 8, bottom: 0, right: 8)
-        for (index, name) in Self.tabNames.enumerated() {
-            let button = PanelTabButton(title: name, target: self, action: #selector(tabPressed(_:)))
+        for (index, tab) in PanelTab.order.enumerated() {
+            let button = PanelTabButton(title: tab.title, target: self, action: #selector(tabPressed(_:)))
             button.tag = index
             button.isBordered = false
             button.setAccessibilityRole(.radioButton)
@@ -235,14 +234,14 @@ final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate 
         ])
         for part in [rule, tabs, scroll] { part.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
         scroll.setContentHuggingPriority(.defaultLow, for: .vertical)
-        select(tab: 0)
+        select(tab: .problems)
         setProblems([])
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
     /// Puts `view` in the panel as the content of tab `index`; it shows when that tab is selected.
-    func install(_ view: NSView, forTab index: Int) {
+    func install(_ view: NSView, forTab tab: PanelTab) {
         guard let stack else { return }
         let host = NSView()
         host.isHidden = true
@@ -255,47 +254,46 @@ final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate 
         stack.addArrangedSubview(host)
         host.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         host.setContentHuggingPriority(.defaultLow, for: .vertical)
-        hosts[index] = host
+        hosts[tab] = host
     }
 
     /// Puts the terminal view in the panel (kept for the terminal's own call sites).
-    func install(terminal: NSView) { install(terminal, forTab: 2) }
+    func install(terminal: NSView) { install(terminal, forTab: .terminal) }
 
     func setProblems(_ items: [ProblemItem]) {
         problems = items
-        buttons[0].title = StatusBar.problemsTitle(count: items.count)
+        buttons[PanelTab.problems.index].title = StatusBar.problemsTitle(count: items.count)
         table.reloadData()
-        if selectedTab == 0 { showContent() }
+        if selectedTab == .problems { showContent() }
     }
 
-    func select(tab index: Int) {
-        selectedTab = index
+    func select(tab: PanelTab) {
+        selectedTab = tab
         for (position, button) in buttons.enumerated() {
-            (button as? PanelTabButton)?.isCurrent = position == index
-            button.setAccessibilityValue(position == index ? 1 : 0)
+            (button as? PanelTabButton)?.isCurrent = position == tab.index
+            button.setAccessibilityValue(position == tab.index ? 1 : 0)
         }
         showContent()
     }
 
     private func showContent() {
-        let name = Self.tabNames[selectedTab]
         for (index, host) in hosts { host.isHidden = index != selectedTab }
         if hosts[selectedTab] != nil {
             scroll.isHidden = true
             placeholder.isHidden = true
-            if selectedTab == 2 { onTerminalShown?() }
-        } else if selectedTab == 0 {
+            if selectedTab == .terminal { onTerminalShown?() }
+        } else if selectedTab == .problems {
             placeholder.stringValue = "No problems"
             placeholder.isHidden = !problems.isEmpty
             scroll.isHidden = problems.isEmpty
         } else {
             scroll.isHidden = true
             placeholder.isHidden = false
-            placeholder.stringValue = Self.notBuilt[name] ?? ""
+            placeholder.stringValue = Self.notBuilt[selectedTab] ?? ""
         }
     }
 
-    @objc private func tabPressed(_ sender: NSButton) { select(tab: sender.tag) }
+    @objc private func tabPressed(_ sender: NSButton) { select(tab: PanelTab.order[sender.tag]) }
 
     @objc private func rowOpened() {
         guard table.clickedRow >= 0, table.clickedRow < problems.count else { return }

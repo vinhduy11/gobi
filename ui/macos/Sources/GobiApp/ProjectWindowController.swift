@@ -84,6 +84,8 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     /// self-test reads them; it also turns the pop-up list off (a pop-up menu would hold the run loop).
     var lastLensAction: LensAction?
     var lastListedLocations = 0
+    /// References and Implementation share one gate: only the newest answer is shown, and only for the text it was asked about.
+    var locationGate = RequestGate()
     var presentsLocationMenus = true
     private(set) var currentPane: EditorPane?
     var tabs = TabStrip()
@@ -266,12 +268,12 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         terminalPane = terminal
         bottomPanel.install(terminal: terminal)
         bottomPanel.onTerminalShown = { [weak terminal] in terminal?.startIfNeeded() }
-        bottomPanel.install(testsPanel, forTab: 1)
-        bottomPanel.install(debugPanel, forTab: 3)
-        bottomPanel.install(profilerPanel, forTab: 4)
-        bottomPanel.install(diffPanel, forTab: 5)
-        bottomPanel.install(findPanel, forTab: 7)
-        bottomPanel.install(outputPanel, forTab: 6)
+        bottomPanel.install(testsPanel, forTab: .tests)
+        bottomPanel.install(debugPanel, forTab: .debug)
+        bottomPanel.install(profilerPanel, forTab: .profiler)
+        bottomPanel.install(diffPanel, forTab: .diff)
+        bottomPanel.install(findPanel, forTab: .find)
+        bottomPanel.install(outputPanel, forTab: .output)
         testsPanel.onRunAll = { [weak self] in self?.runTests() }
         testsPanel.onRunFailed = { [weak self] in self?.rerunFailed() }
         outputPanel.onStop = { [weak self] in self?.stopRun() }
@@ -455,7 +457,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     var terminalSessionCount: Int { terminalPane?.sessionCount ?? 0 }
     var isTerminalNoticeShowing: Bool { terminalPane?.isShowingNotice ?? false }
     var terminalBackground: [Int]? { terminalPane?.background }
-    func showTerminalTab() { bottomPanel.select(tab: 2) }
+    func showTerminalTab() { bottomPanel.select(tab: .terminal) }
     var terminalText: String { terminalPane?.screenText ?? "" }
     func typeInTerminal(_ text: String) { terminalPane?.type(text) }
     func newTerminal() { terminalPane?.newTerminal() }
@@ -544,7 +546,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     /// Toggles the bottom panel (View > Toggle Bottom Panel, ⌘J).
     func toggleBottomPanel() { bottomPanel.isHidden.toggle() }
     var isBottomPanelHidden: Bool { bottomPanel.isHidden }
-    func setBottomPanel(hidden: Bool, tab: Int) { bottomPanel.select(tab: tab); bottomPanel.isHidden = hidden }
+    func setBottomPanel(hidden: Bool, tab: PanelTab) { bottomPanel.select(tab: tab); bottomPanel.isHidden = hidden }
     var explorerNames: [String] { rootNode.children.map { $0.url.lastPathComponent } }
     func openPane(for path: String) -> EditorPane? { panes[path] }
 
@@ -619,7 +621,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     /// Opens the Diff tab of the bottom panel on one changed file.
     func showDiff(path: String) {
         bottomPanel.isHidden = false
-        bottomPanel.select(tab: 5)
+        bottomPanel.select(tab: .diff)
         let staged = gitStatus?.files.first { $0.path == path }.map { $0.staged && !$0.unstaged } ?? false
         git({ try $0.diff(path: path, staged: staged) }) { [weak self] result in
             switch result {
@@ -944,14 +946,14 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         bottomPanel.isHidden = false
         guard isTrusted else {
             outputPanel.notice("Debugging runs your program and is off in Restricted Mode. Trust the project first.")
-            bottomPanel.select(tab: 6)
+            bottomPanel.select(tab: .output)
             return
         }
         guard debugSession?.state.isActive != true else { return }
         guard confirmTargets() else { return }
         guard let package = runPackageTarget() else {
             outputPanel.notice("There is no main package to debug here. Open a file of the program, or add a main.go.")
-            bottomPanel.select(tab: 6)
+            bottomPanel.select(tab: .output)
             return
         }
         saveAll()
@@ -962,7 +964,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
             return (String(entry[entry.startIndex ..< eq]), String(entry[entry.index(after: eq)...]))
         })
         outputPanel.begin(commandLine: "dlv debug " + package)
-        bottomPanel.select(tab: 3)
+        bottomPanel.select(tab: .debug)
         selectSidebarTab(3)
         session.start(programDir: directory)
     }
@@ -1009,7 +1011,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     /// Edit > Find in Files… (⇧⌘F): the Find tab, the selected text as the query, and optionally only a folder of the project.
     func findInFiles(scope: String? = nil, focusReplace: Bool = false) {
         bottomPanel.isHidden = false
-        bottomPanel.select(tab: 7)
+        bottomPanel.select(tab: .find)
         searchScope = scope
         let selected = currentPane.flatMap { pane -> String? in
             let range = pane.textView.selectedRange()
@@ -1170,7 +1172,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     /// View > New Terminal (⌃⇧`): shows the Terminal tab and opens one more shell.
     func openNewTerminal() {
         bottomPanel.isHidden = false
-        bottomPanel.select(tab: 2)
+        bottomPanel.select(tab: .terminal)
         terminalPane?.newTerminal()
     }
 
@@ -1201,7 +1203,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     /// Profile > Profile (⌘I) and the toolbar button: shows the Profiler tab with the project's saved profiles.
     func showProfiler() {
         bottomPanel.isHidden = false
-        bottomPanel.select(tab: 4)
+        bottomPanel.select(tab: .profiler)
         refreshProfiles()
         if profileURL == nil, let newest = profileFiles().first { loadProfile(newest) }
     }
@@ -1406,7 +1408,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         let session = makeDebugSession()
         outputPanel.begin(commandLine: "dlv attach \(pid)")
         bottomPanel.isHidden = false
-        bottomPanel.select(tab: 3)
+        bottomPanel.select(tab: .debug)
         selectSidebarTab(3)
         session.attach(pid: pid)
     }
@@ -1738,7 +1740,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     var testRowTitles: [String] { testsPanel.titles }
     var testFailureLines: [String] { testsPanel.detailLines }
     var isRunFailedEnabled: Bool { testsPanel.isRunFailedEnabled }
-    var selectedPanelTab: Int { bottomPanel.selectedTab }
+    var selectedPanelTab: PanelTab { bottomPanel.selectedTab }
 
     func relativePath(of url: URL) -> String { StatusBar.relativePath(projectRoot: root.path, file: url.path) }
 
@@ -1758,21 +1760,21 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     /// Run (⌘R).
     func runProject() {
         if let files = filesWithoutModule(includeTests: false) {
-            begin(command: "run", packages: files, filter: "", arguments: [], tab: 6)
+            begin(command: "run", packages: files, filter: "", arguments: [], tab: .output)
             return
         }
         let target = runPackageTarget()
         guard let target else {
             outputPanel.notice("There is no main package to run here. Open a file of the program, or add a main.go.")
             bottomPanel.isHidden = false
-            bottomPanel.select(tab: 6)
+            bottomPanel.select(tab: .output)
             return
         }
-        begin(command: "run", packages: [target], filter: "", arguments: [], tab: 6)
+        begin(command: "run", packages: [target], filter: "", arguments: [], tab: .output)
     }
 
     /// Run Tests (⌘U): every test of the project.
-    func runTests() { begin(command: "test", packages: filesWithoutModule(includeTests: true) ?? ["./..."], filter: "", arguments: [], tab: 1) }
+    func runTests() { begin(command: "test", packages: filesWithoutModule(includeTests: true) ?? ["./..."], filter: "", arguments: [], tab: .tests) }
 
     /// Run Test at Cursor (⌥⌘U): the test function the caret is in, in its package.
     func runTestAtCursor() {
@@ -1791,27 +1793,27 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
             NSSound.beep()
             return
         }
-        begin(command: "test", packages: filesWithoutModule(includeTests: true) ?? [RunTarget.testPackage(forFile: relativePath(of: pane.editorFile.fileURL))], filter: TestAtCursor.filter(forName: name), arguments: [], tab: 1)
+        begin(command: "test", packages: filesWithoutModule(includeTests: true) ?? [RunTarget.testPackage(forFile: relativePath(of: pane.editorFile.fileURL))], filter: TestAtCursor.filter(forName: name), arguments: [], tab: .tests)
     }
 
     /// Run Failed: only the tests that failed in the last run (the filter names them; every package is searched).
     func rerunFailed() {
         guard let filter = results.failedFilter else { return }
-        begin(command: "test", packages: filesWithoutModule(includeTests: true) ?? ["./..."], filter: filter, arguments: [], tab: 1)
+        begin(command: "test", packages: filesWithoutModule(includeTests: true) ?? ["./..."], filter: filter, arguments: [], tab: .tests)
     }
 
     func stopRun() { runClient?.stop() }
 
-    func begin(command: String, packages: [String], filter: String, arguments: [String], tab: Int) {
+    func begin(command: String, packages: [String], filter: String, arguments: [String], tab: PanelTab) {
         bottomPanel.isHidden = false
         guard isTrusted else {
             outputPanel.notice("Running code is off in Restricted Mode. Trust the project to run it.")
-            bottomPanel.select(tab: 6)
+            bottomPanel.select(tab: .output)
             return
         }
         guard let goRoot = runGoRoot else {
             if case .missing(let wanted) = toolchainResolution { outputPanel.notice("Go \(wanted) is not installed. Pick another version in Run > Go Toolchain, or install it from Manage Go Toolchains.") }
-            bottomPanel.select(tab: 6)
+            bottomPanel.select(tab: .output)
             return
         }
         guard confirmTargets() else { return }
@@ -1989,11 +1991,11 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     /// Run Tests, limited to the package of the open test file (the Go files of its folder when there is no go.mod).
     func runTestsOfCurrentFile() {
         if let files = filesWithoutModule(includeTests: true) {
-            begin(command: "test", packages: files, filter: "", arguments: [], tab: 1)
+            begin(command: "test", packages: files, filter: "", arguments: [], tab: .tests)
             return
         }
         guard let url = currentPane?.editorFile.fileURL else { runTests(); return }
-        begin(command: "test", packages: [RunTarget.testPackage(forFile: relativePath(of: url))], filter: "", arguments: [], tab: 1)
+        begin(command: "test", packages: [RunTarget.testPackage(forFile: relativePath(of: url))], filter: "", arguments: [], tab: .tests)
     }
 
     func tabMenu(path: String) -> NSMenu {
