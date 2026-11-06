@@ -5,6 +5,7 @@ package daemon
 import (
 	"encoding/json"
 	"log/slog"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -38,7 +39,7 @@ func serveDebug(session *ipc.Session, command []string, logger *slog.Logger) {
 		return
 	}
 	defer adapter.Close()
-	logger.Info("debug session started", "root", session.Hello.WorkspaceRoot)
+	logger.Info("debug session started", "root", filepath.Base(session.Hello.WorkspaceRoot))
 	done := make(chan struct{}, 2)
 	var writeLock sync.Mutex // the adapter's replies and the program's output share one writer
 	write := func(payload []byte) error {

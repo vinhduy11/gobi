@@ -108,6 +108,8 @@ enum MainMenuBuilder {
         case "goToFileSymbol": return #selector(AppDelegate.goToFileSymbol(_:))
         case "commandPalette": return #selector(AppDelegate.commandPalette(_:))
         case "manageToolchains": return #selector(AppDelegate.showToolchains(_:))
+        case "openLogs": return #selector(AppDelegate.openLogsFolder(_:))
+        case "copyDiagnostics": return #selector(AppDelegate.copyDiagnostics(_:))
         case "showSetup": return #selector(AppDelegate.showSetup(_:))
         case "runMultiVersion": return #selector(AppDelegate.runMultiVersion(_:))
         case "debugStart": return #selector(AppDelegate.debugStart(_:))

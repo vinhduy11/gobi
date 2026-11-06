@@ -38,7 +38,7 @@ Checked by `ui/macos/scripts/check-layers.sh`, which `scripts/test.sh` runs firs
 | Layer | Packages | May import |
 |---|---|---|
 | 0 foundation | `wire`, `rpc`, `textlines` | no internal package |
-| 1 services | `lsp`, `langsvc`, `project`, `pty`, `toolchain` | foundation only (services never import each other) |
+| 1 services | `lsp`, `langsvc`, `project`, `pty`, `toolchain`, `logfile` | foundation only (services never import each other) |
 | 2 transport | `ipc` | foundation only |
 | 3 composition | `daemon` | any lower layer |
 | 4 entry | `cmd/gobid` | any lower layer |

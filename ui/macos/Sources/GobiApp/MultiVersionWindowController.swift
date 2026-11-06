@@ -178,6 +178,7 @@ final class MultiVersionWindowController: NSWindowController, NSTableViewDataSou
                 DispatchQueue.main.async { self?.client = client }
                 client.start(command: phase == .vet ? "vet" : "test", packages: ["./..."], envFile: WindowSettings.loadDotEnv ? "" : "-", goRoot: goRoot)
             } catch {
+                AppLog.shared.logError("run channel: multi-version run cannot start: \(error)")
                 DispatchQueue.main.async { self?.note.stringValue = "Cannot start: \(error)"; self?.finish() }
             }
         }

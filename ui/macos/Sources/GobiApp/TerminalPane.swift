@@ -370,6 +370,7 @@ final class TerminalPane: NSView, TerminalViewDelegate {
                     client.resize(columns: terminal.cols, rows: terminal.rows)
                 }
             } catch {
+                AppLog.shared.logError("terminal channel: cannot start a terminal: \(error)")
                 DispatchQueue.main.async { view?.feed(text: "Cannot start a terminal: \(error)\r\n") }
             }
         }

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"gobi/core/internal/ipc"
+	"gobi/core/internal/logfile"
 	"gobi/core/internal/lsp"
 )
 
@@ -71,25 +72,29 @@ func Run(ctx context.Context, config Config) error {
 		}
 		return gitAdmit(hello)
 	})
-	server.Handle("lsp", func(session *ipc.Session) {
+	// A panic while serving one client is logged with its stack and ends only that session.
+	handle := func(channel string, handler ipc.Handler) {
+		server.Handle(channel, logfile.Guard(config.Logger, channel+" session", handler))
+	}
+	handle("lsp", func(session *ipc.Session) {
 		hello := session.Hello
 		workspace := lsp.Workspace{Root: hello.WorkspaceRoot, Language: languageOf(hello), Trusted: hello.Trusted, GoRoot: hello.GoRoot, Tool: hello.Tool}
-		config.Logger.Info("lsp client attached", "root", workspace.Root, "language", workspace.Language, "trusted", workspace.Trusted, "client", hello.ClientVersion)
+		config.Logger.Info("lsp client attached", "root", filepath.Base(workspace.Root), "language", workspace.Language, "trusted", workspace.Trusted, "client", hello.ClientVersion)
 		registry.Serve(workspace, session.Reader, session.Writer)
-		config.Logger.Info("lsp client detached", "root", workspace.Root, "language", workspace.Language)
+		config.Logger.Info("lsp client detached", "root", filepath.Base(workspace.Root), "language", workspace.Language)
 	})
 
-	server.Handle("dap", func(session *ipc.Session) { serveDebug(session, config.Servers["dap"], config.Logger) })
-	server.Handle("git", func(session *ipc.Session) { serveGit(session, config.Logger) })
-	server.Handle("run", func(session *ipc.Session) { serveRun(session, config.Logger) })
-	server.Handle("pty", func(session *ipc.Session) { serveTerminal(session, config.Logger) })
-	server.Handle("control", func(session *ipc.Session) {
+	handle("dap", func(session *ipc.Session) { serveDebug(session, config.Servers["dap"], config.Logger) })
+	handle("git", func(session *ipc.Session) { serveGit(session, config.Logger) })
+	handle("run", func(session *ipc.Session) { serveRun(session, config.Logger) })
+	handle("pty", func(session *ipc.Session) { serveTerminal(session, config.Logger) })
+	handle("control", func(session *ipc.Session) {
 		serveControl(session, config.Logger, controlHooks{level: config.LogLevel, stop: cancel, started: started})
 	})
 
 	served := make(chan error, 1)
 	go func() { served <- server.Serve() }()
-	config.Logger.Info("gobid listening", "dir", config.SocketDir)
+	config.Logger.Info("gobid listening", "dir", filepath.Base(config.SocketDir))
 
 	select {
 	case <-ctx.Done():

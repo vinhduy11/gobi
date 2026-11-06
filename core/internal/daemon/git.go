@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"log/slog"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -360,7 +361,7 @@ func serveGit(session *ipc.Session, logger *slog.Logger) {
 		}
 		reply := answerGit(git, session.Hello.WorkspaceRoot, request)
 		if request.kind == gitCommitRequest || request.kind == gitCheckoutRequest || request.kind >= gitDiscardRequest {
-			logger.Info("git request", "kind", request.kind, "root", session.Hello.WorkspaceRoot)
+			logger.Info("git request", "kind", request.kind, "root", filepath.Base(session.Hello.WorkspaceRoot))
 		}
 		if session.Writer.Write(reply) != nil {
 			return

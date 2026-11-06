@@ -5,6 +5,7 @@ package daemon
 import (
 	"context"
 	"log/slog"
+	"path/filepath"
 
 	"gobi/core/internal/ipc"
 	"gobi/core/internal/runner"
@@ -125,7 +126,7 @@ func serveRun(session *ipc.Session, logger *slog.Logger) {
 				refuse(session, err.Error())
 				continue
 			}
-			logger.Info("run started", "kind", request.Kind, "root", request.Dir)
+			logger.Info("run started", "kind", request.Kind, "root", filepath.Base(request.Dir))
 			current, done = run, make(chan struct{})
 			go func(run *runner.Run, done chan struct{}) {
 				defer close(done)

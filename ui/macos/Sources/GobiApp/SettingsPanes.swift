@@ -349,6 +349,8 @@ final class AdvancedSettingsPane: SettingsPane {
         super.init(frame: frame)
         let restart = NSButton(title: "Restart", target: self, action: #selector(restartPressed))
         restart.bezelStyle = .rounded
+        let logs = NSButton(title: "Open Logs Folder", target: self, action: #selector(logsPressed))
+        logs.bezelStyle = .rounded
         let setup = NSButton(title: "Check Setup…", target: self, action: #selector(setupPressed))
         setup.bezelStyle = .rounded
         let reset = NSButton(title: "Reset All Settings…", target: self, action: #selector(resetPressed))
@@ -359,7 +361,7 @@ final class AdvancedSettingsPane: SettingsPane {
         lineLimit.action = #selector(advancedChanged)
         goplsPath.onChange = { [weak self] _ in self?.advancedChanged() }
         install([
-            settingsRow("Daemon", [daemon, restart]),
+            settingsRow("Daemon", [daemon, restart, logs]),
             settingsRow("Log level", [logLevel, settingsHint("what gobid writes to its log")]),
             settingsRow("Tools", [settingsHint("go, gopls, dlv, git"), setup]),
             settingsRow("gopls", [goplsPath.popup, settingsHint("open Go files restart their language server")]),
@@ -418,6 +420,7 @@ final class AdvancedSettingsPane: SettingsPane {
 
     /// Stops gobid; the next connection (made by the open files) starts a fresh one.
     func restartDaemon(then done: (() -> Void)? = nil) {
+        AppLog.shared.logInfo("gobid restart requested")
         daemon.stringValue = "Restarting…"
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             if let client = try? ControlClient.connect() { try? client.stopDaemon(); client.close() }
@@ -429,6 +432,8 @@ final class AdvancedSettingsPane: SettingsPane {
             }
         }
     }
+
+    @objc private func logsPressed() { LogSupport.revealLogs() }
 
     @objc private func setupPressed() { onCheckSetup() }
 

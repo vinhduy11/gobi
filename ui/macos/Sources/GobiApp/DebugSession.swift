@@ -55,6 +55,7 @@ final class DebugSession {
                 client.start()
                 DispatchQueue.main.async { self?.client = client; self?.initialize(client, programDir: programDir) }
             } catch {
+                AppLog.shared.logError("debug channel: cannot start the debugger: \(error)")
                 DispatchQueue.main.async { self?.fail("Cannot start the debugger: \(error)") }
             }
         }

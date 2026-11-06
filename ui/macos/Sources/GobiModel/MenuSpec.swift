@@ -163,7 +163,7 @@ public enum MenuSpec {
             .item("Bring All to Front", "", "bringAllToFront"),
         ]),
         MenuDefinition(title: "Help", entries: [
-            .item("Search", "⇧⌘/"), .item("Gobi Help"), .item("Release Notes"), .item("Keyboard Shortcuts", "", "showShortcuts"), .item("Check Setup…", "", "showSetup"), .item("Report an Issue…"),
+            .item("Search", "⇧⌘/"), .item("Gobi Help"), .item("Release Notes"), .item("Keyboard Shortcuts", "", "showShortcuts"), .item("Check Setup…", "", "showSetup"), .item("Open Logs Folder", "", "openLogs"), .item("Copy Diagnostics", "", "copyDiagnostics"), .item("Report an Issue…"),
         ]),
     ]
 }

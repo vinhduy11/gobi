@@ -6,6 +6,14 @@
 // --selftest waits for diagnostics, simulates Vietnamese composition, prints the checks and exits.
 
 import AppKit
+import Darwin
+import GobiClient
+
+// The crash self-test's child: install the handlers, then abort. Nothing else of the app is started.
+if CommandLine.arguments.contains("--selftest-crash-child") {
+    AppLog.installCrashHandlers(version: "crashtest")
+    raise(SIGABRT)
+}
 
 setvbuf(stdout, nil, _IOLBF, 0)   // progress lines must appear even if a step hangs
 

@@ -87,7 +87,7 @@ func serveTerminal(session *ipc.Session, logger *slog.Logger) {
 	hello := session.Hello
 	shell, err := pty.Start(pty.Options{Dir: hello.WorkspaceRoot, Shell: hello.Shell, Cols: 80, Rows: 24})
 	if err != nil {
-		logger.Info("terminal could not start", "root", hello.WorkspaceRoot, "error", err)
+		logger.Info("terminal could not start", "root", filepath.Base(hello.WorkspaceRoot), "error", err)
 		var message wire.Writer
 		message.Uint(terminalKind, terminalExit)
 		message.Uint(terminalExitCode, 127)
@@ -95,7 +95,7 @@ func serveTerminal(session *ipc.Session, logger *slog.Logger) {
 		session.Writer.Write(message.Bytes())
 		return
 	}
-	logger.Info("terminal started", "root", hello.WorkspaceRoot)
+	logger.Info("terminal started", "root", filepath.Base(hello.WorkspaceRoot))
 	defer shell.Close()
 
 	finished := make(chan struct{})

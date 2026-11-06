@@ -116,10 +116,14 @@ public enum Gobid {
             try GobiSession.connect(socketPath: socketPath, channel: channel, workspaceRoot: workspaceRoot, language: language, goRoot: goRoot, shell: shell, tool: tool, trusted: trusted)
         }
         do { return try attempt() } catch let error as ConnectionError {
-            guard autostart, case .system(_, let code) = error, code == ENOENT || code == ECONNREFUSED else { throw error }
+            guard autostart, case .system(_, let code) = error, code == ENOENT || code == ECONNREFUSED else {
+                AppLog.shared.logWarn("gobid connection on channel \(channel) failed: \(error)")
+                throw error
+            }
         }
 
         guard let binary = locateBinary() else {
+            AppLog.shared.logError("gobid is not running and was not found (channel \(channel))")
             throw ConnectionError.rejected("gobid is not running and was not found; set GOBID_PATH")
         }
         let daemon = Process()
@@ -128,13 +132,18 @@ public enum Gobid {
         daemon.standardInput = FileHandle.nullDevice
         daemon.standardOutput = FileHandle.nullDevice
         daemon.standardError = FileHandle.nullDevice
-        try daemon.run()
+        AppLog.shared.logInfo("gobid not answering; starting it")
+        do { try daemon.run() } catch {
+            AppLog.shared.logError("gobid could not be started: \(error)")
+            throw error
+        }
 
         var lastError: Error = ConnectionError.closed
         for _ in 0 ..< 100 {
             do { return try attempt() } catch { lastError = error }
             Thread.sleep(forTimeInterval: 0.05)
         }
+        AppLog.shared.logError("gobid started but did not answer on channel \(channel): \(lastError)")
         throw lastError
     }
 }

@@ -106,6 +106,14 @@ go run ./cmd/gobid serve      # serve the channels on a private unix socket (-di
 `gobid` allows one instance per socket directory. A workspace is untrusted unless the client says otherwise in the
 handshake; untrusted workspaces run gopls with `GOTOOLCHAIN=local` and cannot run code.
 
+## Logs
+
+Both programs log to `~/Library/Logs/Gobi/` (override the folder with `GOBI_LOG_DIR`): `gobi.log` for the app and
+`gobid.log` for the daemon (`gobid serve -log FILE`, `-` for stderr). Files are private (0600), rotate at 2 MB and keep
+four old copies. Logs never hold file contents, secrets or full project paths. After an abnormal end, Gobi says so at the
+next start. Help > Open Logs Folder shows the folder; Help > Copy Diagnostics copies versions, tool paths and the log tails
+for a bug report. See [logging](docs/architect/logging.md).
+
 ## Architecture
 
 - `core/`: `gobid`, a cross-platform Go daemon. It supervises gopls and the other tools and talks to the UI over a local

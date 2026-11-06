@@ -596,7 +596,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     func gitAction(_ request: GitRequest, then: (() -> Void)? = nil) {
         if request.changesWorkingTree { cancelAutoSaves() }
         git({ try $0.perform(request) }) { [weak self] result in
-            if case .failure(let error) = result { self?.statusBar.set(note: "git: \(error)") }
+            if case .failure(let error) = result { AppLog.shared.logWarn("git channel: \(error)"); self?.statusBar.set(note: "git: \(error)") }
             self?.refreshGit()
             if request.changesWorkingTree { self?.resumeAfterWorkingTreeChange() }
             then?()
@@ -1769,6 +1769,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
             } catch {
                 DispatchQueue.main.async {
                     self?.isRunning = false
+                    AppLog.shared.logError("run channel: cannot start the run: \(error)")
                     self?.outputPanel.notice("Cannot start the run: \(error)")
                 }
             }
@@ -1788,6 +1789,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     }
 
     private func runFinished(code: Int, message: String) {
+        if !message.isEmpty { AppLog.shared.logWarn("run channel: \(message)") }
         isRunning = false
         outputPanel.finish(code: code, message: message, seconds: Date().timeIntervalSince(runStarted))
         testsPanel.update(results, running: false)

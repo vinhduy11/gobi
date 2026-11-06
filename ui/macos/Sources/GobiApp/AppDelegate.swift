@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let previousRunCrashed = LogSupport.start()
         AppPreferences.migrateKeymap()
         if !CommandLine.arguments.contains(where: { $0.hasPrefix("--selftest") }) { DispatchQueue.global(qos: .utility).async { RecoveryStore.prune() } }
         installMenu()
@@ -52,7 +53,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if CommandLine.arguments.contains("--selftest-session") { runSessionSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-setup") { runSetupSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-run") { runRunSelfTest(); return }
+        if CommandLine.arguments.contains("--selftest-crash") { runCrashSelfTest(); return }
         if controllers.isEmpty && projects.isEmpty && !selfTest { openLastProjectOrWelcome(); checkSetupAtLaunch() }
+        if previousRunCrashed { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.showCrashNotice() } }
         if NSApp.activationPolicy() == .regular { NSApp.activate(ignoringOtherApps: true) }
     }
 
@@ -72,6 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        LogSupport.quit()
         for project in projects where project.persistsSession { project.saveSession(); project.saveRecoveries() }
     }
 
@@ -2008,6 +2012,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("Install is offered for the missing tools go install can fetch, not for git", window.installButtonTools == ["gopls", "dlv"] && window.installAllEnabled)
         window.show([ToolStatus(name: "go", required: true, found: true), ToolStatus(name: "gopls", required: true, found: true)])
         check("with everything installed there is nothing to install", !window.installAllEnabled && window.statusText == "Everything is installed.")
+
+        // Logging: the start line is in gobi.log under GOBI_LOG_DIR, the daemon wrote its own private log, and Copy Diagnostics has no full path.
+        let appLogText = (try? String(contentsOfFile: AppLog.path, encoding: .utf8)) ?? ""
+        check("gobi.log has the start line with the version", appLogText.contains("Gobi starting: version \(AppInfo.version)"))
+        let daemonLogMode = (try? FileManager.default.attributesOfItem(atPath: AppLog.daemonLogPath)[.posixPermissions] as? Int) ?? 0
+        check("gobid wrote gobid.log with mode 0600 (\(String(daemonLogMode, radix: 8)))", daemonLogMode == 0o600)
+        let diagnostics = LogSupport.diagnosticsText()
+        check("Copy Diagnostics has the version, gobid and the log sections", diagnostics.contains("Gobi \(AppInfo.version)") && diagnostics.contains("gobid ") && diagnostics.contains("--- gobi.log") && diagnostics.contains("Gobi starting"))
+        check("Copy Diagnostics has no full path", !diagnostics.contains(NSHomeDirectory()) && !diagnostics.contains(AppLog.directory) && !diagnostics.contains("/private/") && !diagnostics.contains("/usr/"))
+        check("a self-test leaves no running marker", !AppLog.markerExists)
+        selfTestExit(failures)
+    }
+
+    /// `GobiApp --selftest-crash`: a child process (this executable) installs the crash handlers and raises SIGABRT; its log must
+    /// hold the FATAL line and it must still die by that signal. macOS may write a crash report for the child.
+    private func runCrashSelfTest() {
+        let childDirectory = AppLog.directory + "/crash-child"
+        try? FileManager.default.removeItem(atPath: childDirectory)
+        selfTestCleanups.append { try? FileManager.default.removeItem(atPath: childDirectory) }
+        let child = Process()
+        child.executableURL = URL(fileURLWithPath: CommandLine.arguments[0])
+        child.arguments = ["--selftest-crash-child"]
+        child.environment = ProcessInfo.processInfo.environment.merging(["GOBI_LOG_DIR": childDirectory]) { $1 }
+        child.standardOutput = FileHandle.nullDevice
+        child.standardError = FileHandle.nullDevice
+        var failures = 0
+        func check(_ name: String, _ passed: Bool) {
+            print(passed ? "  ok   \(name)" : "  FAIL \(name)")
+            if !passed { failures += 1 }
+        }
+        try? child.run()
+        child.waitUntilExit()
+        let childLog = (try? String(contentsOfFile: childDirectory + "/gobi.log", encoding: .utf8)) ?? ""
+        check("the child died by SIGABRT, so the default crash path still runs (\(child.terminationReason == .uncaughtSignal ? "signal" : "exit") \(child.terminationStatus))", child.terminationReason == .uncaughtSignal && child.terminationStatus == SIGABRT)
+        check("its log holds the FATAL line (\(childLog.split(separator: "\n").last.map(String.init) ?? "empty"))", childLog.contains("FATAL signal 6 Gobi crashtest"))
         selfTestExit(failures)
     }
 
@@ -2202,7 +2241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Live items of the new menus are wired: each has an action and its id, and the not-built ones stay disabled.
         func menuItem(_ menuTitle: String, _ itemTitle: String) -> NSMenuItem? { NSApp.mainMenu?.items.compactMap { $0.submenu }.first { $0.title == menuTitle }?.items.first { $0.title == itemTitle } }
         let wired = [("Git", "Commit…"), ("Git", "Push…"), ("Git", "Rebase…"), ("Git", "New Tag…"), ("Build", "Build Project"), ("Build", "Rebuild Project"), ("Run", "Debug"), ("Run", "Stop"), ("Run", "Attach to Process…"),
-                     ("Run", "Resume Program"), ("Run", "View Breakpoints…"), ("Edit", "Sort Lines"), ("Edit", "Paste as Plain Text"), ("Edit", "Start Dictation…"), ("View", "Reset Font Size in All Editors"), ("Window", "Next Project Window")]
+                     ("Run", "Resume Program"), ("Run", "View Breakpoints…"), ("Help", "Open Logs Folder"), ("Help", "Copy Diagnostics"), ("Edit", "Sort Lines"), ("Edit", "Paste as Plain Text"), ("Edit", "Start Dictation…"), ("View", "Reset Font Size in All Editors"), ("Window", "Next Project Window")]
         let unwired = wired.filter { menuItem($0.0, $0.1)?.action == nil }.map { "\($0.0) ▸ \($0.1)" }
         check("the new menu items have actions (missing: \(unwired))", unwired.isEmpty)
         let disabled = [("Edit", "Column Selection Mode"), ("View", "Notifications"), ("View", "Quick Definition"), ("Build", "Build Artifacts"), ("Run", "Run with Coverage")]
@@ -2491,6 +2530,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private var setupWindow: SetupWindowController?
+    @objc func openLogsFolder(_ sender: Any?) { LogSupport.revealLogs() }
+    @objc func copyDiagnostics(_ sender: Any?) { LogSupport.copyDiagnostics() }
+
+    /// Non-modal: a notice with Reveal Logs above the open editor, else a status-bar note. Welcome-only sessions have neither.
+    private func showCrashNotice() {
+        let text = "Gobi did not exit cleanly last time. The logs may say why."
+        if let pane = frontProject?.currentPane {
+            pane.editor.showNotice(text, style: .warning, actions: [NoticeAction(title: "Reveal Logs") { LogSupport.revealLogs() }])
+        } else {
+            frontProject?.showNote(text + " Help > Open Logs Folder.")
+        }
+    }
+
     @objc func showSetup(_ sender: Any?) {
         let controller = setupWindow ?? SetupWindowController()
         setupWindow = controller
@@ -2502,7 +2554,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// At launch: if go or gopls is missing, open the Setup window so the user knows why things do not work.
     private func checkSetupAtLaunch() {
         DispatchQueue.global(qos: .utility).async { [weak self] in
-            guard let tools = try? ControlClient.connect().toolsCheck(), ToolStatus.needsAttention(tools) else { return }
+            guard let tools = try? ControlClient.connect().toolsCheck() else { AppLog.shared.logWarn("could not ask gobid which tools are installed"); return }
+            for tool in ToolStatus.missing(tools) { AppLog.shared.logWarn("\(tool.name) not found\(tool.required ? " (required)" : "")") }
+            guard ToolStatus.needsAttention(tools) else { return }
             DispatchQueue.main.async { self?.showSetup(nil) }
         }
     }
