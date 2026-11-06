@@ -28,6 +28,7 @@ know, so a newer peer can add fields. Never reuse or renumber a field. Any proto
 - Reply: 1 id (uint), 2 failure message (string, only on failure), 3 result (message).
 - `project/new` params: 1 template, 2 name, 3 location, 4 module path, 5 go version, 6 git init (bool), 7 sample test (bool), 8 scaffold: README, .gitignore, .env.example (bool), 9 work dir (add the module to the go.work in that folder).
 - `project/preview` params: as `project/new`; result: 1 root, 4 file (repeated, relative to the root). It writes nothing; the list is the one `project/new` would write.
+- `project/templates` params: none; result: 1 template (repeated message, in dialog order: 1 id, 2 order (1-based), 3 group, 4 title, 5 summary, 6 available (bool)). Read-only; the ids are the values `project/new` takes in field 1. New fields get new numbers; none is renumbered.
 - `project/clone` params: 1 url, 2 location, 3 folder name.
 - `project/open` params: 1 path. `project/import` params: 1 path, 2 module path.
 - Result of all four: 1 root, 2 kind (`workspace`, `module`, `folder`), 3 module path.

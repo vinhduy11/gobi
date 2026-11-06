@@ -1,0 +1,42 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+)
+
+func TestScheduleRunsOnceWithoutAnInterval(t *testing.T) {
+	calls := 0
+	err := schedule(context.Background(), 0, func(context.Context) error {
+		calls++
+		return nil
+	})
+	if err != nil || calls != 1 {
+		t.Fatalf("schedule = %v after %d calls, want nil after 1", err, calls)
+	}
+}
+
+func TestScheduleReturnsTheJobError(t *testing.T) {
+	boom := errors.New("boom")
+	err := schedule(context.Background(), 0, func(context.Context) error { return boom })
+	if !errors.Is(err, boom) {
+		t.Fatalf("schedule = %v, want it to wrap %v", err, boom)
+	}
+}
+
+func TestScheduleRepeatsUntilCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	err := schedule(ctx, time.Millisecond, func(context.Context) error {
+		calls++
+		if calls == 3 {
+			cancel()
+		}
+		return nil
+	})
+	if err != nil || calls < 3 {
+		t.Fatalf("schedule = %v after %d calls, want nil after at least 3", err, calls)
+	}
+}

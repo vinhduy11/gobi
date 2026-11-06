@@ -1,0 +1,76 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"io"
+	"sync"
+	"testing"
+)
+
+// fakeSource returns its messages once each, then io.EOF.
+type fakeSource struct {
+	mu       sync.Mutex
+	messages []Message
+}
+
+func (s *fakeSource) Next(context.Context) (Message, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.messages) == 0 {
+		return Message{}, io.EOF
+	}
+	msg := s.messages[0]
+	s.messages = s.messages[1:]
+	return msg, nil
+}
+
+func TestConsumeHandlesEveryMessage(t *testing.T) {
+	source := &fakeSource{messages: []Message{{Key: "a"}, {Key: "b"}, {Key: "c"}}}
+	var mu sync.Mutex
+	seen := map[string]bool{}
+	handle := func(_ context.Context, msg Message) error {
+		mu.Lock()
+		defer mu.Unlock()
+		seen[msg.Key] = true
+		return nil
+	}
+	if err := Consume(context.Background(), source, handle, 2); err != nil {
+		t.Fatal(err)
+	}
+	if len(seen) != 3 {
+		t.Fatalf("handled %v, want a, b and c", seen)
+	}
+}
+
+func TestConsumeKeepsGoingAfterAHandlerError(t *testing.T) {
+	source := &fakeSource{messages: []Message{{Key: "bad"}, {Key: "good"}}}
+	handled := 0
+	handle := func(_ context.Context, msg Message) error {
+		handled++
+		if msg.Key == "bad" {
+			return errors.New("boom")
+		}
+		return nil
+	}
+	if err := Consume(context.Background(), source, handle, 1); err != nil {
+		t.Fatal(err)
+	}
+	if handled != 2 {
+		t.Fatalf("handled %d messages, want 2", handled)
+	}
+}
+
+func TestConsumeStopsWhenTheContextIsCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := Consume(ctx, &tickSource{}, logHandler, 1); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestConsumeNeedsAWorker(t *testing.T) {
+	if err := Consume(context.Background(), &fakeSource{}, logHandler, 0); err == nil {
+		t.Fatal("zero workers must be an error")
+	}
+}

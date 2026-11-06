@@ -1,0 +1,66 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"sync"
+)
+
+// Message is one unit of work read from a Source.
+type Message struct {
+	Key   string
+	Value []byte
+}
+
+// Source delivers messages. Next blocks until a message is available, returns io.EOF when the source has no more
+// messages and returns the context's error when ctx ends. It must be safe for concurrent use.
+type Source interface {
+	Next(ctx context.Context) (Message, error)
+}
+
+// Handler processes one message. A returned error is logged and the worker moves on to the next message.
+type Handler func(ctx context.Context, msg Message) error
+
+// Consume reads from source with the given number of workers and passes every message to handle. It returns when the
+// source is drained or ctx ends, after all workers have finished their current message.
+func Consume(ctx context.Context, source Source, handle Handler, workers int) error {
+	if workers < 1 {
+		return fmt.Errorf("consume: need at least one worker, got %d", workers)
+	}
+	failures := make(chan error, workers)
+	var wg sync.WaitGroup
+	for id := 0; id < workers; id++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			failures <- work(ctx, source, handle)
+		}()
+	}
+	wg.Wait()
+	close(failures)
+	for err := range failures {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// work is the loop of one worker. It ends quietly when the source is drained or ctx is cancelled.
+func work(ctx context.Context, source Source, handle Handler) error {
+	for {
+		msg, err := source.Next(ctx)
+		if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("read message: %w", err)
+		}
+		if err := handle(ctx, msg); err != nil {
+			log.Printf("handle message %q: %v", msg.Key, err)
+		}
+	}
+}

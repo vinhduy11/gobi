@@ -11,6 +11,8 @@ const (
 	TemplateCLI       = "cli"
 	TemplateLibrary   = "library"
 	TemplateHTTP      = "http"
+	TemplateConsumer  = "consumer"
+	TemplateJob       = "job"
 	TemplateEmpty     = "empty"
 	TemplateWorkspace = "workspace"
 )
@@ -118,7 +120,9 @@ func TestHealthz(t *testing.T) {
 `,
 		},
 	},
-	TemplateEmpty: {},
+	TemplateConsumer: consumerTemplate,
+	TemplateJob:      jobTemplate,
+	TemplateEmpty:    {},
 }
 
 // Render returns the files of a template (path to content) for the given module path and project name; the sample test

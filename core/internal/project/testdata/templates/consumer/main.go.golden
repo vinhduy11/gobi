@@ -1,0 +1,44 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+)
+
+// tickSource is a stand-in Source that produces a message every second; replace it with your broker's client.
+type tickSource struct {
+	count int
+}
+
+// Next waits one second, then returns the next numbered message.
+func (s *tickSource) Next(ctx context.Context) (Message, error) {
+	select {
+	case <-ctx.Done():
+		return Message{}, ctx.Err()
+	case <-time.After(time.Second):
+	}
+	s.count++
+	return Message{Key: fmt.Sprint(s.count), Value: []byte("tick")}, nil
+}
+
+// logHandler is the business logic; keep it free of I/O details so a test can call it directly.
+func logHandler(_ context.Context, msg Message) error {
+	log.Printf("widget: message %s: %s", msg.Key, msg.Value)
+	return nil
+}
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	log.Println("widget consuming; press Ctrl+C to stop")
+	if err := Consume(ctx, &tickSource{}, logHandler, 1); err != nil {
+		log.Fatalf("widget: %v", err)
+	}
+	log.Println("widget stopped")
+}

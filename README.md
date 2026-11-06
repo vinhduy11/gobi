@@ -42,6 +42,9 @@ macOS first; Windows and Linux UIs come later next to it.
   implementation, find references, rename, code actions, organize imports, format on save), code lens, a gutter with
   breakpoints, git marks and Run buttons on tests, JSON and Markdown built in (syntax errors, formatting, outline,
   live preview).
+- **New Project**: templates for a command-line tool, library, HTTP service, message consumer, scheduled job, `go.work`
+  workspace and empty module (all stdlib-only, created offline, with an optional sample test); the list comes from the
+  daemon. A gRPC service is listed but not available yet.
 - **Run and test**: Run, Run Tests, Run Test at Cursor, Run on Multiple Go Versions, build and rebuild; output with
   clickable `file:line` links; a Tests tree with filter and jump to the failing line; Go version per project
   (installs from go.dev with `golang.org/dl`); environment profiles with secrets kept in the Keychain and `.env` files.

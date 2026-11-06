@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Project templates: consumer and job</title>
+<style>body{font:14px/1.5 -apple-system,sans-serif;max-width:860px;margin:2rem auto;padding:0 1rem}h2{margin-top:2rem}code{background:#f2f2f4;padding:0 .25em}</style></head><body>
+<h1>Project templates: message consumer and scheduled job</h1>
+<h2>Specs</h2>
+<p>Add stdlib-only templates <code>consumer</code> and <code>job</code> to New Project, make the template list come from the core through a read-only <code>project/templates</code> control method (with the built-in list as offline fallback), and show the Service group as in the New Project mock. gRPC and cobra templates and any post-create dependency step are out of scope.</p>
+<h2>Actions</h2>
+<ul>
+<li>Core: <code>core/internal/project/templates_worker.go</code> (both templates), <code>catalogue.go</code> (<code>Catalogue()</code>), <code>project/templates</code> in <code>daemon/control.go</code> (entry: 1 id, 2 order, 3 group, 4 title, 5 summary, 6 available).</li>
+<li>Tests: every template renders, is <code>gofmt</code>-clean and passes <code>go vet</code> and <code>go test</code> in a temp module; golden files in <code>core/internal/project/testdata/templates/</code> (<code>go test -update</code> rewrites them); catalogue test; control reply test and golden bytes of one entry (Go), the same bytes decoded in Swift (<code>NewProjectModelTests</code>).</li>
+<li>Swift: <code>ProjectTemplate.parse</code> and <code>TemplateCatalog.fallback/all/use</code> (GobiModel), <code>ControlClient.templates()</code>, New Project window loads and shows the core list. <code>--selftest-newproject</code> compares the dialog with the core list and creates and tests a consumer and a job project against a real gobid.</li>
+<li>Docs: wire protocol, CHANGELOG, README, mock-gap row.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>The decoder lives in GobiModel (like <code>ToolStatus.parse</code>) so it can be unit tested without a socket; <code>ControlClient.templates()</code> only calls it.</li>
+<li>The consumer reads with several workers that share one <code>Source</code>, which must be safe for concurrent use; simpler than a reader goroutine plus channel, at the cost of that requirement.</li>
+<li>Handler errors are logged and the worker continues; a Source error other than EOF or cancellation ends <code>Consume</code> with an error.</li>
+<li>The workspace entry was renamed to the mock's "go.work (multi-module)" and moved to its own group, which changes the dialog order.</li>
+<li>Cross-platform and ui-spec exports are deferred as instructed.</li>
+</ul>
+</body></html>

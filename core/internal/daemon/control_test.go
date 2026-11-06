@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"gobi/core/internal/ipc"
+	"gobi/core/internal/project"
 	"gobi/core/internal/wire"
 )
 
@@ -353,5 +354,69 @@ func TestSearchFilesAnswersWithMatches(t *testing.T) {
 	_, failure = controlCall(t, session, 2, "search/files", func(w *wire.Writer) { w.String(1, "x"); w.String(9, "relative") })
 	if !strings.Contains(failure, "absolute") {
 		t.Errorf("failure = %q", failure)
+	}
+}
+
+// project/templates answers with one message per template, in dialog order. The Swift client decodes the same bytes.
+func TestControlTemplatesListsTheCatalogue(t *testing.T) {
+	session := controlSession(t)
+	var request wire.Writer
+	request.Uint(controlID, 1)
+	request.String(controlMethod, "project/templates")
+	request.Message(controlBody, func(*wire.Writer) {})
+	if err := session.Writer.Write(request.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := session.Reader.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fields, _ := wire.Parse(payload)
+	var entries [][]wire.Field
+	for _, field := range fields {
+		if field.Number != controlBody {
+			continue
+		}
+		inner, _ := wire.Parse(field.Bytes)
+		for _, innerField := range inner {
+			if innerField.Number == templateEntry {
+				entry, _ := wire.Parse(innerField.Bytes)
+				entries = append(entries, entry)
+			}
+		}
+	}
+	catalogue := project.Catalogue()
+	if len(entries) != len(catalogue) {
+		t.Fatalf("got %d templates, want %d", len(entries), len(catalogue))
+	}
+	for index, entry := range entries {
+		var id, group string
+		var order uint64
+		var available bool
+		for _, field := range entry {
+			switch field.Number {
+			case 1:
+				id = string(field.Bytes)
+			case 2:
+				order = field.Uint
+			case 3:
+				group = string(field.Bytes)
+			case 6:
+				available = field.Uint != 0
+			}
+		}
+		want := catalogue[index]
+		if id != want.ID || group != want.Group || order != uint64(index+1) || available != want.Available {
+			t.Errorf("entry %d = %q/%q/%d/%v, want %+v", index, id, group, order, available, want)
+		}
+	}
+}
+
+// Golden bytes of one entry; field numbers 1..6 never change meaning.
+func TestTemplateEntryGoldenBytes(t *testing.T) {
+	got := templateEntryBytes(2, project.CatalogueEntry{ID: "job", Group: "Service", Title: "T", Summary: "S", Available: true})
+	want := []byte{0x0a, 0x03, 'j', 'o', 'b', 0x10, 0x02, 0x1a, 0x07, 'S', 'e', 'r', 'v', 'i', 'c', 'e', 0x22, 0x01, 'T', 0x2a, 0x01, 'S', 0x30, 0x01}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("entry bytes = % x, want % x", got, want)
 	}
 }

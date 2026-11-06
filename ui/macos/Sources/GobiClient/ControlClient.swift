@@ -67,6 +67,11 @@ public final class ControlClient: @unchecked Sendable {
         try callRaw("project/preview") { Self.write(request, into: &$0) }.result.filter { $0.number == 4 }.map(\.string)
     }
 
+    /// The templates of the New Project dialog as gobid lists them, in dialog order (project/templates).
+    public func templates() throws -> [ProjectTemplate] {
+        ProjectTemplate.parse(try callRaw("project/templates") { _ in }.result)
+    }
+
     private static func write(_ request: NewProjectRequest, into writer: inout WireWriter) {
         writer.string(1, request.template)
         writer.string(2, request.name)

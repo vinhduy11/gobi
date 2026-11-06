@@ -1,0 +1,55 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+)
+
+// run is the work of one job execution; replace its body and pass ctx to anything that blocks.
+func run(_ context.Context) error {
+	log.Println("widget: job ran")
+	return nil
+}
+
+// schedule calls job once, or every interval when interval is positive, until ctx ends. It returns the first error of
+// job; a cancelled ctx is a normal stop and returns nil.
+func schedule(ctx context.Context, interval time.Duration, job func(context.Context) error) error {
+	if err := job(ctx); err != nil {
+		return fmt.Errorf("run job: %w", err)
+	}
+	if interval <= 0 {
+		return nil
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			if err := job(ctx); err != nil {
+				return fmt.Errorf("run job: %w", err)
+			}
+		}
+	}
+}
+
+func main() {
+	interval := flag.Duration("every", 0, "repeat the job at this interval; 0 runs it once")
+	flag.Parse()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := schedule(ctx, *interval, run); err != nil {
+		log.Printf("widget: %v", err)
+		stop()
+		os.Exit(1)
+	}
+}

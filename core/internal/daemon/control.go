@@ -28,6 +28,8 @@ import (
 //	project/new    params: 1 template, 2 name, 3 location, 4 module path, 5 go version, 6 git init (bool),
 //	               7 sample test (bool), 8 scaffold README/.gitignore/.env.example (bool), 9 work dir (add to this go.work)
 //	project/preview params: as project/new; result: 1 root, 2 kind, 3 module path, 4 file (repeated), relative to the root
+//	project/templates params: none; result: 1 template (repeated message, in dialog order: 1 id, 2 order (1-based), 3 group,
+//	               4 title, 5 summary, 6 available (bool)). Read-only.
 //	project/clone  params: 1 url, 2 location, 3 folder name
 //	project/open   params: 1 path
 //	project/import params: 1 path, 2 module path
@@ -67,7 +69,8 @@ const (
 	projectModule = 3
 	projectFile   = 4
 
-	toolEntry = 1
+	toolEntry     = 1
+	templateEntry = 1
 )
 
 // serveControl answers project requests on the control channel, one at a time per connection.
@@ -216,6 +219,12 @@ func handleControl(method string, params []byte, hooks controlHooks) ([]byte, er
 		return searchFiles(fields)
 	case "tools/install":
 		return nil, toolchain.Install(context.Background(), toolchain.FromOS(), text(1))
+	case "project/templates":
+		var result wire.Writer
+		for index, entry := range project.Catalogue() {
+			result.Raw(templateEntry, templateEntryBytes(index+1, entry))
+		}
+		return result.Bytes(), nil
 	case "project/preview":
 		files, err := project.Preview(newRequest)
 		if err != nil {
@@ -252,6 +261,18 @@ func handleControl(method string, params []byte, hooks controlHooks) ([]byte, er
 	result.String(projectKind, info.Kind)
 	result.String(projectModule, info.ModulePath)
 	return result.Bytes(), nil
+}
+
+// templateEntryBytes encodes one catalogue entry; order is its 1-based position.
+func templateEntryBytes(order int, entry project.CatalogueEntry) []byte {
+	var out wire.Writer
+	out.String(1, entry.ID)
+	out.Uint(2, uint64(order))
+	out.String(3, entry.Group)
+	out.String(4, entry.Title)
+	out.String(5, entry.Summary)
+	out.Bool(6, entry.Available)
+	return out.Bytes()
 }
 
 func existingFolder(path string) (string, error) {

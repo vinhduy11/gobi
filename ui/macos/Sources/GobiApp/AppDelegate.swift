@@ -182,6 +182,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let deadline = Date().addingTimeInterval(8)
             while !condition() && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.05)) }
         }
+        settle { window.catalogueFromCore }
+        let fromCore = (try? { () -> [ProjectTemplate] in
+            let client = try ControlClient.connect()
+            defer { client.close() }
+            return try client.templates()
+        }()) ?? []
+        check("the dialog lists the catalogue gobid sends (\(fromCore.count) templates)", window.catalogueFromCore && !fromCore.isEmpty && window.templateTitles == fromCore.map(\.title))
+        check("the dialog shows the Service group with Message consumer and Scheduled job", window.templateGroups == ["Go module", "Service", "Workspace", "Other"] && window.templateTitles.contains("Message consumer") && window.templateTitles.contains("Scheduled job"))
+        check("the core's list and the offline fallback agree", fromCore == TemplateCatalog.fallback)
         check("Create is off until a name is typed", !window.isCreateEnabled)
         window.type(name: "hello")
         check("Create is on for a valid name", window.isCreateEnabled)
@@ -193,12 +202,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         window.setSampleTest(true)
         window.choose(templateTitled: "gRPC service")
         check("an unavailable template cannot be created", !window.isCreateEnabled)
-        window.choose(templateTitled: "Workspace go.work (multi-module)")
+        window.choose(templateTitled: "go.work (multi-module)")
         settle { window.previewString.contains("go.work") }
         check("the workspace preview has go.work and an app folder", window.previewString.contains("go.work") && window.previewString.contains("app/"))
         window.choose(templateTitled: "Command-line tool")
         settle { window.previewString.contains("main_test.go") && !window.previewString.contains("go.work") }
         check("choosing the command-line tool again lists main_test.go and no go.work", window.previewString.contains("main_test.go") && !window.previewString.contains("go.work"))
+        // Create a consumer and a job project for real, then build and test them.
+        let scratch = (ProcessInfo.processInfo.environment["TMPDIR"] ?? NSTemporaryDirectory()) + "/newproject-templates-\(getpid())"
+        try? FileManager.default.createDirectory(atPath: scratch, withIntermediateDirectories: true)
+        selfTestCleanups.append { try? FileManager.default.removeItem(atPath: scratch) }
+        for (id, files) in [("consumer", ["consumer.go", "consumer_test.go", "main.go"]), ("job", ["main.go", "main_test.go"])] {
+            let outcome = Result { () -> ProjectInfo in
+                let client = try ControlClient.connect()
+                defer { client.close() }
+                return try client.newProject(NewProjectRequest(template: id, name: "made-\(id)", location: scratch, modulePath: "example.com/made-\(id)", gitInit: false, sampleTest: true, scaffold: false))
+            }
+            let root = scratch + "/made-\(id)"
+            let present = files.allSatisfy { FileManager.default.fileExists(atPath: root + "/" + $0) }
+            check("creating a \(id) project writes \(files.joined(separator: ", ")) (\((try? outcome.get().root) ?? "\(outcome)"))", (try? outcome.get().root) == root && present)
+            let test = Process()
+            test.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            test.arguments = ["go", "test", "./..."]
+            test.currentDirectoryURL = URL(fileURLWithPath: root)
+            test.standardOutput = FileHandle.nullDevice
+            test.standardError = FileHandle.nullDevice
+            let passed = (try? test.run()) != nil && { test.waitUntilExit(); return test.terminationStatus == 0 }()
+            check("the \(id) project passes go test", passed)
+        }
         if let snapshotPath { window.snapshotWindow(to: snapshotPath) }
         selfTestExit(failures)
     }

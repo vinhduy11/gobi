@@ -7,7 +7,10 @@ import GobiModel
 final class NewProjectWindowController: NSWindowController, NSTableViewDataSource, NSTableViewDelegate, NSTextFieldDelegate {
     private enum Row { case group(String); case template(Int) }
 
-    private let rows: [Row]
+    private var templates = TemplateCatalog.all
+    private var rows: [Row] = []
+    /// True once the list on screen is the one gobid sent (the self-test waits for it).
+    private(set) var catalogueFromCore = false
     private let table = NSTableView()
     private let titleLabel = NSTextField(labelWithString: "")
     private let summaryLabel = NSTextField(wrappingLabelWithString: "")
@@ -33,25 +36,58 @@ final class NewProjectWindowController: NSWindowController, NSTableViewDataSourc
     private let versions = ["1.22", "1.23", "1.24", "1.25", "1.26"]
 
     init() {
-        var built: [Row] = []
-        var lastGroup = ""
-        for (index, template) in TemplateCatalog.all.enumerated() {
-            if template.group != lastGroup { built.append(.group(template.group)); lastGroup = template.group }
-            built.append(.template(index))
-        }
-        rows = built
         super.init(window: NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1000, height: 680),
             styleMask: [.titled, .closable], backing: .buffered, defer: false))
         window?.title = "New Project"
+        rows = Self.rows(for: templates)
         build()
         window?.center()
         table.selectRowIndexes([1], byExtendingSelection: false)
         applyTemplate()
+        loadCatalogue()
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let go = GoTool.version()
             DispatchQueue.main.async { self?.setInstalledGo(go) }
         }
+    }
+
+    private static func rows(for templates: [ProjectTemplate]) -> [Row] {
+        var built: [Row] = []
+        var lastGroup = ""
+        for (index, template) in templates.enumerated() {
+            if template.group != lastGroup { built.append(.group(template.group)); lastGroup = template.group }
+            built.append(.template(index))
+        }
+        return built
+    }
+
+    /// Asks gobid for the template list; the offline list stays on screen when it cannot answer.
+    private func loadCatalogue() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let loaded = try? { () -> [ProjectTemplate] in
+                let client = try ControlClient.connect()
+                defer { client.close() }
+                return try client.templates()
+            }()
+            DispatchQueue.main.async { self?.show(catalogue: loaded ?? []) }
+        }
+    }
+
+    /// Replaces the list, keeping the chosen template when the new list still has it.
+    private func show(catalogue: [ProjectTemplate]) {
+        guard !catalogue.isEmpty else { return }
+        let chosen = template.id
+        TemplateCatalog.use(catalogue)
+        templates = TemplateCatalog.all
+        rows = Self.rows(for: templates)
+        selected = templates.firstIndex { $0.id == chosen } ?? 0
+        table.reloadData()
+        if let row = rows.firstIndex(where: { if case .template(let index) = $0 { return index == selected } else { return false } }) {
+            table.selectRowIndexes([row], byExtendingSelection: false)
+        }
+        catalogueFromCore = true
+        applyTemplate()
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
@@ -71,11 +107,14 @@ final class NewProjectWindowController: NSWindowController, NSTableViewDataSourc
     var isCreateEnabled: Bool { createButton.isEnabled }
     var isSampleTestEnabled: Bool { sampleTest.isEnabled }
     var isAddToWorkEnabled: Bool { addToWork.isEnabled }
+    /// The titles of the template list on screen, in order.
+    var templateTitles: [String] { templates.map(\.title) }
+    var templateGroups: [String] { rows.compactMap { if case .group(let title) = $0 { return title } else { return nil } } }
 
     func snapshotWindow(to path: String) { WindowSnapshot.write(window, to: path) }
 
     func choose(templateTitled title: String) {
-        guard let row = rows.firstIndex(where: { if case .template(let index) = $0 { return TemplateCatalog.all[index].title == title } else { return false } }) else { return }
+        guard let row = rows.firstIndex(where: { if case .template(let index) = $0 { return templates[index].title == title } else { return false } }) else { return }
         table.selectRowIndexes([row], byExtendingSelection: false)
         selected = { if case .template(let index) = rows[row] { return index } else { return 0 } }()
         applyTemplate()
@@ -197,12 +236,12 @@ final class NewProjectWindowController: NSWindowController, NSTableViewDataSourc
         version.item(at: 0)?.title = goVersionText
     }
 
-    private var template: ProjectTemplate { TemplateCatalog.all[selected] }
+    private var template: ProjectTemplate { templates[selected] }
 
     private func applyTemplate() {
         titleLabel.stringValue = template.title
         summaryLabel.stringValue = template.summary
-        sampleTest.isEnabled = template.isAvailable && template.coreID != "empty"
+        sampleTest.isEnabled = template.isAvailable && template.id != "empty"
         refresh()
     }
 
@@ -231,7 +270,7 @@ final class NewProjectWindowController: NSWindowController, NSTableViewDataSourc
     private func refresh() {
         let projectName = name.stringValue.trimmingCharacters(in: .whitespaces)
         workDir = findGoWork(from: expandedLocation) ?? ""
-        addToWork.isEnabled = !workDir.isEmpty && template.coreID != "workspace" && template.isAvailable
+        addToWork.isEnabled = !workDir.isEmpty && template.id != "workspace" && template.isAvailable
         if !addToWork.isEnabled { addToWork.state = .off }
         addToWork.toolTip = workDir.isEmpty ? "No go.work found in or above the location." : "Adds the module to \(workDir)/go.work"
         commandLabel.stringValue = ProjectForm.commandSummary(modulePath: effectiveModulePath)
@@ -247,7 +286,7 @@ final class NewProjectWindowController: NSWindowController, NSTableViewDataSourc
 
     private func currentRequest() -> NewProjectRequest {
         NewProjectRequest(
-            template: template.coreID, name: name.stringValue.trimmingCharacters(in: .whitespaces), location: expandedLocation,
+            template: template.id, name: name.stringValue.trimmingCharacters(in: .whitespaces), location: expandedLocation,
             modulePath: module.stringValue, goVersion: version.indexOfSelectedItem == 0 ? "" : versions[version.indexOfSelectedItem - 1],
             gitInit: gitInit.state == .on, sampleTest: sampleTest.state == .on && sampleTest.isEnabled, scaffold: scaffold.state == .on,
             workDir: addToWork.state == .on ? workDir : "")
@@ -322,7 +361,7 @@ final class NewProjectWindowController: NSWindowController, NSTableViewDataSourc
             label.textColor = .secondaryLabelColor
             return label
         case .template(let index):
-            let item = TemplateCatalog.all[index]
+            let item = templates[index]
             let label = NSTextField(labelWithString: item.title)
             label.textColor = item.isAvailable ? .labelColor : .tertiaryLabelColor
             return label
