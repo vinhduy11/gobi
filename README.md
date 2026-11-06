@@ -116,6 +116,12 @@ handshake; untrusted workspaces run gopls with `GOTOOLCHAIN=local` and cannot ru
 Further reading: [layers](docs/architect/layers.md), [wire protocol](docs/architect/wire-protocol.md),
 [open work](docs/implement/ui-mock-gap.md), [changelog](CHANGELOG.md).
 
+## Releases
+
+Versions follow [Semantic Versioning](https://semver.org) (`0.1.0-alpha.1`, `0.1.0-beta.1`, `0.1.0`, …); the `VERSION` file is the one
+source, git tags are `vX.Y.Z[-pre]`, and the app shows its version and build in Gobi > About Gobi. How a release is cut, built and
+published: [`docs/release.md`](docs/release.md). What changed in each: [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Tests
 
 ```bash

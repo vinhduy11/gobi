@@ -2,6 +2,7 @@
 //
 //	gobid [serve] [-dir DIR]   serve the lsp channel on a private unix socket
 //	gobid doctor               report go, gopls and dlv; exit 1 if a required tool is missing
+//	gobid version              print the version this daemon was built as
 //	gobid langserver           the built-in JSON and Markdown language service over stdio (started by gobid itself)
 package main
 
@@ -22,6 +23,12 @@ import (
 	"gobi/core/internal/toolchain"
 )
 
+// Set by the build (`go build -ldflags "-X main.version=… -X main.commit=…"`, see ui/macos/scripts/make-app.sh).
+var (
+	version = "dev"
+	commit  = ""
+)
+
 func main() {
 	// Started from Finder, the app (and so gobid) has only the system PATH; add where go, gopls and dlv usually are.
 	toolchain.ExtendProcessPath()
@@ -30,6 +37,8 @@ func main() {
 		command, args = args[0], args[1:]
 	}
 	switch command {
+	case "version":
+		fmt.Println(versionLine())
 	case "doctor":
 		os.Exit(doctor())
 	case "serve":
@@ -40,9 +49,17 @@ func main() {
 			os.Exit(1)
 		}
 	default:
-		fmt.Fprintln(os.Stderr, "usage: gobid [serve] [-dir DIR] | gobid doctor | gobid langserver")
+		fmt.Fprintln(os.Stderr, "usage: gobid [serve] [-dir DIR] | gobid doctor | gobid version | gobid langserver")
 		os.Exit(2)
 	}
+}
+
+// versionLine is `gobid 0.1.0-alpha.1 (abc1234)`, or `gobid dev` for a build without version flags.
+func versionLine() string {
+	if commit == "" {
+		return "gobid " + version
+	}
+	return "gobid " + version + " (" + commit + ")"
 }
 
 func serve(args []string) int {

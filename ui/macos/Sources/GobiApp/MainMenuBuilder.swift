@@ -57,7 +57,7 @@ enum MainMenuBuilder {
 
     /// Actions the responder chain answers (text editing, window commands) rather than the app delegate.
     private static func isResponderChainAction(_ action: String?) -> Bool {
-        ["undo", "redo", "cut", "copy", "paste", "selectAll", "minimize", "zoomWindow", "fullScreen", "bringAllToFront", "hide", "hideOthers", "quit", "about", "startDictation", "emojiSymbols"].contains(action ?? "")
+        ["undo", "redo", "cut", "copy", "paste", "selectAll", "minimize", "zoomWindow", "fullScreen", "bringAllToFront", "hide", "hideOthers", "quit", "startDictation", "emojiSymbols"].contains(action ?? "")
     }
 
     /// Runs a menu action by id, as choosing the menu item would (used by the Command Palette).
@@ -68,7 +68,7 @@ enum MainMenuBuilder {
 
     private static func selector(for action: String?) -> Selector? {
         switch action {
-        case "about": return #selector(NSApplication.orderFrontStandardAboutPanel(_:))
+        case "about": return #selector(AppDelegate.showAbout(_:))
         case "hide": return #selector(NSApplication.hide(_:))
         case "hideOthers": return #selector(NSApplication.hideOtherApplications(_:))
         case "quit": return #selector(NSApplication.terminate(_:))

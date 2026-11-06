@@ -9,8 +9,18 @@ DIST="$(cd "$ROOT/../.." && pwd)/dist"
 APP="$DIST/Gobi.app"
 CONTENTS="$APP/Contents"
 
+# One version for everything: the VERSION file at the repository root (Semantic Versioning, e.g. 0.1.0-alpha.1). The build
+# number is the number of commits, so every build of a different commit has a different one; the commit goes in too, with
+# "-dirty" when the working tree has uncommitted changes.
+REPO="$(cd "$ROOT/../.." && pwd)"
+VERSION=$(tr -d ' \n' < "$REPO/VERSION")
+BUILD=$(git -C "$REPO" rev-list --count HEAD 2>/dev/null || echo 0)
+COMMIT=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
+[ -n "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" ] && COMMIT="$COMMIT-dirty"
+echo "building Gobi $VERSION (build $BUILD, $COMMIT)"
+
 swift build -c release --product GobiApp
-(cd "$ROOT/../../core" && go build -o "$ROOT/.build/gobid" ./cmd/gobid)
+(cd "$ROOT/../../core" && go build -ldflags "-X main.version=$VERSION -X main.commit=$COMMIT" -o "$ROOT/.build/gobid" ./cmd/gobid)
 
 rm -rf "$APP"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
@@ -23,7 +33,7 @@ rm -rf "$ICONSET"
 swift scripts/make-icon.swift Resources/AppIcon.svg "$ICONSET"
 iconutil -c icns "$ICONSET" -o "$CONTENTS/Resources/AppIcon.icns"
 
-cat > "$CONTENTS/Info.plist" <<'PLIST'
+cat > "$CONTENTS/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -34,8 +44,9 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
     <key>CFBundleExecutable</key><string>GobiApp</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>$VERSION</string>
+    <key>CFBundleVersion</key><string>$BUILD</string>
+    <key>GobiGitCommit</key><string>$COMMIT</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSHighResolutionCapable</key><true/>

@@ -2317,6 +2317,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func codeActions(_ sender: Any?) { frontProject?.showCodeActions() }
     @objc func parameterInfo(_ sender: Any?) { frontProject?.showParameterInfo() }
 
+    /// About Gobi: the standard panel with the version, build number and commit of this build (and of the gobid it carries).
+    @objc func showAbout(_ sender: Any?) {
+        let detail = AppVersion.display(version: GobiClientVersion.current, build: GobiClientVersion.build, commit: GobiClientVersion.commit)
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .applicationVersion: GobiClientVersion.current,
+            .version: detail,
+            .credits: NSAttributedString(string: "An alpha release of a Go IDE for macOS.\nSee the CHANGELOG for what changed.", attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.secondaryLabelColor]),
+        ])
+    }
+
     @objc func goToDefinition(_ sender: Any?) { frontProject?.goToDefinition() }
     @objc func goToImplementation(_ sender: Any?) { frontProject?.goToImplementation() }
     @objc func formatDocument(_ sender: Any?) { frontProject?.formatDocument() }

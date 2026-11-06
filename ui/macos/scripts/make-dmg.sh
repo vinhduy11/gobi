@@ -15,4 +15,6 @@ ln -s /Applications "$STAGE/Applications"
 rm -f "$DMG"
 hdiutil create -quiet -volname "Gobi $VERSION" -srcfolder "$STAGE" -fs HFS+ -format UDZO "$DMG"
 hdiutil verify -quiet "$DMG"
+( cd "$(dirname "$DMG")" && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256" )
 echo "built $DMG"
+cat "$DMG.sha256"
