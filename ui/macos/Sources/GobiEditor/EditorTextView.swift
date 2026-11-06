@@ -215,10 +215,46 @@ final class EditorTextView: NSTextView {
         }
     }
 
+    /// Brackets and quotes close themselves, and Return keeps the indentation (the rules are in GobiModel's AutoClose).
+    var autoClosePairs = true
+    var autoIndent = true
+
+    private func character(at offset: Int) -> Character? {
+        let text = string as NSString
+        guard offset >= 0, offset < text.length else { return nil }
+        return text.substring(with: NSRange(location: offset, length: 1)).first
+    }
+
+    /// Types `typed` the auto-close way when the rules say so. Returns false to let the text view type it normally.
+    private func applyAutoClose(_ typed: Character) -> Bool {
+        let selection = selectedRange()
+        let action = AutoClose.typed(typed, before: character(at: selection.location - 1), after: character(at: selection.location + selection.length), hasSelection: selection.length > 0)
+        switch action {
+        case .none:
+            return false
+        case .skip:
+            setSelectedRange(NSRange(location: selection.location + 1, length: 0))
+        case .insert(let text, let caretBack):
+            super.insertText(text, replacementRange: selection)
+            setSelectedRange(NSRange(location: selection.location + (text as NSString).length - caretBack, length: 0))
+        case .wrap(let open, let close):
+            let inner = (string as NSString).substring(with: selection)
+            super.insertText(open + inner + close, replacementRange: selection)
+            setSelectedRange(NSRange(location: selection.location + (open as NSString).length, length: (inner as NSString).length))
+        }
+        return true
+    }
+
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
         hover?.hide()
-        super.insertText(insertString, replacementRange: replacementRange)
         let typed = (insertString as? String) ?? (insertString as? NSAttributedString)?.string
+        // Only plain typing (no explicit range, no input-method composition in progress) is auto-closed.
+        if autoClosePairs, !hasMarkedText(), replacementRange.location == NSNotFound, let typed, typed.count == 1, let character = typed.first, applyAutoClose(character) {
+            completion?.typed(typed)
+            signature?.typed(typed)
+            return
+        }
+        super.insertText(insertString, replacementRange: replacementRange)
         if let typed {
             completion?.typed(typed)
             signature?.typed(typed)
@@ -229,8 +265,36 @@ final class EditorTextView: NSTextView {
         if completion?.handle(command: selector) == true { return }
         if signature?.handle(command: selector) == true { return }
         if snippets?.handle(command: selector) == true { return }
+        if selector == #selector(NSResponder.deleteBackward(_:)), autoClosePairs, !hasMarkedText(), removePairBeforeCaret() {
+            completion?.deleted()
+            return
+        }
+        if selector == #selector(NSResponder.insertNewline(_:)), autoIndent, !hasMarkedText(), insertIndentedNewline() { return }
         super.doCommand(by: selector)
         if selector == #selector(NSResponder.deleteBackward(_:)) || selector == #selector(NSResponder.deleteForward(_:)) { completion?.deleted() }
+    }
+
+    /// Backspace between `{` and `}` (or another pair) removes both.
+    private func removePairBeforeCaret() -> Bool {
+        let selection = selectedRange()
+        guard selection.length == 0, selection.location > 0, AutoClose.removesPair(before: character(at: selection.location - 1), after: character(at: selection.location)) else { return false }
+        super.insertText("", replacementRange: NSRange(location: selection.location - 1, length: 2))
+        return true
+    }
+
+    /// Return: the new line gets the indentation of the current one (one more after an opening bracket); between `{` and `}` a block opens.
+    private func insertIndentedNewline() -> Bool {
+        let selection = selectedRange()
+        let text = string as NSString
+        let lineStart = text.lineRange(for: NSRange(location: selection.location, length: 0)).location
+        let before = text.substring(with: NSRange(location: lineStart, length: selection.location - lineStart))
+        let edit = AutoClose.newline(lineBeforeCaret: before, after: character(at: selection.location + selection.length), indentUnit: indentUnit)
+        switch edit {
+        case .insert(let inserted, let caretBack):
+            super.insertText(inserted, replacementRange: selection)
+            setSelectedRange(NSRange(location: selection.location + (inserted as NSString).length - caretBack, length: 0))
+        }
+        return true
     }
 
     override func keyDown(with event: NSEvent) {

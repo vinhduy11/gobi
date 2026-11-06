@@ -347,6 +347,8 @@ public final class EditorView {
         (textView as? EditorTextView)?.rulerColumn = settings.rulerColumn
         (textView as? EditorTextView)?.showInvisibles = settings.showInvisibles
         (textView as? EditorTextView)?.codeLensEnabled = settings.showCodeLens
+        (textView as? EditorTextView)?.autoClosePairs = settings.autoClosePairs
+        (textView as? EditorTextView)?.autoIndent = settings.autoIndent
         setWrap(settings.wrapLines)
         (textView as? EditorTextView)?.indentUnit = settings.indentUnit(forLanguage: document.language)
         if settings.look != appliedLook { applyLook(settings, to: textView.textStorage) }

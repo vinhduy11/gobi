@@ -17,6 +17,9 @@ public struct EditorSettings: Equatable, Sendable {
     public var showLineNumbers = true
     public var showInvisibles = false
     public var showCodeLens = true
+    /// Typing a bracket or quote also types its partner; Return keeps the indentation of the line (AutoClose).
+    public var autoClosePairs = true
+    public var autoIndent = true
     public var wrapLines = false
     public var rulerColumn = 100
     public var autoSave = AutoSave.afterDelay
@@ -53,7 +56,7 @@ public struct EditorSettings: Equatable, Sendable {
     public func encoded() -> String {
         [
             "fontName=\(fontName)", "fontSize=\(fontSize)", "lineHeight=\(lineHeight)", "indentWithTabs=\(indentWithTabs)",
-            "tabWidth=\(tabWidth)", "showLineNumbers=\(showLineNumbers)", "showInvisibles=\(showInvisibles)", "showCodeLens=\(showCodeLens)","wrapLines=\(wrapLines)",
+            "tabWidth=\(tabWidth)", "showLineNumbers=\(showLineNumbers)", "showInvisibles=\(showInvisibles)", "showCodeLens=\(showCodeLens)", "autoClosePairs=\(autoClosePairs)", "autoIndent=\(autoIndent)", "wrapLines=\(wrapLines)",
             "rulerColumn=\(rulerColumn)", "autoSave=\(autoSave.rawValue)",
         ].joined(separator: "\n")
     }
@@ -75,6 +78,8 @@ public struct EditorSettings: Equatable, Sendable {
             case "showLineNumbers": s.showLineNumbers = value == "true"
             case "showInvisibles": s.showInvisibles = value == "true"
             case "showCodeLens": s.showCodeLens = value == "true"
+            case "autoClosePairs": s.autoClosePairs = value == "true"
+            case "autoIndent": s.autoIndent = value == "true"
             case "wrapLines": s.wrapLines = value == "true"
             case "rulerColumn": if let v = Int(value) { s.rulerColumn = v } else { continue }
             case "autoSave": if let v = AutoSave(rawValue: value) { s.autoSave = v } else { continue }

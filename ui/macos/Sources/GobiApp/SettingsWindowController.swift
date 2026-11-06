@@ -20,6 +20,8 @@ final class SettingsWindowController: NSWindowController {
     let indentControl = NSSegmentedControl(labels: ["Tabs", "Spaces"], trackingMode: .selectOne, target: nil, action: nil)
     let invisibles = NSButton(checkboxWithTitle: "Invisible characters", target: nil, action: nil)
     let codeLens = NSButton(checkboxWithTitle: "Show code lens", target: nil, action: nil)
+    let autoClose = NSButton(checkboxWithTitle: "Close brackets and quotes", target: nil, action: nil)
+    let autoIndent = NSButton(checkboxWithTitle: "Keep indentation on a new line", target: nil, action: nil)
     let wrapLines = NSButton(checkboxWithTitle: "Wrap long lines", target: nil, action: nil)
     let rulerPopup = NSPopUpButton(frame: .zero, pullsDown: false)
     let autoSavePopup = NSPopUpButton(frame: .zero, pullsDown: false)
@@ -104,6 +106,7 @@ final class SettingsWindowController: NSWindowController {
         invisibles.action = #selector(editorOptionChanged)
         codeLens.target = self
         codeLens.action = #selector(editorOptionChanged)
+        for box in [autoClose, autoIndent] { box.target = self; box.action = #selector(editorOptionChanged) }
         wrapLines.target = self
         wrapLines.action = #selector(editorOptionChanged)
         lineNumbers.target = self
@@ -137,6 +140,7 @@ final class SettingsWindowController: NSWindowController {
             row("Indent using", [indentControl, tabsNote]),
             row("Tab width", [tabWidthPopup]),
             row("Show", [lineNumbers, invisibles, codeLens]),
+            row("Typing", [autoClose, autoIndent]),
             row("Wrap", [wrapLines]),
             row("Ruler at column", [rulerPopup]),
             row("Auto save", [autoSavePopup]),
@@ -252,6 +256,8 @@ final class SettingsWindowController: NSWindowController {
         lineNumbers.state = editor.showLineNumbers ? .on : .off
         invisibles.state = editor.showInvisibles ? .on : .off
         codeLens.state = editor.showCodeLens ? .on : .off
+        autoClose.state = editor.autoClosePairs ? .on : .off
+        autoIndent.state = editor.autoIndent ? .on : .off
         wrapLines.state = editor.wrapLines ? .on : .off
         fontPopup.selectItem(withTitle: editor.fontName)
         sizePopup.selectItem(at: EditorSettings.fontSizes.firstIndex(of: editor.fontSize) ?? 2)
@@ -267,6 +273,8 @@ final class SettingsWindowController: NSWindowController {
             settings.showLineNumbers = lineNumbers.state == .on
             settings.showInvisibles = invisibles.state == .on
             settings.showCodeLens = codeLens.state == .on
+            settings.autoClosePairs = autoClose.state == .on
+            settings.autoIndent = autoIndent.state == .on
             settings.wrapLines = wrapLines.state == .on
             settings.fontName = fontPopup.titleOfSelectedItem ?? "SF Mono"
             settings.fontSize = EditorSettings.fontSizes[max(0, sizePopup.indexOfSelectedItem)]

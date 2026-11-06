@@ -350,6 +350,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("New > Go Test File takes the package of the Go file next to it", testFile.flatMap { try? String(contentsOf: $0, encoding: .utf8) } == "package gobi_empty_project\n\nimport \"testing\"\n")
         check("New > Folder and New > File work, and a name that exists is refused", emptyController.newEntry(.folder, in: emptyRoot, name: "internal") != nil && emptyController.newEntry(.file, in: emptyRoot, name: "notes.md") != nil && emptyController.newEntry(.file, in: emptyRoot, name: "notes.md") == nil)
         check("the explorer lists what was made (\(emptyController.explorerNames))", Set(emptyController.explorerNames) == ["cart.go", "cart_test.go", "internal", "notes.md"])
+
+        // Typing: brackets and quotes close themselves, a closer is skipped over, Backspace takes a pair, Return keeps the indentation.
+        if emptyController.newEntry(.file, in: emptyRoot, name: "typing.go") != nil, let view = emptyController.currentPane?.textView {
+            func reset() { view.insertText("", replacementRange: NSRange(location: 0, length: (view.string as NSString).length)) }
+            func type(_ text: String) { for character in text { view.insertText(String(character), replacementRange: NSRange(location: NSNotFound, length: 0)) } }
+            reset(); type("{")
+            check("typing { also types } and keeps the caret between (\(view.string.debugDescription), \(view.selectedRange().location))", view.string == "{}" && view.selectedRange().location == 1)
+            type("}")
+            check("typing } before a } moves over it", view.string == "{}" && view.selectedRange().location == 2)
+            reset(); type("{"); view.doCommand(by: #selector(NSResponder.insertNewline(_:)))
+            check("Return between { and } opens an indented block (\(view.string.debugDescription))", view.string == "{\n\t\n}" && view.selectedRange().location == 3)
+            reset(); type("\tx := f("); view.doCommand(by: #selector(NSResponder.insertNewline(_:)))
+            check("Return keeps the line's indentation (\(view.string.debugDescription))", view.string == "\tx := f(\n\t\t\n\t)" || view.string == "\tx := f()\n\t\t")
+            reset(); type("("); view.doCommand(by: #selector(NSResponder.deleteBackward(_:)))
+            check("Backspace between a pair removes both (\(view.string.debugDescription))", view.string.isEmpty)
+            reset(); type("\"a\"")
+            check("a quote pairs, and the closing quote is skipped (\(view.string.debugDescription))", view.string == "\"a\"" && view.selectedRange().location == 3)
+            reset(); type("don'")
+            check("an apostrophe after a word is just a character (\(view.string.debugDescription))", view.string == "don'")
+            reset(); type("ab"); view.setSelectedRange(NSRange(location: 0, length: 2)); type("(")
+            check("an opener over a selection wraps it (\(view.string.debugDescription))", view.string == "(ab)" && view.selectedRange() == NSRange(location: 1, length: 2))
+            let before = EditorPreferences.current
+            selfTestCleanups.append { EditorPreferences.current = before }
+            EditorPreferences.update { $0.autoClosePairs = false; $0.autoIndent = false }
+            reset(); type("{")
+            check("with the setting off a { stays alone", view.string == "{")
+            EditorPreferences.current = before
+        }
         emptyController.window?.close()
         check("and absent on a plain Go file", explorerMenu?.items.first { $0.title == "Go Mod Tidy" }?.isEnabled == false)
 
