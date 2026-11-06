@@ -328,9 +328,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let copyPathMenu = explorerMenu?.items.first { $0.title == "Copy Path" }?.submenu
         perform("Path from Project Root", in: copyPathMenu ?? NSMenu())
         check("Copy Path > Path from Project Root gives a path inside the project", NSPasteboard.general.string(forType: .string) == "a.go")
-        check("New, Cut, Copy, Paste and Delete are in the explorer menu but disabled until they exist", ["New", "Cut", "Copy", "Paste", "Delete…", "Refactor"].allSatisfy { title in explorerMenu?.items.first { $0.title == title }?.isEnabled == false })
+        check("Cut, Copy, Paste, Delete and Refactor are in the explorer menu but disabled until they exist, New is live", ["Cut", "Copy", "Paste", "Delete…", "Refactor"].allSatisfy { title in explorerMenu?.items.first { $0.title == title }?.isEnabled == false })
         let modRow = (0 ..< controller.explorerRowCount).first { controller.explorerRowTitle($0) == "go.mod" }
         check("Go Mod Tidy and Download Go Modules are live on go.mod", modRow.flatMap { controller.explorerMenu(row: $0) }.map { menu in ["Go Mod Tidy", "Download Go Modules"].allSatisfy { title in menu.items.first { $0.title == title }?.isEnabled == true } } ?? false)
+
+        // A project with no files: the explorer has no rows, but a right click on the empty space still gives the project's menu,
+        // and New makes files (a Go file takes the package of the folder).
+        let emptyRoot = root.appendingPathComponent("gobi-empty-project")
+        try? FileManager.default.removeItem(at: emptyRoot)
+        try? FileManager.default.createDirectory(at: emptyRoot, withIntermediateDirectories: true)
+        selfTestCleanups.append { try? FileManager.default.removeItem(at: emptyRoot) }
+        let emptyController = ProjectWindowController(root: emptyRoot, kind: .folder, isTrusted: true)
+        emptyController.showWindow(nil)
+        let blankMenu = emptyController.explorerMenu(row: -1)
+        check("right-clicking the empty space of an empty project gives the project's menu (\(blankMenu?.items.map(\.title).prefix(4).joined(separator: ", ") ?? "none"))", blankMenu != nil && blankMenu?.items.first { $0.title == "New" }?.isEnabled == true)
+        let newItems = blankMenu?.items.first { $0.title == "New" }?.submenu?.items.map { $0.isEnabled } ?? []
+        check("every New entry is live (\(newItems))", !newItems.isEmpty && newItems.filter { $0 }.count == 4)
+        let goFile = emptyController.newEntry(.goFile, in: emptyRoot, name: "cart")
+        check("New > Go File makes cart.go with the folder's package", goFile.flatMap { try? String(contentsOf: $0, encoding: .utf8) } == "package gobi_empty_project\n")
+        let testFile = emptyController.newEntry(.goTestFile, in: emptyRoot, name: "cart")
+        check("New > Go Test File takes the package of the Go file next to it", testFile.flatMap { try? String(contentsOf: $0, encoding: .utf8) } == "package gobi_empty_project\n\nimport \"testing\"\n")
+        check("New > Folder and New > File work, and a name that exists is refused", emptyController.newEntry(.folder, in: emptyRoot, name: "internal") != nil && emptyController.newEntry(.file, in: emptyRoot, name: "notes.md") != nil && emptyController.newEntry(.file, in: emptyRoot, name: "notes.md") == nil)
+        check("the explorer lists what was made (\(emptyController.explorerNames))", Set(emptyController.explorerNames) == ["cart.go", "cart_test.go", "internal", "notes.md"])
+        emptyController.window?.close()
         check("and absent on a plain Go file", explorerMenu?.items.first { $0.title == "Go Mod Tidy" }?.isEnabled == false)
 
         // gopls.

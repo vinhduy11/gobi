@@ -179,7 +179,7 @@ public enum ContextMenuSpec {
     ]
 
     public static let explorer: [MenuEntry] = [
-        .submenu("New", nil, [.item("File…"), .item("Folder…"), .separator, .item("Go File…"), .item("Go Test File…")]),
+        .submenu("New", nil, [.item("File…", "", "newFile"), .item("Folder…", "", "newFolder"), .separator, .item("Go File…", "", "newGoFile"), .item("Go Test File…", "", "newGoTestFile")]),
         .separator,
         .item("Cut", "⌘X"), .item("Copy", "⌘C"),
         .submenu("Copy Path", nil, [.item("Absolute Path", "", "copyPath"), .item("Path from Project Root", "", "copyRelativePath"), .item("File Name", "", "copyFileName")]),

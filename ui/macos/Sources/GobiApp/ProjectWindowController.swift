@@ -1776,8 +1776,9 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         return ContextMenus.build(ContextMenuSpec.editor, handlers: handlers)
     }
 
+    /// The explorer's menu for a row, or for the project folder itself when `row` is -1 (a click on empty space).
     func explorerMenu(row: Int) -> NSMenu? {
-        guard let node = outline.item(atRow: row) as? FileNode else { return nil }
+        guard let node = (row >= 0 ? outline.item(atRow: row) as? FileNode : rootNode) else { return nil }
         let url = node.url
         var handlers: [String: () -> Void] = [
             "revealInFinder": { NSWorkspace.shared.activateFileViewerSelecting([url]) },
@@ -1788,7 +1789,13 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
             "replaceInFiles": { [weak self] in self?.findInFiles(scope: node.isDirectory ? self?.relativePath(url) : nil, focusReplace: true) },
         ]
         if !node.isDirectory { handlers["open"] = { [weak self] in self?.openFile(url) } }
-        else { handlers["open"] = { [weak self] in self?.outline.expandItem(node) } }
+        else if row >= 0 { handlers["open"] = { [weak self] in self?.outline.expandItem(node) } }
+        // New entries go into the folder clicked, or next to the file clicked.
+        let target = node.isDirectory ? url : url.deletingLastPathComponent()
+        handlers["newFile"] = { [weak self] in self?.newEntry(.file, in: target) }
+        handlers["newFolder"] = { [weak self] in self?.newEntry(.folder, in: target) }
+        handlers["newGoFile"] = { [weak self] in self?.newEntry(.goFile, in: target) }
+        handlers["newGoTestFile"] = { [weak self] in self?.newEntry(.goTestFile, in: target) }
         // Go Mod Tidy and Download Go Modules run in a terminal, in the folder of the go.mod: the one selected, or the folder
         // selected when it holds one. Only a trusted project has a terminal.
         let moduleFolder = node.isDirectory ? url : (url.lastPathComponent == "go.mod" ? url.deletingLastPathComponent() : nil)

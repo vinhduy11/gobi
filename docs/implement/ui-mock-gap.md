@@ -23,7 +23,7 @@ sidebar tabs, bottom panel, status bar), then menus. The terminal gets its mock 
 ## Added after the first audit
 | Screen (mock) | Status |
 |---|---|
-| Context menus (editor, explorer, tab) | Mock added; built. Disabled until their features exist: Go to Implementation, Find References, Rename, Code Actions, New, Cut/Copy/Paste of files, Find and Replace in Files, Refactor, Organize Imports, Delete, Build Module |
+| Context menus (editor, explorer, tab) | Mock added; built. Explorer > New (File, Folder, Go File, Go Test File) is live, and a right click on empty space gives the project folder's menu. Disabled until their features exist: Go to Implementation, Find References, Rename, Code Actions, Cut/Copy/Paste of files, Find and Replace in Files, Refactor, Organize Imports, Delete, Build Module |
 | Explorer file icons and colours | Icons by file type in the reference style done (grey folders, GO badge, outlined pages with a letter, bare glyphs). Name colours for git status and ignored files are done |
 | Code help | Done: Go to Definition, Find References, Rename, Organize Imports, Code Actions, Format Document, completion popup, hover. Go to Implementation (⌘F12) is built. Signature help (popup above the caret on `(` and `,`, Esc or `)` closes, Edit > Parameter Info ⇧⌘Space) and snippets in completion (tab stops with Tab) are built; the mock has the popup and the menu item. The code lens is built (section "Code lens"); gopls sends placeholders only when `usePlaceholders` is set, so parameters are not filled in by default |
 

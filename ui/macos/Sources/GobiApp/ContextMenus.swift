@@ -63,8 +63,9 @@ final class ExplorerOutlineView: NSOutlineView {
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let row = self.row(at: convert(event.locationInWindow, from: nil))
-        guard row >= 0 else { return nil }
-        if !selectedRowIndexes.contains(row) { selectRowIndexes([row], byExtendingSelection: false) }
+        // A click below the last row (or anywhere in a project with no files yet) asks for the menu of the project folder: row -1.
+        if row >= 0, !selectedRowIndexes.contains(row) { selectRowIndexes([row], byExtendingSelection: false) }
+        if row < 0 { deselectAll(nil) }
         return menuProvider?(row)
     }
 }

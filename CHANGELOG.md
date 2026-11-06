@@ -5,6 +5,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ## [Unreleased]
 
 ### Added
+- Explorer > New > File…, Folder…, Go File… and Go Test File… make the entry in the clicked folder (or next to the clicked file), refresh the explorer and open a new file. A Go file takes the package of the Go files already in the folder, else the folder's name; a test file gets the `_test.go` suffix and a `testing` import; a name that exists, is empty or contains `/` is refused with a note in the status bar.
 - `ui/macos/scripts/make-dmg.sh` packs `dist/Gobi.app` into `dist/Gobi-<version>.dmg` with an Applications shortcut.
 - Run on Multiple Go Versions keeps the last result per project (vet and test per Go version: pass or fail, time, a short output excerpt shown as a tooltip) in preferences under `gobi.multiversion.<project>`, shows it again when the window reopens with a "last run: 5 min ago" line, and has a Clear button. The Install Version sheet now has Cancel next to Done and is covered by the toolchain self-test as a sheet on the Toolchains window. Mock updated.
 - Settings > Advanced: the Large files limit now applies to files that are already open (read-only past the new limit, editable again under it), and a new gopls path restarts the language server of open Go files at once; the captions no longer say "applies to files opened after the change". `--selftest-settings` covers both.
@@ -132,6 +133,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ### Fixed
 - After an update the new app kept using the old gobid, because the daemon outlives the app that started it, so fixes in gobid (such as the PATH fix) did not take effect until the old daemon was killed by hand. The first time the app connects it now compares the daemon's start time with the time the bundled `gobid` file was written, and when the daemon is older it asks it to stop and starts the new one. A daemon that is newer is never touched.
 - Setup said `go` was missing although it is installed: an app opened from Finder or the Dock gets only the system `PATH`, so `/usr/local/go/bin` (the Go installer) and `/opt/homebrew/bin` (Homebrew) were not searched. gobid now adds those, the directories listed in `/etc/paths` and `/etc/paths.d`, `/usr/local/bin` and `~/go/bin` to its `PATH` at start, after the entries already there, so go, gopls, dlv and git are found the same way as in a terminal.
+- Right-clicking in the Explorer did nothing in a project with no files yet (and below the last row of any project): the menu was only offered for a row. A click on empty space now gives the menu of the project folder.
 - The first character of every line (`p` of package, `i` of import, `f` of func) was cut off after jumping to a line: revealing a caret near the left edge scrolled the editor sideways by about 14 pt. A small sideways offset is now taken back to the left edge.
 - Find in Files no longer follows symbolic links, so a link inside the project cannot expose a file outside it.
 - The git program from the handshake is now per session; a later connection no longer changes the program used by other sessions.
