@@ -1,0 +1,36 @@
+name: release
+
+# Push a tag made by scripts/release.sh (git push origin main vX.Y.Z) and this builds the DMG and publishes the GitHub release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the build number and the release notes count commits and tags
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.sum
+      - name: The tag matches VERSION
+        run: |
+          [ "${GITHUB_REF_NAME}" = "v$(tr -d ' \n' < VERSION)" ] || { echo "tag ${GITHUB_REF_NAME} does not match VERSION" >&2; exit 1; }
+      - run: scripts/ci.sh
+      - run: ui/macos/scripts/make-app.sh
+      - run: ui/macos/scripts/make-dmg.sh
+      - run: scripts/release-notes.sh
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(tr -d ' \n' < VERSION)
+          FLAGS=""; case "$VERSION" in *-*) FLAGS="--prerelease";; esac
+          gh release create "${GITHUB_REF_NAME}" "dist/Gobi-$VERSION.dmg" "dist/Gobi-$VERSION.dmg.sha256" \
+            --title "Gobi $VERSION" --notes-file "dist/RELEASE_NOTES-$VERSION.md" $FLAGS --verify-tag

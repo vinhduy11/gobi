@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+- GitHub Actions: `ci.yml` (vet, race tests, Swift tests, layer check, build on pushes and pull requests) and `release.yml` (a pushed `v*` tag builds the DMG on macOS and publishes the GitHub release with notes).
+
 ## [0.1.0-alpha.4] - 2026-11-06
 
 ### Added
