@@ -4,7 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.0-alpha.2] - 2026-11-06
+
 ### Added
+- Run and Debug in the right-click menu of a Go file, in the Explorer and in the editor, named after the file (`Run ‘main.go’`, `Debug ‘main.go’`); a test file offers `Run Tests in ‘x_test.go’` instead of Debug, limited to its package; other rows get neither.
 - Folders without a go.mod: Run passes the Go files of the folder (`go run main.go util.go`, the files that share the open file's package) instead of `.`, and Run Tests passes them with the `_test.go` files; the Output pill shows what ran. A go.mod in the folder or a parent inside the project, or a go.work, keeps the old behaviour. The core run channel accepts several `.go` files for run and test (no `..`, no absolute paths, not mixed with package patterns).
 - A notice in the editor for a Go file in a project with no go.mod: "Create go.mod" and "Not Now" (remembered per project; Restricted Mode shows the text without the button). Create go.mod writes `module <folder name as a module path>` and `go <major.minor of the Go in use>` in the project root, refreshes the explorer, the inspector and the status bar and restarts gopls for the open Go files. Also in the Explorer menu (only while go.mod is missing and the project is trusted).
 - Explorer > New > Go Package…: a folder and a file of the same name with `package <name>` (the name must be a Go identifier and not exist yet).
@@ -149,6 +152,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ui/macos/`: quick open on one panel: Go to File (⌘P), Command Palette (⇧⌘P, every live menu command with its menu and shortcut), Go to Symbol in File (⇧⌘O) and in Workspace (⌘T) through gopls. `Fuzzy` ranks matches (name prefix, name contains, letters in order with word-start bonus).
 
 ### Fixed
+- Accepting a completion left the letters typed after the list opened: typing `pac` and choosing `package` gave `packageac`. gopls' replace range is worked out when the request is sent (after `p`), so the later `ac` was not replaced; the range is now stretched to the caret.
 - The Source control block under the Explorer and the bottom panel (Problems, Tests, Terminal, Output…) had a fixed height; both now have a divider you can drag (minimum heights keep them usable, the position is remembered).
 - A double click on a folder in the Explorer opens or closes it.
 - After an update the new app kept using the old gobid, because the daemon outlives the app that started it, so fixes in gobid (such as the PATH fix) did not take effect until the old daemon was killed by hand. The first time the app connects it now compares the daemon's start time with the time the bundled `gobid` file was written, and when the daemon is older it asks it to stop and starts the new one. A daemon that is newer is never touched.
@@ -205,7 +209,6 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.
 
-
-
-[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.1...HEAD
+[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.2...HEAD
+[0.1.0-alpha.2]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/vinhduy11/gobi/releases/tag/v0.1.0-alpha.1

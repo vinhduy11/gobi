@@ -1883,7 +1883,21 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
             handlers["codeActions"] = { [weak self] in self?.showCodeActions() }
             if !pane.editorFile.isReadOnlyByLineLength { handlers["formatDocument"] = { [weak pane] in pane?.formatDocument() } }
         }
-        return ContextMenus.build(ContextMenuSpec.editor, handlers: handlers)
+        // Run and Debug name the file; a test file offers Run Tests and no Debug; other files get neither.
+        let isGo = url.pathExtension == "go", isTest = url.lastPathComponent.hasSuffix("_test.go")
+        if isGo {
+            handlers["runFile"] = { [weak self] in self?.runGoFile(url) }
+            if !isTest { handlers["debugFile"] = { [weak self] in self?.debugGoFile(url) } }
+        }
+        let menu = ContextMenus.build(ContextMenuSpec.editor, handlers: handlers)
+        if isGo {
+            menu.items.first { $0.title == "Run" }?.title = isTest ? "Run Tests in ‘\(url.lastPathComponent)’" : "Run ‘\(url.lastPathComponent)’"
+            if isTest { menu.items.first { $0.title == "Debug" }.map { menu.removeItem($0) } } else { menu.items.first { $0.title == "Debug" }?.title = "Debug ‘\(url.lastPathComponent)’" }
+        } else {
+            for title in ["Run", "Debug"] { menu.items.first { $0.title == title }.map { menu.removeItem($0) } }
+            if menu.items.first?.isSeparatorItem == true { menu.removeItem(at: 0) }
+        }
+        return menu
     }
 
     /// The explorer's menu for a row, or for the project folder itself when `row` is -1 (a click on empty space).
@@ -1927,7 +1941,45 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
             handlers["goModTidy"] = { [weak self] in self?.runInTerminal("go mod tidy", inFolder: folder) }
             handlers["goModDownload"] = { [weak self] in self?.runInTerminal("go mod download", inFolder: folder) }
         }
-        return ContextMenus.build(ContextMenuSpec.explorer, handlers: handlers)
+        // Run and Debug for a Go file (Run Tests for a test file); every other row does not get them.
+        let isGoFile = !node.isDirectory && url.pathExtension == "go"
+        let isTestFile = url.lastPathComponent.hasSuffix("_test.go")
+        if isGoFile {
+            handlers["runFile"] = { [weak self] in self?.runGoFile(url) }
+            if !isTestFile { handlers["debugFile"] = { [weak self] in self?.debugGoFile(url) } }
+        }
+        let menu = ContextMenus.build(ContextMenuSpec.explorer, handlers: handlers)
+        if isGoFile {
+            let name = url.lastPathComponent
+            menu.items.first { $0.title == "Run" }?.title = isTestFile ? "Run Tests in ‘\(name)’" : "Run ‘\(name)’"
+            if isTestFile { menu.items.first { $0.title == "Debug" }.map { menu.removeItem($0) } } else { menu.items.first { $0.title == "Debug" }?.title = "Debug ‘\(name)’" }
+        } else {
+            // Not runnable: leave the two items and the line under them out.
+            for title in ["Run", "Debug"] { menu.items.first { $0.title == title }.map { menu.removeItem($0) } }
+            if menu.items.first?.isSeparatorItem == true { menu.removeItem(at: 0) }
+        }
+        return menu
+    }
+
+    /// Run from the Explorer: a main file runs its package; a test file runs the tests of its package.
+    func runGoFile(_ url: URL) {
+        openFile(url)
+        if url.lastPathComponent.hasSuffix("_test.go") { runTestsOfCurrentFile() } else { runProject() }
+    }
+
+    func debugGoFile(_ url: URL) {
+        openFile(url)
+        startDebugging()
+    }
+
+    /// Run Tests, limited to the package of the open test file (the Go files of its folder when there is no go.mod).
+    func runTestsOfCurrentFile() {
+        if let files = filesWithoutModule(includeTests: true) {
+            begin(command: "test", packages: files, filter: "", arguments: [], tab: 1)
+            return
+        }
+        guard let url = currentPane?.editorFile.fileURL else { runTests(); return }
+        begin(command: "test", packages: [RunTarget.testPackage(forFile: relativePath(of: url))], filter: "", arguments: [], tab: 1)
     }
 
     func tabMenu(path: String) -> NSMenu {

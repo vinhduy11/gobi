@@ -172,6 +172,7 @@ public enum MenuSpec {
 /// without one is in the mock but has no feature behind it yet, so it is drawn disabled.
 public enum ContextMenuSpec {
     public static let editor: [MenuEntry] = [
+        .item("Run", "", "runFile"), .item("Debug", "", "debugFile"), .separator,
         .item("Go to Definition", "F12", "goToDefinition"), .item("Go to Implementation", "⌘F12", "goToImplementation"), .item("Find References", "⇧F12", "findReferences"), .separator,
         .item("Rename Symbol…", "F2", "renameSymbol"), .item("Code Actions…", "⌘.", "codeActions"), .item("Format Document", "⌥⇧F", "formatDocument"), .separator,
         .item("Cut", "⌘X", "cut"), .item("Copy", "⌘C", "copy"), .item("Paste", "⌘V", "paste"), .item("Select All", "⌘A", "selectAll"), .separator,
@@ -179,6 +180,7 @@ public enum ContextMenuSpec {
     ]
 
     public static let explorer: [MenuEntry] = [
+        .item("Run", "", "runFile"), .item("Debug", "", "debugFile"), .separator,
         .submenu("New", nil, [.item("File…", "", "newFile"), .item("Folder…", "", "newFolder"), .separator, .item("Go File…", "", "newGoFile"), .item("Go Test File…", "", "newGoTestFile"), .item("Go Package…", "", "newGoPackage")]),
         .separator,
         .item("Cut", "⌘X", "cutFiles"), .item("Copy", "⌘C", "copyFiles"),

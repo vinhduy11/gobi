@@ -111,3 +111,13 @@ public enum HoverText {
         return result
     }
 }
+
+/// Which text accepting a completion replaces. The server's own edit range is worked out when the request is sent, so it covers only
+/// what had been typed by then; whatever was typed while the list was open (the "ac" of "pac") has to be replaced too.
+public enum CompletionRange {
+    public static func resolve(anchor: Int, caret: Int, serverEdit: (start: Int, end: Int)?) -> (start: Int, end: Int) {
+        guard let serverEdit else { return (anchor, max(anchor, caret)) }
+        let start = serverEdit.start
+        return (start, max(start, serverEdit.end, caret))
+    }
+}

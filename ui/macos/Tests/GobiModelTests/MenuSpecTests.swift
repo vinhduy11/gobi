@@ -102,11 +102,11 @@ struct ContextMenuSpecTests {
     private func rows(_ entries: [MenuEntry]) -> [String] { entries.map { $0.isSeparator ? "-" : "\($0.title)|\($0.children.isEmpty ? $0.shortcut : "▸")" } }
 
     @Test func theEditorMenuIsTheMocks() {
-        #expect(rows(ContextMenuSpec.editor) == ["Go to Definition|F12", "Go to Implementation|⌘F12", "Find References|⇧F12", "-", "Rename Symbol…|F2", "Code Actions…|⌘.", "Format Document|⌥⇧F", "-", "Cut|⌘X", "Copy|⌘C", "Paste|⌘V", "Select All|⌘A", "-", "Reveal in Finder|", "Copy Path|"])
+        #expect(rows(ContextMenuSpec.editor) == ["Run|", "Debug|", "-", "Go to Definition|F12", "Go to Implementation|⌘F12", "Find References|⇧F12", "-", "Rename Symbol…|F2", "Code Actions…|⌘.", "Format Document|⌥⇧F", "-", "Cut|⌘X", "Copy|⌘C", "Paste|⌘V", "Select All|⌘A", "-", "Reveal in Finder|", "Copy Path|"])
     }
 
     @Test func theExplorerMenuIsTheMocks() {
-        #expect(rows(ContextMenuSpec.explorer) == ["New|▸", "-", "Cut|⌘X", "Copy|⌘C", "Copy Path|▸", "Paste|⌘V", "-", "Jump to Source|F4", "Reveal in Finder|", "Find in Files…|⇧⌘F", "Replace in Files…|⇧⌘R", "-", "Refactor|▸", "-", "Format Document|⌥⇧F", "Organize Imports|⌃⌥O", "Delete…|⌫", "-", "Create go.mod|", "Go Mod Tidy|","Download Go Modules|", "Build Module|"])
+        #expect(rows(ContextMenuSpec.explorer) == ["Run|", "Debug|", "-", "New|▸", "-", "Cut|⌘X", "Copy|⌘C", "Copy Path|▸", "Paste|⌘V", "-", "Jump to Source|F4", "Reveal in Finder|", "Find in Files…|⇧⌘F", "Replace in Files…|⇧⌘R", "-", "Refactor|▸", "-", "Format Document|⌥⇧F", "Organize Imports|⌃⌥O", "Delete…|⌫", "-", "Create go.mod|", "Go Mod Tidy|","Download Go Modules|", "Build Module|"])
     }
 
     @Test func theCopyPathSubmenuOffersThreeForms() {

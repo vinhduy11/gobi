@@ -337,6 +337,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let modRow = (0 ..< controller.explorerRowCount).first { controller.explorerRowTitle($0) == "go.mod" }
         check("Go Mod Tidy and Download Go Modules are live on go.mod", modRow.flatMap { controller.explorerMenu(row: $0) }.map { menu in ["Go Mod Tidy", "Download Go Modules"].allSatisfy { title in menu.items.first { $0.title == title }?.isEnabled == true } } ?? false)
 
+        // Run and Debug are in the menu of a Go file (and only there); a test file offers Run Tests instead of Debug.
+        let goRow = (0 ..< controller.explorerRowCount).first { controller.explorerRowTitle($0) == "a.go" }
+        let goMenuTitles = goRow.flatMap { controller.explorerMenu(row: $0) }?.items.map(\.title) ?? []
+        check("the menu of a Go file starts with Run and Debug named after it (\(goMenuTitles.prefix(3)))", Array(goMenuTitles.prefix(2)) == ["Run ‘a.go’", "Debug ‘a.go’"])
+        let modRowMenu = modRow.flatMap { controller.explorerMenu(row: $0) }
+        check("the menu of go.mod has neither (\(modRowMenu?.items.first?.title ?? "none"))", modRowMenu?.items.contains { $0.title.hasPrefix("Run") || $0.title.hasPrefix("Debug") } == false)
+
         // The bottom panel is not locked to one height: its divider moves it, and it keeps a few rows.
         let panelHeight = controller.bottomPanelHeight
         check("the bottom panel starts about 210 pt tall (\(Int(panelHeight)) pt)", panelHeight >= 190 && panelHeight <= 230)
@@ -424,6 +431,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("gopls is connected", controller.currentPane?.isConnected == true)
         guard let pane = controller.currentPane else { print("SELFTEST FAILED"); exit(1) }
         let editorMenu = controller.editorMenu(for: pane)
+        check("the editor menu of a Go file starts with Run and Debug named after it (\(editorMenu.items.prefix(2).map(\.title)))", editorMenu.items.prefix(2).map(\.title).allSatisfy { $0.hasPrefix("Run ‘") || $0.hasPrefix("Debug ‘") })
         check("the editor menu enables Go to Definition, Find References, Rename, Code Actions, Format, Go to Implementation and the text commands", ["Go to Definition", "Find References", "Rename Symbol…", "Code Actions…", "Format Document", "Cut", "Copy", "Paste", "Select All", "Reveal in Finder", "Copy Path", "Go to Implementation"].allSatisfy { title in editorMenu.items.first { $0.title == title }?.isEnabled == true })
 
         let text = pane.textView.string as NSString

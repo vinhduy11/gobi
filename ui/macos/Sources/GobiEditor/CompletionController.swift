@@ -235,13 +235,13 @@ public final class CompletionController {
     public func accept() {
         guard let current = list, let item = current.selected, let textView, let storage = textView.textStorage else { dismiss(); return }
         dismiss()
-        var start = current.anchorOffset, end = caret
         var text = item.insertText
+        var serverEdit: (start: Int, end: Int)?
         if let edit = item.replaces {
-            start = document.lineIndex.offset(of: edit.start)
-            end = max(start, document.lineIndex.offset(of: edit.end))
+            serverEdit = (document.lineIndex.offset(of: edit.start), document.lineIndex.offset(of: edit.end))
             text = edit.newText
         }
+        let (start, end) = CompletionRange.resolve(anchor: current.anchorOffset, caret: caret, serverEdit: serverEdit)
         let snippet = item.isSnippet ? Snippet.parse(text) : nil
         if let snippet { text = snippet.text }
         let range = NSRange(location: start, length: max(0, end - start))
