@@ -18,6 +18,18 @@
   <a href="#architecture">Architecture</a>
 </p>
 
+<p align="center">
+  <video src="https://github.com/vinhduy11/gobi/raw/main/docs/assets/gobi-demo.mp4" width="900" controls muted></video>
+</p>
+
+<p align="center">
+  <a href="docs/assets/gobi-demo.mp4">Watch the 83-second demo</a>: typing with gopls help, Run, a failing test, the fix,
+  the debugger, Git, the profiler and Find in Files.
+</p>
+
+> **Alpha.** Gobi is new and has not been fully tested yet. Expect rough edges, and please
+> [open an issue](https://github.com/vinhduy11/gobi/issues) when something breaks.
+
 Gobi is a client of the official Go toolchain: gopls (LSP), Delve (DAP), `go test` / `go vet`, pprof,
 gofmt / goimports and `go.work`. It does not reimplement any of them.
 
@@ -119,7 +131,8 @@ above its function in `AppDelegate.swift`.
 
 ## Status
 
-Built: the core and the macOS app described above. Not done yet: VoiceOver and trackpad checks, signing with a real
+Alpha. Built: the core and the macOS app described above, tested by unit tests and the app's own self-tests but not yet by
+enough real-world use. Not done yet: VoiceOver and trackpad checks, signing with a real
 identity and a CI run, the Windows and Linux UIs, highlighting of Find matches in the terminal.
 
 ## License
