@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+- Folders without a go.mod: Run passes the Go files of the folder (`go run main.go util.go`, the files that share the open file's package) instead of `.`, and Run Tests passes them with the `_test.go` files; the Output pill shows what ran. A go.mod in the folder or a parent inside the project, or a go.work, keeps the old behaviour. The core run channel accepts several `.go` files for run and test (no `..`, no absolute paths, not mixed with package patterns).
+- A notice in the editor for a Go file in a project with no go.mod: "Create go.mod" and "Not Now" (remembered per project; Restricted Mode shows the text without the button). Create go.mod writes `module <folder name as a module path>` and `go <major.minor of the Go in use>` in the project root, refreshes the explorer, the inspector and the status bar and restarts gopls for the open Go files. Also in the Explorer menu (only while go.mod is missing and the project is trusted).
+- Explorer > New > Go Package…: a folder and a file of the same name with `package <name>` (the name must be a Go identifier and not exist yet).
+
 ## [0.1.0-alpha.1] - 2026-11-06
 
 ### Added

@@ -179,7 +179,7 @@ public enum ContextMenuSpec {
     ]
 
     public static let explorer: [MenuEntry] = [
-        .submenu("New", nil, [.item("File…", "", "newFile"), .item("Folder…", "", "newFolder"), .separator, .item("Go File…", "", "newGoFile"), .item("Go Test File…", "", "newGoTestFile")]),
+        .submenu("New", nil, [.item("File…", "", "newFile"), .item("Folder…", "", "newFolder"), .separator, .item("Go File…", "", "newGoFile"), .item("Go Test File…", "", "newGoTestFile"), .item("Go Package…", "", "newGoPackage")]),
         .separator,
         .item("Cut", "⌘X", "cutFiles"), .item("Copy", "⌘C", "copyFiles"),
         .submenu("Copy Path", nil, [.item("Absolute Path", "", "copyPath"), .item("Path from Project Root", "", "copyRelativePath"), .item("File Name", "", "copyFileName")]),
@@ -192,7 +192,7 @@ public enum ContextMenuSpec {
         .separator,
         .item("Format Document", "⌥⇧F"), .item("Organize Imports", "⌃⌥O"), .item("Delete…", "⌫", "deleteFiles"),
         .separator,
-        .item("Go Mod Tidy", "", "goModTidy"), .item("Download Go Modules", "", "goModDownload"), .item("Build Module"),
+        .item("Create go.mod", "", "createGoMod"), .item("Go Mod Tidy", "", "goModTidy"), .item("Download Go Modules", "", "goModDownload"), .item("Build Module"),
     ]
 
     public static let tab: [MenuEntry] = [

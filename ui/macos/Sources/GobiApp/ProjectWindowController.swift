@@ -68,7 +68,9 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private let breadcrumb = BreadcrumbView()
     let bottomPanel = BottomPanelView()
     private var diagnosticsByPath: [String: [LSPDiagnostic]] = [:]
-    private var goVersion: String?
+    var goVersion: String?
+    /// Files whose editor shows the "no go.mod" notice now.
+    var goModNoticePaths = Set<String>()
     private var branchName: String?
     private var gitClient: GitClient?
     /// Which Go this project uses (Auto, or a pinned version), the Go versions found on this machine, and what that resolves to.
@@ -371,7 +373,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private var sidebarSymbols: OutlineListView?
     private var sidebarTestsPanel: TestsPanelView?
     private var outlineTimer: Timer?
-    private var moduleFacts: GoModFacts?
+    var moduleFacts: GoModFacts?
     var quickOpen: QuickOpenPanel?
     let outputPanel = OutputPanelView()
     private let testsPanel = TestsPanelView()
@@ -526,7 +528,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         }
     }
 
-    private func loadModuleFacts() {
+    func loadModuleFacts() {
         let text = (try? String(contentsOf: root.appendingPathComponent("go.mod"), encoding: .utf8)) ?? ""
         moduleFacts = text.isEmpty ? nil : GoModFacts.parse(text)
         let work = FileManager.default.fileExists(atPath: root.appendingPathComponent("go.work").path) ? "go.work" : nil
@@ -1703,6 +1705,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         statusBar.set(note: "")
         refreshChrome()
         refreshOutline(after: 0.2)
+        showGoModNotice(on: pane)
     }
 
     // MARK: run and test
@@ -1740,6 +1743,10 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
 
     /// Run (⌘R).
     func runProject() {
+        if let files = filesWithoutModule(includeTests: false) {
+            begin(command: "run", packages: files, filter: "", arguments: [], tab: 6)
+            return
+        }
         let target = runPackageTarget()
         guard let target else {
             outputPanel.notice("There is no main package to run here. Open a file of the program, or add a main.go.")
@@ -1751,7 +1758,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     }
 
     /// Run Tests (⌘U): every test of the project.
-    func runTests() { begin(command: "test", packages: ["./..."], filter: "", arguments: [], tab: 1) }
+    func runTests() { begin(command: "test", packages: filesWithoutModule(includeTests: true) ?? ["./..."], filter: "", arguments: [], tab: 1) }
 
     /// Run Test at Cursor (⌥⌘U): the test function the caret is in, in its package.
     func runTestAtCursor() {
@@ -1770,13 +1777,13 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
             NSSound.beep()
             return
         }
-        begin(command: "test", packages: [RunTarget.testPackage(forFile: relativePath(of: pane.editorFile.fileURL))], filter: TestAtCursor.filter(forName: name), arguments: [], tab: 1)
+        begin(command: "test", packages: filesWithoutModule(includeTests: true) ?? [RunTarget.testPackage(forFile: relativePath(of: pane.editorFile.fileURL))], filter: TestAtCursor.filter(forName: name), arguments: [], tab: 1)
     }
 
     /// Run Failed: only the tests that failed in the last run (the filter names them; every package is searched).
     func rerunFailed() {
         guard let filter = results.failedFilter else { return }
-        begin(command: "test", packages: ["./..."], filter: filter, arguments: [], tab: 1)
+        begin(command: "test", packages: filesWithoutModule(includeTests: true) ?? ["./..."], filter: filter, arguments: [], tab: 1)
     }
 
     func stopRun() { runClient?.stop() }
@@ -1899,6 +1906,8 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         handlers["newFolder"] = { [weak self] in self?.newEntry(.folder, in: target) }
         handlers["newGoFile"] = { [weak self] in self?.newEntry(.goFile, in: target) }
         handlers["newGoTestFile"] = { [weak self] in self?.newEntry(.goTestFile, in: target) }
+        handlers["newGoPackage"] = { [weak self] in self?.newGoPackage(in: target) }
+        if isTrusted, !hasGoModule(forDirectory: "") { handlers["createGoMod"] = { [weak self] in self?.createGoMod() } }
         // Cut, Copy, Delete, Rename and Move act on the selected rows (the row clicked when it was not selected); Paste goes into the
         // folder clicked, next to the file clicked, or into the project folder from empty space.
         let picked = selectedURLs()

@@ -106,7 +106,7 @@ struct ContextMenuSpecTests {
     }
 
     @Test func theExplorerMenuIsTheMocks() {
-        #expect(rows(ContextMenuSpec.explorer) == ["New|▸", "-", "Cut|⌘X", "Copy|⌘C", "Copy Path|▸", "Paste|⌘V", "-", "Jump to Source|F4", "Reveal in Finder|", "Find in Files…|⇧⌘F", "Replace in Files…|⇧⌘R", "-", "Refactor|▸", "-", "Format Document|⌥⇧F", "Organize Imports|⌃⌥O", "Delete…|⌫", "-", "Go Mod Tidy|", "Download Go Modules|", "Build Module|"])
+        #expect(rows(ContextMenuSpec.explorer) == ["New|▸", "-", "Cut|⌘X", "Copy|⌘C", "Copy Path|▸", "Paste|⌘V", "-", "Jump to Source|F4", "Reveal in Finder|", "Find in Files…|⇧⌘F", "Replace in Files…|⇧⌘R", "-", "Refactor|▸", "-", "Format Document|⌥⇧F", "Organize Imports|⌃⌥O", "Delete…|⌫", "-", "Create go.mod|", "Go Mod Tidy|","Download Go Modules|", "Build Module|"])
     }
 
     @Test func theCopyPathSubmenuOffersThreeForms() {

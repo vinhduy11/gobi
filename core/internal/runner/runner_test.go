@@ -270,3 +270,27 @@ func TestParseTestLine(t *testing.T) {
 		}
 	}
 }
+
+func TestRunTakesSeveralGoFilesButNoEscapes(t *testing.T) {
+	dir := t.TempDir()
+	ok := Request{Kind: KindRun, Dir: dir, Packages: []string{"main.go", "util.go"}, Args: []string{"x"}}
+	packages, err := validate(ok)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(commandLine(ok, packages), " "); got != "run main.go util.go x" {
+		t.Errorf("command line = %q", got)
+	}
+	testFiles := Request{Kind: KindTest, Dir: dir, Packages: []string{"a.go", "a_test.go"}}
+	if _, err := validate(testFiles); err != nil {
+		t.Errorf("test with files: %v", err)
+	}
+	for _, bad := range [][]string{{"../x.go", "y.go"}, {"/etc/x.go", "y.go"}, {"main.go", "./other"}, {"a/../../x.go"}} {
+		if _, err := validate(Request{Kind: KindRun, Dir: dir, Packages: bad}); err == nil {
+			t.Errorf("run %v must be refused", bad)
+		}
+	}
+	if _, err := validate(Request{Kind: KindTest, Dir: dir, Packages: []string{"../x.go"}}); err == nil {
+		t.Error("a file outside the folder must be refused")
+	}
+}

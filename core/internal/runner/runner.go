@@ -134,6 +134,11 @@ func validate(request Request) ([]string, error) {
 			return nil, fmt.Errorf("package pattern %q is not valid", pattern)
 		}
 	}
+	for _, pattern := range request.Packages {
+		if strings.HasSuffix(pattern, ".go") && !safeGoFile(pattern) {
+			return nil, fmt.Errorf("go file %q must be inside the folder", pattern)
+		}
+	}
 	packages := request.Packages
 	switch request.Kind {
 	case KindRun:
@@ -143,8 +148,8 @@ func validate(request Request) ([]string, error) {
 		if len(packages) == 0 {
 			packages = []string{"."}
 		}
-		if len(packages) != 1 {
-			return nil, errors.New("run takes exactly one package")
+		if len(packages) != 1 && !allGoFiles(packages) {
+			return nil, errors.New("run takes exactly one package, or Go files")
 		}
 	case KindTest, KindVet, KindBuild:
 		if len(packages) == 0 {
@@ -176,10 +181,32 @@ func validate(request Request) ([]string, error) {
 	return packages, nil
 }
 
+// safeGoFile is a relative .go path that stays inside the run folder.
+func safeGoFile(name string) bool {
+	if strings.HasPrefix(name, "/") {
+		return false
+	}
+	for _, part := range strings.Split(name, "/") {
+		if part == ".." {
+			return false
+		}
+	}
+	return true
+}
+
+func allGoFiles(patterns []string) bool {
+	for _, pattern := range patterns {
+		if !strings.HasSuffix(pattern, ".go") {
+			return false
+		}
+	}
+	return len(patterns) > 0
+}
+
 func commandLine(request Request, packages []string) []string {
 	switch request.Kind {
 	case KindRun:
-		return append([]string{"run", packages[0]}, request.Args...)
+		return append(append([]string{"run"}, packages...), request.Args...)
 	case KindTest:
 		args := []string{"test", "-json"}
 		if request.Filter != "" {

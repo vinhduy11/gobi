@@ -100,3 +100,8 @@ sidebar tabs, bottom panel, status bar), then menus. The terminal gets its mock 
 ## Session restore and changes on disk
 
 Done: the project window saves its tabs, carets and layout on close and quit and restores them on open; a one-second poll plus window focus detects files changed, deleted or created by something else (notice bar above the editor, explorer refresh). Mock: `ExternalChange`. Also done: changes are noticed through FSEvents on the project folder (about 150 ms coalescing) with a 10 s safety poll, and unsaved edits are kept aside on window close and quit (Application Support/Gobi/Recovery, one file per project and file) and restored as edited with a Keep / Discard notice (Keep Mine / Reload from Disk when the file changed since). Decision logic: `Recovery` in GobiModel. Also done: edited buffers are written every 20 s too (changed ones only; ProjectWindowController.recoveryInterval, shortened by --selftest-session). Not done: the close dialog still asks Save / Don't Save, and Don't Save discards the kept buffer; files opened from outside the project folder rely on the 10 s poll.
+
+## Folders without a go.mod
+| Screen (mock) | Status |
+|---|---|
+| Editor notice "This folder has no go.mod…" with Create go.mod and Not Now (ExternalChange mock), Explorer menu "Create go.mod" (ContextMenus mock) | Built. The New submenu of the explorer mock is drawn closed, so "Go Package…" has no drawn item. Not built: a Create go.mod item in the Go menu; Debug still runs `dlv debug` on the package and needs a go.mod |

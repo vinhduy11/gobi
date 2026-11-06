@@ -2197,6 +2197,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             settle(30) { !slow.isRunning }
             check("Stop ends it (\(slow.runStateText))", !slow.isRunning)
         }
+        if let nomodPath = arguments.firstIndex(of: "--nomod").flatMap({ $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }) {
+            let bare = URL(fileURLWithPath: nomodPath)
+            let noticeKey = GoModule.noticeKey(project: bare.path)
+            UserDefaults.standard.removeObject(forKey: noticeKey)
+            selfTestCleanups.append { UserDefaults.standard.removeObject(forKey: noticeKey) }
+            let plain = FileManager.default
+            check("the fixture has no go.mod", !plain.fileExists(atPath: bare.appendingPathComponent("go.mod").path))
+            let restrictedBare = ProjectWindowController(root: bare, kind: .folder, isTrusted: false)
+            restrictedBare.showWindow(nil)
+            restrictedBare.openFile(bare.appendingPathComponent("main.go"))
+            check("Restricted Mode shows the notice text without a Create button", restrictedBare.currentPane?.editor.noticeText.contains("no go.mod") == true && restrictedBare.currentPane?.editor.noticeActionTitles == ["Not Now"])
+            let bareWindow = ProjectWindowController(root: bare, kind: .folder, isTrusted: true)
+            bareWindow.showWindow(nil)
+            bareWindow.openFile(bare.appendingPathComponent("main.go"))
+            bareWindow.runProject()
+            settle { !bareWindow.isRunning && bareWindow.runStateText.hasPrefix("exit") }
+            settle(2) { false }
+            check("Run without a go.mod runs the file (\(bareWindow.runCommandText), \(bareWindow.runStateText))", bareWindow.runCommandText == "go run main.go" && bareWindow.runStateText == "exit 0" && bareWindow.runOutputText.contains("hello from main"))
+            check("the notice shows with its two buttons", bareWindow.currentPane?.editor.noticeActionTitles == ["Create go.mod", "Not Now"])
+            bareWindow.createGoMod()
+            let written = (try? String(contentsOf: bare.appendingPathComponent("go.mod"), encoding: .utf8)) ?? ""
+            check("Create go.mod writes a valid go.mod (\(written.replacingOccurrences(of: "\n", with: "|")))", written.hasPrefix("module ") && written.contains("\n\ngo 1.") && written.hasSuffix("\n"))
+            check("the notice is gone and the explorer lists go.mod", bareWindow.currentPane?.editor.noticeText.isEmpty == true && bareWindow.explorerNames.contains("go.mod"))
+            check("the inspector shows the module (\(bareWindow.inspectorModuleText))", bareWindow.inspectorModuleText.contains { $0.contains(GoModule.moduleName(fromFolder: bare.lastPathComponent)) })
+            settle(60) { bareWindow.currentPane?.isConnected == true }
+            check("gopls reconnects for the open Go file", bareWindow.currentPane?.isConnected == true)
+            bareWindow.runProject()
+            settle { !bareWindow.isRunning && bareWindow.runStateText.hasPrefix("exit") }
+            settle(2) { false }
+            check("go run . works afterwards (\(bareWindow.runCommandText), \(bareWindow.runStateText))", bareWindow.runCommandText == "go run ." && bareWindow.runStateText == "exit 0")
+            let package = bareWindow.newGoPackage(in: bare, name: "pkg")
+            check("New > Go Package makes pkg/pkg.go", package?.lastPathComponent == "pkg.go" && (try? String(contentsOf: bare.appendingPathComponent("pkg/pkg.go"), encoding: .utf8)) == "package pkg\n" && bareWindow.currentFileName == "pkg.go")
+            check("a Go package name that exists or is not an identifier is refused", bareWindow.newGoPackage(in: bare, name: "pkg") == nil && bareWindow.newGoPackage(in: bare, name: "my-pkg") == nil)
+        }
         selfTestExit(failures)
     }
 
