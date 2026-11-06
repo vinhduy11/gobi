@@ -1,0 +1,46 @@
+// file: x.go
+package demo
+
+// State pattern: https://refactoring.guru/design-patterns/state
+
+// DoorState is one state of a Door: it does the work for that state and moves the Door on.
+type DoorState interface {
+	// Name identifies the state.
+	Name() string
+	// Advance does the state's work and sets the next state on machine.
+	Advance(machine *Door)
+}
+
+// Door delegates its behaviour to its current state.
+type Door struct {
+	state DoorState
+}
+
+// NewDoor returns a Door in its first state.
+func NewDoor() *Door {
+	return &Door{state: OpenState{}}
+}
+
+// State returns the name of the current state.
+func (d *Door) State() string { return d.state.Name() }
+
+// Advance runs the current state.
+func (d *Door) Advance() { d.state.Advance(d) }
+
+// OpenState is the open state.
+type OpenState struct{}
+
+// Name implements DoorState.
+func (OpenState) Name() string { return "open" }
+
+// Advance implements DoorState; the next state is Closed.
+func (OpenState) Advance(machine *Door) { machine.state = ClosedState{} }
+
+// ClosedState is the closed state.
+type ClosedState struct{}
+
+// Name implements DoorState.
+func (ClosedState) Name() string { return "closed" }
+
+// Advance implements DoorState; the next state is Open.
+func (ClosedState) Advance(machine *Door) { machine.state = OpenState{} }

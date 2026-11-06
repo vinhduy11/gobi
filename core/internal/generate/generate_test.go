@@ -93,30 +93,35 @@ func outputs(t *testing.T, c goldenCase) map[string]string {
 func TestEveryItemMatchesItsGolden(t *testing.T) {
 	for _, c := range goldenCases() {
 		t.Run(c.name, func(t *testing.T) {
-			files := outputs(t, c)
-			var names []string
-			for name := range files {
-				names = append(names, name)
-			}
-			// golden = the files concatenated in name order, each under a "// file:" line
-			var got strings.Builder
-			for _, name := range sortedStrings(names) {
-				got.WriteString("// file: " + name + "\n" + files[name])
-			}
-			path := filepath.Join("testdata", "golden", c.name+".golden")
-			if *update {
-				if err := os.WriteFile(path, []byte(got.String()), 0o644); err != nil {
-					t.Fatal(err)
-				}
-			}
-			want, err := os.ReadFile(path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got.String() != string(want) {
-				t.Errorf("output differs from %s\n--- got\n%s\n--- want\n%s", path, got.String(), want)
-			}
+			checkGolden(t, c.name, outputs(t, c))
 		})
+	}
+}
+
+// checkGolden compares the files with testdata/golden/<name>.golden: the files concatenated in name order, each under a
+// "// file:" line.
+func checkGolden(t *testing.T, name string, files map[string]string) {
+	t.Helper()
+	var names []string
+	for file := range files {
+		names = append(names, file)
+	}
+	var got strings.Builder
+	for _, file := range sortedStrings(names) {
+		got.WriteString("// file: " + file + "\n" + files[file])
+	}
+	path := filepath.Join("testdata", "golden", name+".golden")
+	if *update {
+		if err := os.WriteFile(path, []byte(got.String()), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.String() != string(want) {
+		t.Errorf("output differs from %s\n--- got\n%s\n--- want\n%s", path, got.String(), want)
 	}
 }
 
@@ -153,22 +158,30 @@ func TestGeneratedCodeBuildsVetsAndTests(t *testing.T) {
 			if c.name == "error-type" {
 				write("e_test.go", "package demo\n\nimport (\n\t\"errors\"\n\t\"testing\"\n)\n\nfunc TestParseError(t *testing.T) {\n\tcause := errors.New(\"boom\")\n\terr := error(&ParseError{Op: \"x\", Err: cause})\n\tif !errors.Is(err, ErrParse) || !errors.Is(err, cause) {\n\t\tt.Fatal(\"errors.Is must see both\")\n\t}\n\tvar pe *ParseError\n\tif !errors.As(err, &pe) || err.Error() != \"parse: x: boom\" {\n\t\tt.Fatal(err)\n\t}\n}\n")
 			}
-			run := func(name string, args ...string) string {
-				cmd := exec.Command(name, args...)
-				cmd.Dir = dir
-				out, err := cmd.CombinedOutput()
-				if err != nil {
-					t.Fatalf("%s %v: %v\n%s", name, args, err, out)
-				}
-				return string(out)
-			}
-			if out := run("gofmt", "-l", "."); out != "" {
-				t.Errorf("gofmt -l lists %q", out)
-			}
-			run("go", "vet", "./...")
-			run("go", "test", "./...")
+			checkToolchain(t, dir)
 		})
 	}
+}
+
+// checkToolchain runs the real toolchain on a temp module: gofmt -l prints nothing, go vet and go test pass. Nothing is
+// fetched (GOPROXY=off).
+func checkToolchain(t *testing.T, dir string) {
+	t.Helper()
+	run := func(name string, args ...string) string {
+		cmd := exec.Command(name, args...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "GOPROXY=off", "GOFLAGS=-mod=mod", "GOTOOLCHAIN=local")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s %v: %v\n%s", name, args, err, out)
+		}
+		return string(out)
+	}
+	if out := run("gofmt", "-l", "."); out != "" {
+		t.Errorf("gofmt -l lists %q", out)
+	}
+	run("go", "vet", "./...")
+	run("go", "test", "./...")
 }
 
 func TestStringPicksTheVerbByFieldType(t *testing.T) {
@@ -244,10 +257,10 @@ func TestListFollowsTheCaret(t *testing.T) {
 		{"interface", Context{Package: "demo", Source: "package demo\n\ntype S interface{ A() }\n", Kind: KindInterface, Name: "S"}, []string{"mock"}},
 		{"func", Context{Package: "demo", Path: "/p/a.go", Source: "package demo\n\nfunc A() {}\n", Kind: KindFunc, Name: "A"}, []string{"test"}},
 		{"func in a test file", Context{Package: "demo", Path: "/p/a_test.go", Source: "package demo\n\nfunc A() {}\n", Kind: KindFunc, Name: "A"}, nil},
-		{"empty main package", Context{Package: "main", Kind: KindEmpty}, []string{"main", "http-handler", "error-type"}},
-		{"empty library package", Context{Package: "demo", Kind: KindEmpty}, []string{"http-handler", "error-type"}},
-		{"file with code", Context{Package: "demo", Source: "package demo\n\nvar X = 1\n", Kind: KindFile}, []string{"http-handler", "error-type"}},
-		{"main package that has main", Context{Package: "main", Source: "package main\n\nfunc main() {}\n", Kind: KindFile}, []string{"http-handler", "error-type"}},
+		{"empty main package", Context{Package: "main", Kind: KindEmpty}, append([]string{"main", "http-handler", "error-type"}, patternIDs...)},
+		{"empty library package", Context{Package: "demo", Kind: KindEmpty}, append([]string{"http-handler", "error-type"}, patternIDs...)},
+		{"file with code", Context{Package: "demo", Source: "package demo\n\nvar X = 1\n", Kind: KindFile}, append([]string{"http-handler", "error-type"}, patternIDs...)},
+		{"main package that has main", Context{Package: "main", Source: "package main\n\nfunc main() {}\n", Kind: KindFile}, append([]string{"http-handler", "error-type"}, patternIDs...)},
 	}
 	for _, c := range cases {
 		if got := ids(c.ctx); !reflect.DeepEqual(got, c.want) {

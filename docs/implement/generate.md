@@ -71,6 +71,11 @@ pattern (22 goldens) plus a generated example test that exercises it. A short co
 its refactoring.guru page, with a note when Go has a simpler idiom (Singleton, Iterator, Strategy). Mock: Generate board,
 "Design Pattern ▸" submenu; the parameter dialog and preview are drawn on the same board in the next mock round.
 
+Implemented in core (stage 4c): `creational.go`, `structural.go`, `behavioral.go` in `core/internal/generate`, one `patternDef` per
+pattern (parameters, template, simpler-idiom note); `patterns.go` holds parsing, validation and placement. Patterns are offered
+where the caret is outside any declaration (file or empty file/folder). Stubs the user must fill (adapter, bridge, composite,
+factory method, strategy) have named results, a TODO comment and a bare return. Map fields in Prototype use `maps.Clone` (Go 1.21+).
+
 ## gopls inventory
 Recorded with a real gopls v0.24.0 (`TestGoplsCodeActionInventory` in `core/internal/daemon`, opt-in with `GOBI_REAL_GOPLS=1`,
 skipped when gopls is absent; run with `-v` for the table). The probe declares `codeActionLiteralSupport`, `resolveSupport` for

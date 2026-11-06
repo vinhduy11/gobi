@@ -1,0 +1,32 @@
+// file: x.go
+package demo
+
+// Builder pattern: https://refactoring.guru/design-patterns/builder
+
+// Server is built with functional options; fields left unset keep their zero value.
+type Server struct {
+	addr string
+	port int
+}
+
+// ServerOption configures a Server.
+type ServerOption func(*Server)
+
+// WithAddr sets the addr field.
+func WithAddr(addr string) ServerOption {
+	return func(s *Server) { s.addr = addr }
+}
+
+// WithPort sets the port field.
+func WithPort(port int) ServerOption {
+	return func(s *Server) { s.port = port }
+}
+
+// NewServer returns a Server with opts applied in order; set defaults before the loop.
+func NewServer(opts ...ServerOption) *Server {
+	s := &Server{}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}

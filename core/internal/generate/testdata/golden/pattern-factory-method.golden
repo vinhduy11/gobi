@@ -1,0 +1,44 @@
+// file: x.go
+package demo
+
+import "fmt"
+
+// Factory Method pattern: https://refactoring.guru/design-patterns/factory-method
+
+// Shape is what the factory creates.
+type Shape interface {
+	Area() float64
+}
+
+// Circle is one kind of Shape.
+type Circle struct{}
+
+// Area implements Shape.
+func (c *Circle) Area() (r0 float64) {
+	// TODO: implement Area.
+	return
+}
+
+// Square is one kind of Shape.
+type Square struct{}
+
+// Area implements Shape.
+func (s *Square) Area() (r0 float64) {
+	// TODO: implement Area.
+	return
+}
+
+// shapeFactories maps a kind to the function that creates it; add one line per new product.
+var shapeFactories = map[string]func() Shape{
+	"circle": func() Shape { return &Circle{} },
+	"square": func() Shape { return &Square{} },
+}
+
+// NewShape returns the Shape registered under kind.
+func NewShape(kind string) (Shape, error) {
+	create, ok := shapeFactories[kind]
+	if !ok {
+		return nil, fmt.Errorf("unknown shape kind %q", kind)
+	}
+	return create(), nil
+}

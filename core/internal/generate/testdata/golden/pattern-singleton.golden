@@ -1,0 +1,24 @@
+// file: x.go
+package demo
+
+import "sync"
+
+// Singleton pattern: https://refactoring.guru/design-patterns/singleton
+// Simpler in Go: pass a *Config to the code that needs it, or use a plain package variable;
+// a Singleton is global state and makes tests and reuse harder.
+
+// Config is the one shared value.
+type Config struct{}
+
+var (
+	configOnce     sync.Once
+	configInstance *Config
+)
+
+// Instance returns the shared Config, creating it on first use. It is safe for concurrent use.
+func Instance() *Config {
+	configOnce.Do(func() {
+		configInstance = &Config{}
+	})
+	return configInstance
+}

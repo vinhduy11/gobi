@@ -10,7 +10,9 @@ import "gobi/core/internal/wire"
 //	  11 selected field name (repeated), 12 name asked by the dialog,
 //	  13 method (repeated: 1 name, 2 param (repeated, as 7), 3 result type (repeated)),
 //	  14 func parameter (repeated, as 7), 15 func result type (repeated), 16 receiver type
-//	list result: 1 version, 2 item (repeated: 1 id, 2 title, 3 detail, 4 needs name, 5 needs fields)
+//	  17 module Go version, 18 parameter (repeated: 1 key, 2 value (repeated)), 19 target ("current" or "file")
+//	list result: 1 version, 2 item (repeated: 1 id, 2 title, 3 detail, 4 needs name, 5 needs fields, 6 group,
+//	  7 parameter (repeated: 1 key, 2 label, 3 default (repeated), 4 kind, 5 multi))
 //	preview and render result: 1 version, 2 text, 3 import path (repeated),
 //	  4 edit (repeated: 1 start line, 2 start char, 3 end line, 4 end char (0-based, UTF-16), 5 text),
 //	  5 file (repeated: 1 path, 2 content)
@@ -55,6 +57,23 @@ func decodeMethod(data []byte) (Method, error) {
 		}
 	}
 	return m, nil
+}
+
+func decodeValue(data []byte) (ParamValue, error) {
+	parts, err := wire.Parse(data)
+	if err != nil {
+		return ParamValue{}, err
+	}
+	var v ParamValue
+	for _, p := range parts {
+		switch p.Number {
+		case 1:
+			v.Key = string(p.Bytes)
+		case 2:
+			v.Values = append(v.Values, string(p.Bytes))
+		}
+	}
+	return v, nil
 }
 
 // DecodeRequest reads the params of generate/list, generate/preview and generate/render.
@@ -104,6 +123,16 @@ func DecodeRequest(fields []wire.Field) (Request, error) {
 			r.Results = append(r.Results, string(f.Bytes))
 		case 16:
 			r.Receiver = string(f.Bytes)
+		case 17:
+			r.GoVersion = string(f.Bytes)
+		case 18:
+			v, err := decodeValue(f.Bytes)
+			if err != nil {
+				return Request{}, err
+			}
+			r.Values = append(r.Values, v)
+		case 19:
+			r.Target = string(f.Bytes)
 		}
 	}
 	return r, nil
@@ -123,6 +152,20 @@ func EncodeList(version uint64, items []Item) []byte {
 			}
 			if item.NeedsFields {
 				m.Bool(5, true)
+			}
+			m.String(6, item.Group)
+			for _, p := range item.Params {
+				m.Message(7, func(pm *wire.Writer) {
+					pm.String(1, p.Key)
+					pm.String(2, p.Label)
+					for _, d := range p.Default {
+						pm.Raw(3, []byte(d))
+					}
+					pm.String(4, p.Kind)
+					if p.Multi {
+						pm.Bool(5, true)
+					}
+				})
 			}
 		})
 	}

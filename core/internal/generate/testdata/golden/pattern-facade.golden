@@ -1,0 +1,37 @@
+// file: x.go
+package demo
+
+import "context"
+
+// Facade pattern: https://refactoring.guru/design-patterns/facade
+
+// Inventory is one subsystem behind the facade; replace it with the real one.
+type Inventory struct{}
+
+// Payment is one subsystem behind the facade; replace it with the real one.
+type Payment struct{}
+
+// Shipping is one subsystem behind the facade; replace it with the real one.
+type Shipping struct{}
+
+// Shop offers a few simple methods over several subsystems.
+type Shop struct {
+	inventory *Inventory
+	payment   *Payment
+	shipping  *Shipping
+}
+
+// NewShop wires the subsystems together.
+func NewShop(inventory *Inventory, payment *Payment, shipping *Shipping) *Shop {
+	return &Shop{
+		inventory: inventory,
+		payment:   payment,
+		shipping:  shipping,
+	}
+}
+
+// Checkout coordinates the subsystems for one use case.
+func (s *Shop) Checkout(ctx context.Context) error {
+	// TODO: call the subsystems in order and wrap their errors with %w.
+	return nil
+}

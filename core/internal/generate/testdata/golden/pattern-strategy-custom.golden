@@ -1,0 +1,43 @@
+// file: x.go
+package demo
+
+// Strategy pattern: https://refactoring.guru/design-patterns/strategy
+// Simpler in Go: with a single method a func type does the same with less code: type Strategy func(...).
+
+// Pricing is one interchangeable algorithm.
+type Pricing interface {
+	Price(items ...string) float64
+}
+
+// Flat is one Pricing.
+type Flat struct{}
+
+// Price implements Pricing.
+func (f *Flat) Price(items ...string) (r0 float64) {
+	// TODO: implement Price.
+	return
+}
+
+// Tiered is one Pricing.
+type Tiered struct{}
+
+// Price implements Pricing.
+func (t *Tiered) Price(items ...string) (r0 float64) {
+	// TODO: implement Price.
+	return
+}
+
+// Cart runs the Pricing it was given.
+type Cart struct {
+	strategy Pricing
+}
+
+// NewCart returns a Cart that uses strategy.
+func NewCart(strategy Pricing) *Cart {
+	return &Cart{strategy: strategy}
+}
+
+// Price delegates to the strategy.
+func (c *Cart) Price(items ...string) float64 {
+	return c.strategy.Price(items...)
+}

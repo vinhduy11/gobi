@@ -1,0 +1,45 @@
+// file: x.go
+package demo
+
+import "context"
+
+// Strategy pattern: https://refactoring.guru/design-patterns/strategy
+// Simpler in Go: with a single method a func type does the same with less code: type Strategy func(...).
+
+// Strategy is one interchangeable algorithm.
+type Strategy interface {
+	Execute(ctx context.Context, input string) (string, error)
+}
+
+// Fast is one Strategy.
+type Fast struct{}
+
+// Execute implements Strategy.
+func (f *Fast) Execute(ctx context.Context, input string) (r0 string, r1 error) {
+	// TODO: implement Execute.
+	return
+}
+
+// Safe is one Strategy.
+type Safe struct{}
+
+// Execute implements Strategy.
+func (s *Safe) Execute(ctx context.Context, input string) (r0 string, r1 error) {
+	// TODO: implement Execute.
+	return
+}
+
+// Runner runs the Strategy it was given.
+type Runner struct {
+	strategy Strategy
+}
+
+// NewRunner returns a Runner that uses strategy.
+func NewRunner(strategy Strategy) *Runner {
+	return &Runner{strategy: strategy}
+}
+
+// Execute delegates to the strategy.
+func (r *Runner) Execute(ctx context.Context, input string) (string, error) {
+	return r.strategy.Execute(ctx, input)
+}

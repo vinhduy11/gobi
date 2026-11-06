@@ -1,0 +1,30 @@
+// file: x.go
+package demo
+
+// Adapter pattern: https://refactoring.guru/design-patterns/adapter
+
+// Printer is the interface the client code expects.
+type Printer interface {
+	Print(text string) error
+}
+
+// LegacyPrinter stands in for the existing type being adapted; replace it with yours.
+type LegacyPrinter struct{}
+
+// LegacyPrinterAdapter makes a *LegacyPrinter satisfy Printer.
+type LegacyPrinterAdapter struct {
+	*LegacyPrinter
+}
+
+var _ Printer = (*LegacyPrinterAdapter)(nil)
+
+// NewLegacyPrinterAdapter wraps adaptee.
+func NewLegacyPrinterAdapter(adaptee *LegacyPrinter) *LegacyPrinterAdapter {
+	return &LegacyPrinterAdapter{LegacyPrinter: adaptee}
+}
+
+// Print implements Printer.
+func (l *LegacyPrinterAdapter) Print(text string) (r0 error) {
+	// TODO: implement Print.
+	return
+}

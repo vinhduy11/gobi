@@ -1,0 +1,40 @@
+// file: x.go
+package demo
+
+import "iter"
+
+// Iterator pattern: https://refactoring.guru/design-patterns/iterator
+// Simpler in Go: a slice or map needs no iterator: range over it, or use slices.Values and maps.All;
+// write one only for a collection with its own traversal.
+
+// Collection holds a sequence of string values.
+type Collection struct {
+	items []string
+}
+
+// Add appends item.
+func (c *Collection) Add(item string) {
+	c.items = append(c.items, item)
+}
+
+// Values returns an iterator over the items, for use with range.
+func (c *Collection) Values() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for _, item := range c.items {
+			if !yield(item) {
+				return
+			}
+		}
+	}
+}
+
+// All returns an iterator over index and item pairs, for use with range.
+func (c *Collection) All() iter.Seq2[int, string] {
+	return func(yield func(int, string) bool) {
+		for index, item := range c.items {
+			if !yield(index, item) {
+				return
+			}
+		}
+	}
+}

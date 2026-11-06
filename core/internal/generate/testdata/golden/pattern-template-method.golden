@@ -1,0 +1,37 @@
+// file: x.go
+package demo
+
+import (
+	"context"
+	"fmt"
+)
+
+// Template Method pattern: https://refactoring.guru/design-patterns/template-method
+
+// Job fixes the order of its steps; callers supply the steps as functions, and a nil step is skipped.
+type Job struct {
+	Open    func(ctx context.Context) error
+	Process func(ctx context.Context) error
+	Close   func(ctx context.Context) error
+}
+
+// Run executes the steps in order and stops at the first error.
+func (j *Job) Run(ctx context.Context) error {
+	steps := []struct {
+		name string
+		run  func(context.Context) error
+	}{
+		{"open", j.Open},
+		{"process", j.Process},
+		{"close", j.Close},
+	}
+	for _, step := range steps {
+		if step.run == nil {
+			continue
+		}
+		if err := step.run(ctx); err != nil {
+			return fmt.Errorf("%s: %w", step.name, err)
+		}
+	}
+	return nil
+}

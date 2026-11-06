@@ -11,6 +11,8 @@ import (
 func sampleRequest() Request {
 	return Request{
 		Version: 3, Item: ItemString, Selected: []string{"a"}, AskedName: "x",
+		GoVersion: "1.23", Target: TargetFile,
+		Values: []ParamValue{{Key: "strategies", Values: []string{"Fast", "Safe"}}, {Key: "strategy", Values: []string{"Pricing"}}},
 		Context: Context{
 			Path: "/p/a.go", Package: "demo", Source: "package demo\n", Line: 2, Col: 5, Kind: KindStruct, Name: "T",
 			Fields:  []Field{{Name: "a", Type: "string", Underlying: "string"}},
@@ -59,6 +61,16 @@ func encodeRequest(r Request) []byte {
 		w.Raw(15, []byte(res))
 	}
 	w.String(16, r.Receiver)
+	w.String(17, r.GoVersion)
+	for _, v := range r.Values {
+		w.Message(18, func(m *wire.Writer) {
+			m.String(1, v.Key)
+			for _, value := range v.Values {
+				m.Raw(2, []byte(value))
+			}
+		})
+	}
+	w.String(19, r.Target)
 	return w.Bytes()
 }
 
@@ -92,5 +104,20 @@ func TestResultGoldenBytes(t *testing.T) {
 	}
 	if !bytes.Equal(render, wantRender) {
 		t.Errorf("render bytes = % x\nwant          % x", render, wantRender)
+	}
+}
+
+// A pattern item adds a group (6) and its parameters (7: 1 key, 2 label, 3 default (repeated), 4 kind, 5 multi).
+func TestPatternItemGoldenBytes(t *testing.T) {
+	list := EncodeList(1, []Item{{ID: "strategy", Title: "Strategy", Group: "behavioral",
+		Params: []ParamSpec{{Key: "k", Label: "L", Kind: "type", Default: []string{"D"}}, {Key: "m", Kind: "names", Multi: true}}}})
+	want := []byte{0x08, 0x01, 0x12, 0x3f,
+		0x0a, 0x08, 's', 't', 'r', 'a', 't', 'e', 'g', 'y', 0x12, 0x08, 'S', 't', 'r', 'a', 't', 'e', 'g', 'y',
+		0x32, 0x0a, 'b', 'e', 'h', 'a', 'v', 'i', 'o', 'r', 'a', 'l',
+		0x3a, 0x0f, 0x0a, 0x01, 'k', 0x12, 0x01, 'L', 0x1a, 0x01, 'D', 0x22, 0x04, 't', 'y', 'p', 'e',
+		0x3a, 0x0c, 0x0a, 0x01, 'm', 0x22, 0x05, 'n', 'a', 'm', 'e', 's', 0x28, 0x01,
+	}
+	if !bytes.Equal(list, want) {
+		t.Errorf("bytes = % x\nwant    % x", list, want)
 	}
 }

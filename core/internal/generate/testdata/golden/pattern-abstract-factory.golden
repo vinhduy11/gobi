@@ -1,0 +1,64 @@
+// file: x.go
+package demo
+
+import "fmt"
+
+// Abstract Factory pattern: https://refactoring.guru/design-patterns/abstract-factory
+
+// Button is one product of every family.
+type Button interface{ fmt.Stringer }
+
+// Checkbox is one product of every family.
+type Checkbox interface{ fmt.Stringer }
+
+// WidgetFactory creates the products of one family.
+type WidgetFactory interface {
+	NewButton() Button
+	NewCheckbox() Checkbox
+}
+
+// LightFactory creates the Light family.
+type LightFactory struct{}
+
+var _ WidgetFactory = LightFactory{}
+
+// LightButton is the Light family's Button.
+type LightButton struct{}
+
+// String implements fmt.Stringer.
+func (LightButton) String() string { return "light button" }
+
+// NewButton returns a LightButton.
+func (LightFactory) NewButton() Button { return LightButton{} }
+
+// LightCheckbox is the Light family's Checkbox.
+type LightCheckbox struct{}
+
+// String implements fmt.Stringer.
+func (LightCheckbox) String() string { return "light checkbox" }
+
+// NewCheckbox returns a LightCheckbox.
+func (LightFactory) NewCheckbox() Checkbox { return LightCheckbox{} }
+
+// DarkFactory creates the Dark family.
+type DarkFactory struct{}
+
+var _ WidgetFactory = DarkFactory{}
+
+// DarkButton is the Dark family's Button.
+type DarkButton struct{}
+
+// String implements fmt.Stringer.
+func (DarkButton) String() string { return "dark button" }
+
+// NewButton returns a DarkButton.
+func (DarkFactory) NewButton() Button { return DarkButton{} }
+
+// DarkCheckbox is the Dark family's Checkbox.
+type DarkCheckbox struct{}
+
+// String implements fmt.Stringer.
+func (DarkCheckbox) String() string { return "dark checkbox" }
+
+// NewCheckbox returns a DarkCheckbox.
+func (DarkFactory) NewCheckbox() Checkbox { return DarkCheckbox{} }

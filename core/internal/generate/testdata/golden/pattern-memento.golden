@@ -1,0 +1,30 @@
+// file: x.go
+package demo
+
+// Memento pattern: https://refactoring.guru/design-patterns/memento
+
+// Editor is the object whose state can be saved and restored.
+type Editor struct {
+	editorState
+}
+
+// editorState is the part of a Editor that a snapshot keeps. It is unexported so only this package can look inside a snapshot.
+type editorState struct {
+	text   string
+	cursor int
+}
+
+// EditorSnapshot is an opaque copy of a Editor's state.
+type EditorSnapshot struct {
+	state editorState
+}
+
+// Snapshot captures the current state. Slices and maps in the state are shared, not copied: clone them here if they change in place.
+func (e *Editor) Snapshot() EditorSnapshot {
+	return EditorSnapshot{state: e.editorState}
+}
+
+// Restore returns e to a state captured by Snapshot.
+func (e *Editor) Restore(snapshot EditorSnapshot) {
+	e.editorState = snapshot.state
+}

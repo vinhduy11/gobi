@@ -1,0 +1,27 @@
+// file: x.go
+package demo
+
+// Visitor pattern: https://refactoring.guru/design-patterns/visitor
+
+// Node is something a Visitor can visit.
+type Node interface {
+	Accept(visitor Visitor)
+}
+
+// Visitor has one method per concrete Node. For a closed set of types a type switch is often simpler.
+type Visitor interface {
+	VisitNumber(*Number)
+	VisitAdd(*Add)
+}
+
+// Number is a Node.
+type Number struct{}
+
+// Accept calls the visitor's method for Number.
+func (n *Number) Accept(visitor Visitor) { visitor.VisitNumber(n) }
+
+// Add is a Node.
+type Add struct{}
+
+// Accept calls the visitor's method for Add.
+func (a *Add) Accept(visitor Visitor) { visitor.VisitAdd(a) }

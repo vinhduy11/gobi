@@ -1,0 +1,21 @@
+// file: x.go
+package demo
+
+import "maps"
+
+// Prototype pattern: https://refactoring.guru/design-patterns/prototype
+
+// Document can produce independent copies of itself.
+type Document struct {
+	title string
+	tags  []string
+	meta  map[string]int
+}
+
+// Clone returns a copy that shares no slice or map with d. Pointer fields are still shared: clone them here too if they must not be.
+func (d *Document) Clone() *Document {
+	clone := *d
+	clone.tags = append([]string(nil), d.tags...)
+	clone.meta = maps.Clone(d.meta)
+	return &clone
+}

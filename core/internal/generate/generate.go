@@ -72,13 +72,38 @@ type Request struct {
 	Item      string
 	Selected  []string // fields the user ticked; empty means the item's default
 	AskedName string   // extra name asked by the dialog (error type, handler)
+	GoVersion string   // Go version of the module ("1.23", "go1.23.4"); empty when unknown
+	Values    []ParamValue
+	Target    string // TargetCurrent (default) or TargetFile, for the design patterns
+}
+
+// Where a design pattern is written.
+const (
+	TargetCurrent = "current" // into the current file, after the declaration at the caret
+	TargetFile    = "file"    // into a new <pattern>.go in the package
+)
+
+// ParamValue is the answer to one pattern parameter; a blank answer means the default.
+type ParamValue struct {
+	Key    string
+	Values []string
+}
+
+// ParamSpec describes one parameter a pattern asks for.
+type ParamSpec struct {
+	Key, Label string
+	Kind       string // "type", "names", "signature", "fields" or "typeexpr"
+	Default    []string
+	Multi      bool // the dialog shows a list
 }
 
 // Item is one entry of the Generate popup.
 type Item struct {
 	ID, Title, Detail string
-	NeedsName         bool // the dialog asks for a name
-	NeedsFields       bool // the dialog lets the user tick fields
+	NeedsName         bool        // the dialog asks for a name
+	NeedsFields       bool        // the dialog lets the user tick fields
+	Group             string      // design patterns: creational, structural or behavioral
+	Params            []ParamSpec // design patterns: what the dialog asks
 }
 
 // File is a file to create.
@@ -114,28 +139,37 @@ func parse(source, pkg string) (*parsed, error) {
 		return nil, fmt.Errorf("the buffer does not parse: %w", err)
 	}
 	p := &parsed{fset: fset, file: file, source: source, declared: map[string]bool{}}
+	for _, name := range declNames(file) {
+		p.declared[name] = true
+	}
+	return p, nil
+}
+
+// declNames lists the top-level names of a file: functions and types as "Name", methods as "Type.Name", vars and consts.
+func declNames(file *ast.File) []string {
+	var names []string
 	for _, decl := range file.Decls {
 		switch d := decl.(type) {
 		case *ast.FuncDecl:
 			if d.Recv != nil && len(d.Recv.List) == 1 {
-				p.declared[typeName(d.Recv.List[0].Type)+"."+d.Name.Name] = true
+				names = append(names, typeName(d.Recv.List[0].Type)+"."+d.Name.Name)
 			} else {
-				p.declared[d.Name.Name] = true
+				names = append(names, d.Name.Name)
 			}
 		case *ast.GenDecl:
 			for _, spec := range d.Specs {
 				switch s := spec.(type) {
 				case *ast.TypeSpec:
-					p.declared[s.Name.Name] = true
+					names = append(names, s.Name.Name)
 				case *ast.ValueSpec:
 					for _, n := range s.Names {
-						p.declared[n.Name] = true
+						names = append(names, n.Name)
 					}
 				}
 			}
 		}
 	}
-	return p, nil
+	return names
 }
 
 func typeName(expr ast.Expr) string {
@@ -210,6 +244,7 @@ func List(ctx Context) ([]Item, error) {
 		}
 		add(Item{ID: ItemHandler, Title: "HTTP handler…", Detail: "func(w http.ResponseWriter, r *http.Request)", NeedsName: true})
 		add(errorTypeItem())
+		items = append(items, patternItems()...)
 	}
 	return items, nil
 }
@@ -244,6 +279,9 @@ func Render(req Request) (Result, error) {
 		return Result{}, err
 	}
 	result := Result{Version: req.Version, Text: snippet, Imports: importPaths(needs)}
+	if def, ok := findPattern(req.Item); ok {
+		return patternResult(def, req, result, needs, p)
+	}
 	if req.Item == ItemTest {
 		target := strings.TrimSuffix(req.Path, ".go") + "_test.go"
 		if _, err := osStat(target); err == nil {

@@ -1,0 +1,36 @@
+// file: x.go
+package demo
+
+// Composite pattern: https://refactoring.guru/design-patterns/composite
+
+// Node is implemented by leaves and composites alike, so callers treat both the same.
+type Node interface {
+	Size() int
+}
+
+// File is a Node without children.
+type File struct{}
+
+// Size implements Node.
+func (f *File) Size() (r0 int) {
+	// TODO: implement Size.
+	return
+}
+
+// Dir is a Node made of other components.
+type Dir struct {
+	children []Node
+}
+
+// Add appends children to the composite.
+func (d *Dir) Add(children ...Node) {
+	d.children = append(d.children, children...)
+}
+
+// Size implements Node by visiting every child; combine their results as the operation needs.
+func (d *Dir) Size() (r0 int) {
+	for _, member := range d.children {
+		member.Size()
+	}
+	return
+}

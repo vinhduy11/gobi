@@ -239,6 +239,9 @@ func render(req Request) (string, []importSpec, *parsed, error) {
 	if !found {
 		return "", nil, nil, fmt.Errorf("%q does not apply here", req.Item)
 	}
+	if def, ok := findPattern(req.Item); ok {
+		return renderPattern(def, req)
+	}
 	p, err := parse(req.Source, req.Package)
 	if err != nil {
 		return "", nil, nil, err

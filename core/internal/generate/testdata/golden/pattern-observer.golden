@@ -1,0 +1,48 @@
+// file: x.go
+package demo
+
+import "sync"
+
+// Observer pattern: https://refactoring.guru/design-patterns/observer
+
+// Topic delivers events to its subscribers. It starts no goroutines, so there is nothing to leak: subscribers run on the
+// goroutine that calls Notify, and the function Subscribe returns removes them. It is safe for concurrent use.
+type Topic struct {
+	mu   sync.Mutex
+	next int
+	subs []topicSub
+}
+
+type topicSub struct {
+	id int
+	fn func(event string)
+}
+
+// Subscribe registers fn and returns the function that removes it again.
+func (t *Topic) Subscribe(fn func(event string)) (unsubscribe func()) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.next++
+	id := t.next
+	t.subs = append(t.subs, topicSub{id: id, fn: fn})
+	return func() {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+		for index, sub := range t.subs {
+			if sub.id == id {
+				t.subs = append(t.subs[:index:index], t.subs[index+1:]...)
+				return
+			}
+		}
+	}
+}
+
+// Notify calls every current subscriber with event, in subscription order. Subscribers may unsubscribe while they run.
+func (t *Topic) Notify(event string) {
+	t.mu.Lock()
+	subs := append([]topicSub(nil), t.subs...)
+	t.mu.Unlock()
+	for _, sub := range subs {
+		sub.fn(event)
+	}
+}

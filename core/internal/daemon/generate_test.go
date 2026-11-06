@@ -78,3 +78,57 @@ func TestGenerateRefusesAnItemThatDoesNotApply(t *testing.T) {
 		t.Errorf("failure = %q", failure)
 	}
 }
+
+func TestGenerateRendersAPatternIntoANewFileWithAskedParameters(t *testing.T) {
+	session := controlSession(t)
+	dir := t.TempDir()
+	result, failure := controlCall(t, session, 1, "generate/render", func(w *wire.Writer) {
+		w.String(1, dir+"/s.go")
+		w.String(2, "demo")
+		w.String(5, "file")
+		w.String(8, "package demo\n")
+		w.Uint(9, 8)
+		w.String(10, "strategy")
+		w.String(17, "1.22")
+		w.Message(18, func(m *wire.Writer) { m.String(1, "strategy"); m.String(2, "Pricing") })
+		w.Message(18, func(m *wire.Writer) {
+			m.String(1, "strategies")
+			m.Raw(2, []byte("Flat"))
+			m.Raw(2, []byte("Tiered"))
+		})
+		w.String(19, "file")
+	})
+	if failure != "" {
+		t.Fatal(failure)
+	}
+	if result[1].Uint != 8 {
+		t.Errorf("version = %d, want 8", result[1].Uint)
+	}
+	file, _ := wire.Parse(result[5].Bytes)
+	if string(file[0].Bytes) != dir+"/strategy.go" || !strings.Contains(string(file[1].Bytes), "type Pricing interface") ||
+		!strings.Contains(string(file[1].Bytes), "type Tiered struct{}") {
+		t.Errorf("file = %q", result[5].Bytes)
+	}
+	if _, ok := result[4]; ok {
+		t.Error("a new file needs no edits")
+	}
+}
+
+func TestGenerateListCarriesPatternGroupsAndParameters(t *testing.T) {
+	session := controlSession(t)
+	result, failure := controlCall(t, session, 1, "generate/list", func(w *wire.Writer) {
+		w.String(2, "demo")
+		w.String(5, "empty")
+	})
+	if failure != "" {
+		t.Fatal(failure)
+	}
+	last, _ := wire.Parse(result[2].Bytes) // the last item: visitor
+	got := map[int]string{}
+	for _, f := range last {
+		got[f.Number] = string(f.Bytes)
+	}
+	if got[1] != "visitor" || got[6] != "behavioral" || len(got[7]) == 0 {
+		t.Errorf("last item = %v", got)
+	}
+}

@@ -1,0 +1,42 @@
+// file: x.go
+package demo
+
+import (
+	"context"
+	"fmt"
+)
+
+// Command pattern: https://refactoring.guru/design-patterns/command
+
+// Command is an action that can be undone.
+type Command interface {
+	Execute(ctx context.Context) error
+	Undo(ctx context.Context) error
+}
+
+// CommandHistory runs commands and remembers them so they can be undone, latest first. It is not safe for concurrent use.
+type CommandHistory struct {
+	done []Command
+}
+
+// Do executes cmd and, when it succeeds, records it.
+func (h *CommandHistory) Do(ctx context.Context, cmd Command) error {
+	if err := cmd.Execute(ctx); err != nil {
+		return fmt.Errorf("execute command: %w", err)
+	}
+	h.done = append(h.done, cmd)
+	return nil
+}
+
+// Undo reverts the most recent command; it does nothing when the history is empty.
+func (h *CommandHistory) Undo(ctx context.Context) error {
+	if len(h.done) == 0 {
+		return nil
+	}
+	last := h.done[len(h.done)-1]
+	if err := last.Undo(ctx); err != nil {
+		return fmt.Errorf("undo command: %w", err)
+	}
+	h.done = h.done[:len(h.done)-1]
+	return nil
+}

@@ -1,0 +1,31 @@
+// file: x.go
+package demo
+
+import "context"
+
+// Decorator pattern: https://refactoring.guru/design-patterns/decorator
+// Simpler in Go: for one method, a func type plus func(Handler) Handler middleware is all a decorator needs; no wrapper struct.
+
+// Handler is the component that decorators wrap.
+type Handler interface {
+	Handle(ctx context.Context, input string) (string, error)
+}
+
+// HandlerFunc lets an ordinary function be a Handler.
+type HandlerFunc func(ctx context.Context, input string) (string, error)
+
+// Handle calls f.
+func (h HandlerFunc) Handle(ctx context.Context, input string) (string, error) {
+	return h(ctx, input)
+}
+
+// HandlerDecorator wraps a Handler to add behaviour before or after it.
+type HandlerDecorator func(Handler) Handler
+
+// DecorateHandler applies the decorators to c; the first one listed ends up outermost.
+func DecorateHandler(c Handler, decorators ...HandlerDecorator) Handler {
+	for i := len(decorators) - 1; i >= 0; i-- {
+		c = decorators[i](c)
+	}
+	return c
+}

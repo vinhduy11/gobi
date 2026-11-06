@@ -1,0 +1,42 @@
+// file: x.go
+package demo
+
+// Bridge pattern: https://refactoring.guru/design-patterns/bridge
+
+// Sender is the implementation side; abstractions hold one and call it.
+type Sender interface {
+	Send(text string) error
+}
+
+// EmailSender is one Sender.
+type EmailSender struct{}
+
+// Send implements Sender.
+func (e *EmailSender) Send(text string) (r0 error) {
+	// TODO: implement Send.
+	return
+}
+
+// PushSender is one Sender.
+type PushSender struct{}
+
+// Send implements Sender.
+func (p *PushSender) Send(text string) (r0 error) {
+	// TODO: implement Send.
+	return
+}
+
+// Message is the abstraction side; it delegates the work to its Sender.
+type Message struct {
+	impl Sender
+}
+
+// NewMessage returns a Message that uses impl.
+func NewMessage(impl Sender) *Message {
+	return &Message{impl: impl}
+}
+
+// Send forwards to the implementation.
+func (m *Message) Send(text string) error {
+	return m.impl.Send(text)
+}

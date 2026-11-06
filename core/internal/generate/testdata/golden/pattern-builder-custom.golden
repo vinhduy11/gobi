@@ -1,0 +1,40 @@
+// file: x.go
+package demo
+
+import "time"
+
+// Builder pattern: https://refactoring.guru/design-patterns/builder
+
+// Client is built with functional options; fields left unset keep their zero value.
+type Client struct {
+	baseURL string
+	timeout time.Duration
+	retries int
+}
+
+// ClientOption configures a Client.
+type ClientOption func(*Client)
+
+// WithBaseURL sets the baseURL field.
+func WithBaseURL(baseURL string) ClientOption {
+	return func(c *Client) { c.baseURL = baseURL }
+}
+
+// WithTimeout sets the timeout field.
+func WithTimeout(timeout time.Duration) ClientOption {
+	return func(c *Client) { c.timeout = timeout }
+}
+
+// WithRetries sets the retries field.
+func WithRetries(retries int) ClientOption {
+	return func(c *Client) { c.retries = retries }
+}
+
+// NewClient returns a Client with opts applied in order; set defaults before the loop.
+func NewClient(opts ...ClientOption) *Client {
+	c := &Client{}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}

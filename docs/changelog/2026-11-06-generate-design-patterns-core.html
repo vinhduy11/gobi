@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Generate: design patterns (core)</title>
+<style>body{font:15px/1.5 system-ui;max-width:760px;margin:2rem auto;padding:0 1rem}code{background:#eee;padding:0 3px}</style></head>
+<body>
+<h1>Generate: 22 design patterns (core)</h1>
+<h2>Specs</h2>
+<p>Add the 22 classic patterns as Generate items, in idiomatic Go, with dialog parameters, insert into the current file or a new <code>&lt;pattern&gt;.go</code>, and the wire fields to carry parameters, the module Go version and the target. Core only, no UI.</p>
+<h2>Actions</h2>
+<ul>
+<li><code>patterns.go</code>: pattern definitions, parameter parsing and validation (names, signatures, fields, type expressions), collision check against the package, placement.</li>
+<li><code>creational.go</code>, <code>structural.go</code>, <code>behavioral.go</code>: one template per pattern.</li>
+<li>Wire: request fields 17, 18, 19; list item fields 6, 7 (additive). Docs and CHANGELOG updated.</li>
+<li>Tests: 25 pattern goldens, real-toolchain build (gofmt, vet, test) with a generated example test per pattern, list, validation, collision, import, file target, version echo, wire bytes, daemon round trip.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>Patterns are offered only outside declarations: keeps the popup short; struct-level offers can come later.</li>
+<li>Collision detection parses the rendered snippet and compares declared names, so every template is covered without per-pattern code; names in other files of the package are not known to the core.</li>
+<li>Stubs use named results and a bare return so the code compiles before the user fills it in.</li>
+<li>Prototype copies maps with <code>maps.Clone</code> (Go 1.21+), not gated by the module version.</li>
+</ul>
+</body></html>

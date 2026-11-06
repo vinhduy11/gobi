@@ -1,0 +1,39 @@
+// file: x.go
+package demo
+
+// Iterator pattern: https://refactoring.guru/design-patterns/iterator
+// Simpler in Go: a slice or map needs no iterator: range over it, or use slices.Values and maps.All;
+// write one only for a collection with its own traversal.
+
+// Collection holds a sequence of string values.
+type Collection struct {
+	items []string
+}
+
+// Add appends item.
+func (c *Collection) Add(item string) {
+	c.items = append(c.items, item)
+}
+
+// Iterator returns an iterator positioned before the first item.
+func (c *Collection) Iterator() *CollectionIterator {
+	return &CollectionIterator{items: c.items, pos: -1}
+}
+
+// CollectionIterator walks a Collection: call Next, then Value.
+type CollectionIterator struct {
+	items []string
+	pos   int
+}
+
+// Next moves to the next item and reports whether there is one.
+func (it *CollectionIterator) Next() bool {
+	if it.pos+1 >= len(it.items) {
+		return false
+	}
+	it.pos++
+	return true
+}
+
+// Value returns the current item; call it only after Next reported true.
+func (it *CollectionIterator) Value() string { return it.items[it.pos] }

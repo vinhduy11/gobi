@@ -1,0 +1,50 @@
+// file: x.go
+package demo
+
+// Mediator pattern: https://refactoring.guru/design-patterns/mediator
+
+// Mediator coordinates colleagues so that they never refer to each other.
+type Mediator interface {
+	Notify(from, event string)
+}
+
+// Hub passes every event to all colleagues except the sender. It is not safe for concurrent use.
+type Hub struct {
+	colleagues []*Participant
+}
+
+var _ Mediator = (*Hub)(nil)
+
+// Register adds c to the hub and points it at the hub.
+func (h *Hub) Register(c *Participant) {
+	c.mediator = h
+	h.colleagues = append(h.colleagues, c)
+}
+
+// Notify delivers event to every colleague other than from.
+func (h *Hub) Notify(from, event string) {
+	for _, c := range h.colleagues {
+		if c.name != from && c.on != nil {
+			c.on(from, event)
+		}
+	}
+}
+
+// Participant sends events through its Mediator and receives the ones others send.
+type Participant struct {
+	name     string
+	mediator Mediator
+	on       func(from, event string)
+}
+
+// NewParticipant returns a Participant that calls on for each event it receives.
+func NewParticipant(name string, on func(from, event string)) *Participant {
+	return &Participant{name: name, on: on}
+}
+
+// Send hands event to the mediator; it does nothing before the colleague is registered.
+func (p *Participant) Send(event string) {
+	if p.mediator != nil {
+		p.mediator.Notify(p.name, event)
+	}
+}
