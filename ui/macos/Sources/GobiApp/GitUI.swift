@@ -128,221 +128,67 @@ enum GitUI {
     }
 }
 
-/// The Git tab of the bottom panel (Git mock): Changes (staged and unstaged files with their diff) and Log.
-final class GitPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate {
-    private let mode = NSSegmentedControl(labels: ["Changes", "Log"], trackingMode: .selectOne, target: nil, action: nil)
-    private let status = NSTextField(labelWithString: "")
-    private let filesTable = NSTableView()
-    private let logTable = NSTableView()
+/// The Diff tab of the bottom panel (Git mock): the path of the selected file, then its coloured diff.
+final class DiffPanelView: NSView {
+    static let emptyText = "Select a changed file to see its diff."
+    private let titleLabel = NSTextField(labelWithString: "")
     private let diffView = NSTextView()
-    private let changesBox = NSStackView()
-    private let logScroll = NSScrollView()
-    private enum Row { case section(String), file(GitFile, staged: Bool) }
-    private var rows: [Row] = []
-    private(set) var commits: [GitCommit] = []
-    var onSelectFile: (String, Bool) -> Void = { _, _ in }
-    var onStage: (String) -> Void = { _ in }
-    var onUnstage: (String) -> Void = { _ in }
-    var onCommit: () -> Void = {}
-    var onShowLog: () -> Void = {}
-    var onPull: () -> Void = {}
-    var onPush: () -> Void = {}
-    var onDiscard: (String) -> Void = { _ in }
-    private let pushButton = NSButton(title: "Push", target: nil, action: nil)
-    var pushTitle: String { pushButton.title }
+    private(set) var path: String?
 
     var diffText: String { diffView.string }
-    var sectionTitles: [String] { rows.compactMap { if case .section(let t) = $0 { return t } else { return nil } } }
-    var fileTitles: [String] { rows.compactMap { if case .file(let f, _) = $0 { return f.path } else { return nil } } }
-    var statusText: String { status.stringValue }
+    var titleText: String { titleLabel.stringValue }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
-        mode.selectedSegment = 0
-        mode.target = self
-        mode.action = #selector(modeChanged)
-        status.textColor = .secondaryLabelColor
-        status.font = NSFont.systemFont(ofSize: 12)
-        let bar = NSStackView(views: [mode, NSView(), status])
-        bar.edgeInsets = NSEdgeInsets(top: 4, left: 10, bottom: 4, right: 12)
-        bar.spacing = 8
-
-        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("c"))
-        filesTable.addTableColumn(column)
-        filesTable.headerView = nil
-        filesTable.rowHeight = 22
-        filesTable.style = .plain
-        filesTable.backgroundColor = .clear
-        filesTable.dataSource = self
-        filesTable.delegate = self
-        filesTable.setAccessibilityLabel("Changes")
-        let filesScroll = NSScrollView()
-        filesScroll.documentView = filesTable
-        filesScroll.hasVerticalScroller = true
-        filesScroll.drawsBackground = false
-        filesScroll.widthAnchor.constraint(equalToConstant: 260).isActive = true
-        let commit = NSButton(title: "Commit…", target: self, action: #selector(commitPressed))
-        commit.bezelStyle = .rounded
-        let pullButton = NSButton(title: "Pull", target: self, action: #selector(pullPressed))
-        pullButton.bezelStyle = .rounded
-        pullButton.toolTip = "Fast-forward only"
-        pushButton.target = self
-        pushButton.action = #selector(pushPressed)
-        pushButton.bezelStyle = .rounded
-        let buttons = NSStackView(views: [commit, pullButton, pushButton])
-        buttons.spacing = 6
-        let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Discard Changes…", action: #selector(discardPressed), keyEquivalent: ""))
-        menu.items.forEach { $0.target = self }
-        filesTable.menu = menu
-        let left = NSStackView(views: [filesScroll, buttons])
-        left.orientation = .vertical
-        left.alignment = .leading
-        left.spacing = 6
-        left.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 6, right: 6)
+        titleLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        titleLabel.lineBreakMode = .byTruncatingHead
+        titleLabel.setAccessibilityLabel("Diff file")
         diffView.isEditable = false
         diffView.drawsBackground = false
         diffView.textContainerInset = NSSize(width: 8, height: 6)
         diffView.setAccessibilityLabel("Diff")
-        let diffScroll = NSScrollView()
-        diffScroll.documentView = diffView
-        diffScroll.hasVerticalScroller = true
-        diffScroll.drawsBackground = false
-        changesBox.orientation = .horizontal
-        changesBox.spacing = 0
-        changesBox.alignment = .top
-        changesBox.addArrangedSubview(left)
-        changesBox.addArrangedSubview(diffScroll)
-        for part in [left, diffScroll] { part.topAnchor.constraint(equalTo: changesBox.topAnchor).isActive = true; part.bottomAnchor.constraint(equalTo: changesBox.bottomAnchor).isActive = true }
-
-        for (id, title, width) in [("hash", "Commit", 80), ("subject", "Message", 460), ("author", "Author", 130), ("when", "When", 130)] {
-            let c = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(id))
-            c.title = title
-            c.width = CGFloat(width)
-            logTable.addTableColumn(c)
-        }
-        logTable.dataSource = self
-        logTable.delegate = self
-        logTable.rowHeight = 22
-        logTable.style = .plain
-        logTable.backgroundColor = .clear
-        logTable.setAccessibilityLabel("Log")
-        logScroll.documentView = logTable
-        logScroll.hasVerticalScroller = true
-        logScroll.drawsBackground = false
-        logScroll.isHidden = true
-
-        let all = NSStackView(views: [bar, changesBox, logScroll])
-        all.orientation = .vertical
-        all.spacing = 0
-        all.alignment = .leading
-        all.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(all)
+        let scroll = NSScrollView()
+        scroll.documentView = diffView
+        scroll.hasVerticalScroller = true
+        scroll.drawsBackground = false
+        let header = NSStackView(views: [titleLabel])
+        header.edgeInsets = NSEdgeInsets(top: 5, left: 12, bottom: 5, right: 12)
+        let stack = NSStackView(views: [header, Hairline(), scroll])
+        stack.orientation = .vertical
+        stack.spacing = 0
+        stack.alignment = .leading
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
         NSLayoutConstraint.activate([
-            all.leadingAnchor.constraint(equalTo: leadingAnchor), all.trailingAnchor.constraint(equalTo: trailingAnchor),
-            all.topAnchor.constraint(equalTo: topAnchor), all.bottomAnchor.constraint(equalTo: bottomAnchor),
-            bar.widthAnchor.constraint(equalTo: all.widthAnchor), changesBox.widthAnchor.constraint(equalTo: all.widthAnchor), logScroll.widthAnchor.constraint(equalTo: all.widthAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor), stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stack.topAnchor.constraint(equalTo: topAnchor), stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            header.widthAnchor.constraint(equalTo: stack.widthAnchor), scroll.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
+        showEmpty()
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    func show(_ status: GitStatus?) {
-        rows = []
-        if let status {
-            let staged = status.stagedFiles, unstaged = status.unstagedFiles
-            if !staged.isEmpty { rows.append(.section("STAGED")); rows += staged.map { .file($0, staged: true) } }
-            if !unstaged.isEmpty { rows.append(.section("CHANGES")); rows += unstaged.map { .file($0, staged: false) } }
-            self.status.stringValue = status.branch + (status.ahead > 0 ? " ↑\(status.ahead)" : "") + (status.behind > 0 ? " ↓\(status.behind)" : "")
-            pushButton.title = status.ahead > 0 ? "Push ↑\(status.ahead)" : "Push"
-        } else {
-            self.status.stringValue = "Not a git repository"
-        }
-        filesTable.reloadData()
+    private func setNote(_ text: String) {
+        diffView.textStorage?.setAttributedString(NSAttributedString(string: text, attributes: [.foregroundColor: NSColor.secondaryLabelColor, .font: NSFont.systemFont(ofSize: 12)]))
     }
 
-    func show(diff: String) {
-        diffView.textStorage?.setAttributedString(diff.isEmpty ? NSAttributedString(string: "No changes to show.", attributes: [.foregroundColor: NSColor.secondaryLabelColor, .font: NSFont.systemFont(ofSize: 12)]) : GitUI.attributed(diff: diff))
+    /// No file picked yet (or the picked one is no longer changed).
+    func showEmpty() {
+        path = nil
+        titleLabel.stringValue = ""
+        setNote(Self.emptyText)
     }
 
-    func show(log: [GitCommit]) { commits = log; logTable.reloadData() }
-
-    @objc private func modeChanged() {
-        changesBox.isHidden = mode.selectedSegment != 0
-        logScroll.isHidden = mode.selectedSegment != 1
-        if mode.selectedSegment == 1 { onShowLog() }
+    func show(diff: String, path: String, staged: Bool) {
+        self.path = path
+        titleLabel.stringValue = path + (staged ? "  ·  staged changes" : "  ·  unstaged changes")
+        if diff.isEmpty { setNote("No changes to show.") } else { diffView.textStorage?.setAttributedString(GitUI.attributed(diff: diff)) }
     }
 
-    func showLogTab() { mode.selectedSegment = 1; modeChanged() }
-    @objc private func commitPressed() { onCommit() }
-    @objc private func pullPressed() { onPull() }
-    @objc private func pushPressed() { onPush() }
-
-    @objc private func discardPressed() {
-        guard let path = discardTarget() else { return }
-        onDiscard(path)
-    }
-
-    /// The file under the right-click, or the selected one.
-    private func discardTarget() -> String? {
-        let row = filesTable.clickedRow >= 0 ? filesTable.clickedRow : filesTable.selectedRow
-        guard rows.indices.contains(row), case .file(let file, _) = rows[row] else { return nil }
-        return file.path
-    }
-
-    // MARK: tables
-
-    func numberOfRows(in tableView: NSTableView) -> Int { tableView === filesTable ? rows.count : commits.count }
-
-    func tableView(_ tableView: NSTableView, isGroupRow row: Int) -> Bool {
-        tableView === filesTable && { if case .section = rows[row] { return true } else { return false } }()
-    }
-
-    func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
-        tableView === logTable ? true : { if case .file = rows[row] { return true } else { return false } }()
-    }
-
-    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        if tableView === logTable {
-            let commit = commits[row]
-            let text: String
-            switch tableColumn?.identifier.rawValue {
-            case "hash": text = commit.shortHash
-            case "subject": text = commit.subject
-            case "author": text = commit.author
-            default: text = commit.when
-            }
-            let label = NSTextField(labelWithString: text)
-            label.font = tableColumn?.identifier.rawValue == "hash" ? NSFont.monospacedSystemFont(ofSize: 12, weight: .regular) : NSFont.systemFont(ofSize: 12)
-            label.textColor = tableColumn?.identifier.rawValue == "subject" ? .labelColor : .secondaryLabelColor
-            return label
-        }
-        switch rows[row] {
-        case .section(let title):
-            let label = NSTextField(labelWithString: title)
-            label.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
-            label.textColor = .secondaryLabelColor
-            return label
-        case .file(let file, let staged):
-            let line = GitUI.fileRow(file)
-            let button = NSButton(title: staged ? "−" : "+", target: self, action: #selector(toggleStage(_:)))
-            button.isBordered = false
-            button.toolTip = staged ? "Unstage" : "Stage"
-            button.identifier = NSUserInterfaceItemIdentifier((staged ? "u:" : "s:") + file.path)
-            let stack = NSStackView(views: [line, NSView(), button])
-            stack.spacing = 4
-            return stack
-        }
-    }
-
-    @objc private func toggleStage(_ sender: NSButton) {
-        guard let id = sender.identifier?.rawValue, id.count > 2 else { return }
-        let path = String(id.dropFirst(2))
-        if id.hasPrefix("u:") { onUnstage(path) } else { onStage(path) }
-    }
-
-    func tableViewSelectionDidChange(_ notification: Notification) {
-        guard (notification.object as? NSTableView) === filesTable, filesTable.selectedRow >= 0, rows.indices.contains(filesTable.selectedRow), case .file(let file, let staged) = rows[filesTable.selectedRow] else { return }
-        onSelectFile(file.path, staged)
+    func show(error: String, path: String) {
+        self.path = path
+        titleLabel.stringValue = path
+        setNote(error)
     }
 }

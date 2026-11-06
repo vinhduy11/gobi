@@ -20,7 +20,8 @@ import (
 //	  8 number (log: how many commits)
 //	  15 tag, 16 reset, 17 stash, 18 unstash, 19 abort merge, 20 rebase, 21 abort rebase, 22 continue rebase, 23 skip rebase,
 //	  24 patch, 25 apply patch, 26/27 continue/abort revert, 28/29 continue/abort cherry-pick, 30 remotes, 31 add remote,
-//	  32 remove remote, 33 worktrees, 34 add worktree, 35 remove worktree; 9 second text argument
+//	  32 remove remote, 33 worktrees, 34 add worktree, 35 remove worktree, 36 stash list, 37 stash apply, 38 stash pop, 39 stash drop
+//	  (number is the stash index); 9 second text argument; commit with the flag set amends the last commit
 //	server to client: 1 kind (1 status, 2 error, 3 text, 4 branches, 5 log, 6 lines, 7 done, 8 list)
 //	  list:     3 entry (repeated; remotes: name and address, worktrees: folder, branch and head, separated by 0x1f)
 //	  status:   2 branch, 3 entry (repeated: one digit for the mark, one digit for the stage state (0 none, 1 staged, 2 unstaged,
@@ -84,6 +85,10 @@ const (
 	gitWorktreesRequest          = 33 // answered with a list reply
 	gitAddWorktreeRequest        = 34 // text: absolute folder; text2: branch; flag: create the branch
 	gitRemoveWorktreeRequest     = 35 // text: absolute folder
+	gitStashListRequest          = 36 // answered with a list reply: index and message separated by 0x1f
+	gitStashApplyRequest         = 37 // number: the stash index
+	gitStashPopRequest           = 38 // number: the stash index
+	gitStashDropRequest          = 39 // number: the stash index
 
 	gitStatusReply   = 1
 	gitErrorReply    = 2
@@ -237,10 +242,19 @@ func answerGit(git gitsvc.Git, dir string, request gitRequest) []byte {
 		}
 		return gitDone()
 	case gitCommitRequest:
-		if err := git.Commit(dir, request.text, "", ""); err != nil {
+		if err := commit(git, dir, request); err != nil {
 			return gitFailure(err)
 		}
 		return gitDone()
+	case gitStashListRequest:
+		entries, err := git.StashList(dir)
+		if err != nil {
+			return gitFailure(err)
+		}
+		reply.Uint(gitKind, gitListReply)
+		for _, e := range entries {
+			reply.String(gitEntry, strconv.Itoa(e.Index)+"\x1f"+e.Message)
+		}
 	case gitPatchRequest:
 		text, err := git.Patch(dir)
 		if err != nil {
@@ -301,6 +315,9 @@ var gitOperations = map[uint64]func(git gitsvc.Git, dir string, r gitRequest) er
 	gitTagRequest:                func(git gitsvc.Git, d string, r gitRequest) error { return git.Tag(d, r.text) },
 	gitResetRequest:              func(git gitsvc.Git, d string, r gitRequest) error { return git.Reset(d, r.text, r.text2) },
 	gitStashRequest:              func(git gitsvc.Git, d string, r gitRequest) error { return git.Stash(d, r.text) },
+	gitStashApplyRequest:         func(git gitsvc.Git, d string, r gitRequest) error { return git.StashApply(d, r.number) },
+	gitStashPopRequest:           func(git gitsvc.Git, d string, r gitRequest) error { return git.StashPop(d, r.number) },
+	gitStashDropRequest:          func(git gitsvc.Git, d string, r gitRequest) error { return git.StashDrop(d, r.number) },
 	gitUnstashRequest:            func(git gitsvc.Git, d string, r gitRequest) error { return git.Unstash(d) },
 	gitAbortMergeRequest:         func(git gitsvc.Git, d string, r gitRequest) error { return git.AbortMerge(d) },
 	gitRebaseRequest:             func(git gitsvc.Git, d string, r gitRequest) error { return git.Rebase(d, r.text) },
@@ -316,6 +333,14 @@ var gitOperations = map[uint64]func(git gitsvc.Git, dir string, r gitRequest) er
 	gitRemoveRemoteRequest:       func(git gitsvc.Git, d string, r gitRequest) error { return git.RemoveRemote(d, r.text) },
 	gitAddWorktreeRequest:        func(git gitsvc.Git, d string, r gitRequest) error { return git.AddWorktree(d, r.text, r.text2, r.flag) },
 	gitRemoveWorktreeRequest:     func(git gitsvc.Git, d string, r gitRequest) error { return git.RemoveWorktree(d, r.text) },
+}
+
+// commit commits what is staged; the flag amends the last commit instead.
+func commit(git gitsvc.Git, dir string, r gitRequest) error {
+	if r.flag {
+		return git.CommitAmend(dir, r.text, "", "")
+	}
+	return git.Commit(dir, r.text, "", "")
 }
 
 type strconvError string

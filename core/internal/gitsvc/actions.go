@@ -224,6 +224,15 @@ func firstError(err error, otherwise string) error {
 
 // Commit commits what is staged. email and name, when not empty, are used as the author for this commit only.
 func (g Git) Commit(dir, message, email, name string) error {
+	return g.commit(dir, message, email, name, false)
+}
+
+// CommitAmend replaces the last commit with what is staged (possibly nothing new) and the given message.
+func (g Git) CommitAmend(dir, message, email, name string) error {
+	return g.commit(dir, message, email, name, true)
+}
+
+func (g Git) commit(dir, message, email, name string, amend bool) error {
 	if strings.TrimSpace(message) == "" {
 		return errors.New("write a commit message first")
 	}
@@ -234,7 +243,11 @@ func (g Git) Commit(dir, message, email, name string) error {
 	if name != "" {
 		args = append(args, "-c", "user.name="+name)
 	}
-	args = append(args, "commit", "-q", "-m", message)
+	args = append(args, "commit", "-q")
+	if amend {
+		args = append(args, "--amend")
+	}
+	args = append(args, "-m", message)
 	_, err := g.run(dir, nil, args...)
 	return err
 }

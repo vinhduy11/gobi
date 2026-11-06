@@ -37,41 +37,93 @@ body{margin:0}
 .gut{width:26px;position:relative}
 .bar{position:absolute;left:4px;width:4px;border-radius:2px}
 .code{font:13px/22px ui-monospace,"SF Mono",Menlo,monospace;background:var(--bg);border:1px solid var(--sep);border-radius:10px;overflow:hidden}
+.ic{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.seg{display:inline-flex;background:var(--hover);border-radius:7px;padding:2px}
+.seg span{padding:2px 8px;border-radius:5px;font-size:12px;display:inline-flex;align-items:center}
+.seg .a{background:var(--bg);box-shadow:0 0 0 .5px var(--sep),0 1px 2px rgba(0,0,0,.12);font-weight:600}
+.tools{display:flex;align-items:center;gap:12px;padding:4px 12px;color:var(--text2)}
+.tsep{width:1px;height:14px;background:var(--sep)}
+.cb{width:13px;height:13px;border:1px solid var(--sep);border-radius:3px;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:10px;line-height:1;background:var(--field)}
+.cb.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.row.ind{padding-left:34px;gap:6px}.row.grp{gap:6px;padding-left:6px}.dis{width:10px;color:var(--text2);font-size:10px}
+.fold{font-size:11px;margin-left:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .ln{display:flex}.num{width:36px;text-align:right;padding-right:8px;color:var(--text2);font-size:11px}
 </style>
 </helmet>
-<div class="board" style="width: 1500px; height: 800px; {{vars}}">
+<div class="board" style="width: 1800px; height: 860px; {{vars}}">
   <div>
-    <div class="cap">Git tab: Changes</div>
-    <div class="panel" style="width:640px">
-      <div class="tabs"><span class="tab a">Changes</span><span class="tab">Log</span><span style="margin-left:auto" class="t2">feat/graceful-shutdown &#8593;1</span></div>
-      <div style="display:flex;height:300px">
-        <div style="width:230px;border-right:1px solid var(--sep)">
-          <div class="row t2" style="height:22px;font-weight:600">STAGED</div>
-          <div class="row"><span class="badge" style="color:#1E7B34">A</span>server_test.go</div>
-          <div class="row t2" style="height:22px;font-weight:600">CHANGES</div>
-          <div class="row sel"><span class="badge" style="color:#8A5A00">M</span>server.go</div>
-          <div class="row"><span class="badge" style="color:#1E7B34">?</span>notes.md</div>
-          <div style="padding:10px;display:flex;gap:6px"><button class="btn" style="flex:1">Commit&#8230;</button><button class="btn" title="Fast-forward only">Pull</button><button class="btn">Push &#8593;1</button></div>
-        </div>
-        <div class="mono" style="flex:1;overflow:hidden;padding-top:4px">
-          <div class="hunk">@@ -24,7 +24,9 @@ func (s *Server) Run</div>
-          <div style="padding:0 8px">    errc := make(chan error, 1)</div>
-          <div class="del" style="padding:0 8px">-   go func() { errc &lt;- s.srv.ListenAndServe() }()</div>
-          <div class="add" style="padding:0 8px">+   go func() {</div>
-          <div class="add" style="padding:0 8px">+       errc &lt;- s.srv.ListenAndServe()</div>
-          <div class="add" style="padding:0 8px">+   }()</div>
-          <div style="padding:0 8px">    select {</div>
-        </div>
+    <div class="cap">Sidebar: Commit tab, Commit</div>
+    <div class="panel" style="width:260px">
+      <div style="padding:8px 8px 0"><span class="seg"><span>Files</span><span>Symbols</span><span>Tests</span><span>Debug</span><span class="a" title="Commit" aria-label="Commit"><svg class="ic" viewBox="0 0 16 16"><circle cx="4" cy="3.5" r="1.6"/><circle cx="4" cy="12.5" r="1.6"/><circle cx="12" cy="6.5" r="1.6"/><path d="M4 5.1v5.8M12 8.1c0 3-8 1.6-8 4"/></svg></span></span></div>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px 4px"><span class="seg"><span class="a">Commit</span><span>Stash</span><span>Log</span></span><span class="t2" style="margin-left:auto;font-size:11px;white-space:nowrap">feat/graceful-shutdown &#8593;1</span></div>
+      <div class="tools"><svg class="ic" aria-label="Refresh" viewBox="0 0 16 16"><path d="M13 8a5 5 0 11-1.5-3.5M13 2.5v3h-3"/></svg><svg class="ic" aria-label="Roll Back selected" viewBox="0 0 16 16"><path d="M3 7h7a3 3 0 010 6H6M3 7l3-3M3 7l3 3"/></svg><svg class="ic" aria-label="Update (pull)" viewBox="0 0 16 16"><path d="M8 2v9M4.5 7.5L8 11l3.5-3.5M3 14h10"/></svg><svg class="ic" aria-label="Show Diff" viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg><span class="tsep"></span><svg class="ic" aria-label="Expand all" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4M4 2.5h8"/></svg><svg class="ic" aria-label="Collapse all" viewBox="0 0 16 16"><path d="M4 10l4-4 4 4M4 13.5h8"/></svg></div>
+      <div style="height:210px;overflow:hidden">
+        <div class="row grp"><span class="dis">&#9662;</span><span class="cb on">&#10003;</span><b>Changes</b><span class="t2">3 files</span></div>
+        <div class="row ind"><span class="cb on">&#10003;</span><span style="color:#1E7B34">server_test.go</span><span class="t2 fold">internal/server</span></div>
+        <div class="row ind sel"><span class="cb"></span><span style="color:#8A5A00">server.go</span><span class="t2 fold">internal/server</span></div>
+        <div class="row ind"><span class="cb"></span><span style="color:#C0392B;text-decoration:line-through">old.go</span></div>
+        <div class="row grp"><span class="dis">&#9662;</span><span class="cb"></span><b>Unversioned Files</b><span class="t2">1 file</span></div>
+        <div class="row ind"><span class="cb"></span><span style="color:#1E7B34">notes.md</span></div>
+      </div>
+      <div style="padding:6px 10px 10px;border-top:1px solid var(--sep)">
+        <label class="row" style="padding:0;height:22px"><span class="cb"></span>Amend</label>
+        <div class="fld" style="height:78px;color:var(--text2)">Commit Message</div>
+        <div style="font-size:11px;color:#B25E00;height:16px;margin-top:2px"></div>
+        <div style="display:flex;gap:6px;align-items:center"><button class="btn pri" style="padding:0 12px">Commit</button><button class="btn" style="padding:0 10px">Commit and Push</button><svg class="ic" style="margin-left:auto" aria-label="Git settings" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4"/></svg></div>
       </div>
     </div>
-    <div class="cap" style="margin-top:20px">Git tab: Log</div>
-    <div class="panel" style="width:640px">
-      <div class="tabs"><span class="tab">Changes</span><span class="tab a">Log</span></div>
-      <div class="row"><span style="width:60px" class="mono t2">a3f9c21</span><span style="flex:1">Shut the server down on context cancel</span><span class="t2">Duy &#183; 2 hours ago</span></div>
-      <div class="row"><span style="width:60px" class="mono t2">91be04d</span><span style="flex:1">Add the list endpoint</span><span class="t2">Duy &#183; yesterday</span></div>
-      <div class="row"><span style="width:60px" class="mono t2">0c77aa3</span><span style="flex:1">Initial commit</span><span class="t2">Duy &#183; 3 days ago</span></div>
+    <div class="t2" style="margin-top:8px;font-size:12px;width:260px">A tick means the file is staged: ticking stages it, unticking unstages it. Commit commits the ticked files (all changes when none is ticked) and is off while the message is empty. Single click selects a row; double click or the eye opens its diff in the Diff tab of the bottom panel. The fifth sidebar segment is an icon (tooltip Commit) because five text labels do not fit 260 pt.</div>
+
+    <div class="cap" style="margin-top:20px">Sidebar: Commit tab, nothing to commit</div>
+    <div class="panel" style="width:260px">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px 4px"><span class="seg"><span class="a">Commit</span><span>Stash</span><span>Log</span></span><span class="t2" style="margin-left:auto;font-size:11px">main</span></div>
+      <div class="tools"><svg class="ic" viewBox="0 0 16 16"><path d="M13 8a5 5 0 11-1.5-3.5M13 2.5v3h-3"/></svg><svg class="ic" style="opacity:.35" viewBox="0 0 16 16"><path d="M3 7h7a3 3 0 010 6H6M3 7l3-3M3 7l3 3"/></svg><svg class="ic" viewBox="0 0 16 16"><path d="M8 2v9M4.5 7.5L8 11l3.5-3.5M3 14h10"/></svg></div>
+      <div class="t2" style="height:90px;display:flex;align-items:center;justify-content:center">No local changes</div>
+      <div style="padding:6px 10px 10px;border-top:1px solid var(--sep)">
+        <label class="row" style="padding:0;height:22px"><span class="cb"></span>Amend</label>
+        <div class="fld" style="height:60px;color:var(--text2)">Commit Message</div>
+        <div style="display:flex;gap:6px;margin-top:8px;align-items:center"><button class="btn" style="padding:0 12px;opacity:.5">Commit</button><button class="btn" style="padding:0 10px;opacity:.5">Commit and Push</button></div>
+      </div>
     </div>
+  </div>
+  <div>
+    <div class="cap">Sidebar: Commit tab, Stash</div>
+    <div class="panel" style="width:260px">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px 4px"><span class="seg"><span>Commit</span><span class="a">Stash</span><span>Log</span></span></div>
+      <div style="padding:4px 10px"><button class="btn" style="width:100%">Stash Changes&#8230;</button></div>
+      <div style="height:150px;overflow:hidden">
+        <div class="row sel" style="height:40px"><span style="flex:1">stash@{0}: On feat/graceful-shutdown: half-done retry</span></div>
+        <div class="row" style="height:40px"><span style="flex:1">stash@{1}: WIP on main: 91be04d Add the list endpoint</span></div>
+      </div>
+      <div style="display:flex;gap:6px;padding:8px 10px;border-top:1px solid var(--sep)"><button class="btn" style="flex:1;padding:0">Apply</button><button class="btn" style="flex:1;padding:0">Pop</button><button class="btn" style="flex:1;padding:0">Drop</button></div>
+    </div>
+    <div class="t2" style="margin-top:8px;font-size:12px;width:260px">Apply keeps the stash, Pop applies and removes it, Drop removes it without applying. Empty list: &#8220;No stashes&#8221;.</div>
+
+    <div class="cap" style="margin-top:20px">Sidebar: Commit tab, Log</div>
+    <div class="panel" style="width:260px">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px 4px"><span class="seg"><span>Commit</span><span>Stash</span><span class="a">Log</span></span></div>
+      <div style="padding:2px 0">
+        <div class="row" style="height:38px;flex-wrap:wrap;align-content:center;gap:0 8px"><span class="mono t2">a3f9c21</span><span style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">Shut the server down on context cancel</span><span class="t2" style="width:100%;font-size:11px">Duy &#183; 2 hours ago</span></div>
+        <div class="row" style="height:38px;flex-wrap:wrap;align-content:center;gap:0 8px"><span class="mono t2">91be04d</span><span style="flex:1">Add the list endpoint</span><span class="t2" style="width:100%;font-size:11px">Duy &#183; yesterday</span></div>
+        <div class="row" style="height:38px;flex-wrap:wrap;align-content:center;gap:0 8px"><span class="mono t2">0c77aa3</span><span style="flex:1">Initial commit</span><span class="t2" style="width:100%;font-size:11px">Duy &#183; 3 days ago</span></div>
+      </div>
+    </div>
+
+    <div class="cap" style="margin-top:20px">Bottom panel: Diff tab (replaces the Git tab)</div>
+    <div class="panel" style="width:560px">
+      <div class="tabs"><span class="tab">Problems</span><span class="tab">Tests</span><span class="tab">Terminal</span><span class="tab">Debug</span><span class="tab">Profiler</span><span class="tab a">Diff</span><span class="tab">Output</span><span class="tab">Find</span></div>
+      <div style="padding:6px 10px;border-bottom:1px solid var(--sep);font-size:12px"><b>internal/server/server.go</b> <span class="t2">&#183; unstaged changes</span></div>
+      <div class="mono" style="height:150px;overflow:hidden;padding-top:4px">
+        <div class="hunk">@@ -24,7 +24,9 @@ func (s *Server) Run</div>
+        <div style="padding:0 8px">    errc := make(chan error, 1)</div>
+        <div class="del" style="padding:0 8px">-   go func() { errc &lt;- s.srv.ListenAndServe() }()</div>
+        <div class="add" style="padding:0 8px">+   go func() {</div>
+        <div class="add" style="padding:0 8px">+       errc &lt;- s.srv.ListenAndServe()</div>
+        <div class="add" style="padding:0 8px">+   }()</div>
+        <div style="padding:0 8px">    select {</div>
+      </div>
+    </div>
+    <div class="t2" style="margin-top:8px;font-size:12px;width:560px">Shows only the diff of the selected file. Empty state: &#8220;Select a changed file to see its diff.&#8221; Opened by double click on a file, the eye button, or Git &#9656; Current File &#9656; Show Diff.</div>
   </div>
   <div>
     <div class="cap">Branch menu (toolbar)</div>
@@ -117,7 +169,7 @@ body{margin:0}
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1500,"height":800}}'>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1800,"height":860}}'>
 class Component extends DCLogic {
   renderVals() {
     const L = {desk:'#E4E4E8',bg:'#FFFFFF',bar:'#F5F5F7',menu:'#F8F8FA',field:'#FFFFFF',text:'#1D1D1F',text2:'#5C5C61',sep:'#D0D0D5',hover:'rgba(0,0,0,.06)',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)'};

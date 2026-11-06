@@ -67,6 +67,11 @@ public final class GitClient: @unchecked Sendable {
         return GitWorktree.parse(entries)
     }
 
+    public func stashes() throws -> [StashEntry] {
+        guard case .list(let entries) = try send(.stashList) else { throw GitClientError.unexpected }
+        return StashEntry.parse(entries)
+    }
+
     public func log(_ count: Int = 50) throws -> [GitCommit] {
         guard case .log(let list) = try send(.log(count)) else { throw GitClientError.unexpected }
         return list

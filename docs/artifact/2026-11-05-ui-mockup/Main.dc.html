@@ -30,7 +30,7 @@ body{margin:0}
 .cd{white-space:pre}
 .kw{color:var(--kw)}.st{color:var(--str)}.cm{color:var(--cm)}.ty{color:var(--ty)}.nm{color:var(--num)}
 .seg{display:inline-flex;background:var(--hover);border-radius:7px;padding:2px}
-.seg span{padding:2px 10px;border-radius:5px;font-size:12px}
+.seg span{padding:2px 8px;border-radius:5px;font-size:12px}
 .seg .a{background:var(--bg);box-shadow:0 0 0 .5px var(--sep),0 1px 2px rgba(0,0,0,.12);font-weight:600}
 .ptab{padding:0 10px;height:32px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);border:0;background:transparent;font-family:inherit}
 .ptab.a{color:var(--text);font-weight:600;box-shadow:inset 0 -2px 0 var(--accent)}
@@ -62,7 +62,7 @@ body{margin:0}
 
     <!-- Sidebar -->
     <div style="width:260px;background:var(--side);border-right:1px solid var(--sep);display:flex;flex-direction:column;flex:none">
-      <div style="padding:8px 10px 0"><span class="seg"><span class="a">Files</span><span>Symbols</span><span>Tests</span></span></div>
+      <div style="padding:8px 10px 0"><span class="seg"><span class="a">Files</span><span>Symbols</span><span>Tests</span><span>Debug</span><span title="Commit" aria-label="Commit"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><circle cx="4" cy="3.5" r="1.6"/><circle cx="4" cy="12.5" r="1.6"/><circle cx="12" cy="6.5" r="1.6"/><path d="M4 5.1v5.8M12 8.1c0 3-8 1.6-8 4"/></svg></span></span></div>
       <div class="sec">Explorer</div>
       <div class="row"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg><svg class="ic" aria-hidden="true" viewBox="0 0 16 16" style="color:var(--accentT)"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>hello</div>
       <div class="row" style="padding-left:28px"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg><svg class="ic" aria-hidden="true" viewBox="0 0 16 16" style="color:var(--accentT)"><path d="M2 5a1 1 0 011-1h3l1.5 1.5H13a1 1 0 011 1V12a1 1 0 01-1 1H3a1 1 0 01-1-1z"/></svg>cmd/hello</div>
@@ -132,7 +132,7 @@ body{margin:0}
       <div style="height:206px;border-top:1px solid var(--sep);background:var(--bg);display:flex;flex-direction:column;flex:none">
         <div style="height:32px;border-bottom:1px solid var(--sep);background:var(--bar);display:flex;align-items:center;padding:0 6px;flex:none">
           <button class="ptab a">Problems<span style="background:var(--err);color:#fff;border-radius:8px;padding:0 6px;font-size:11px">2</span></button>
-          <button class="ptab">Tests</button><button class="ptab">Terminal</button><button class="ptab">Debug</button><button class="ptab">Profiler</button><button class="ptab">Git</button><button class="ptab">Output</button><button class="ptab">Find</button>
+          <button class="ptab">Tests</button><button class="ptab">Terminal</button><button class="ptab">Debug</button><button class="ptab">Profiler</button><button class="ptab">Diff</button><button class="ptab">Output</button><button class="ptab">Find</button>
         </div>
         <div style="padding:4px 0;font-size:12px">
           <div class="row"><svg class="ic" aria-hidden="true" viewBox="0 0 16 16" style="color:var(--err)"><circle cx="8" cy="8" r="6"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5"/></svg><span>s.srv.Shu undefined (type *http.Server has no field or method Shu)</span><span class="t2" style="margin-left:auto">server.go:28 &#183; gopls</span></div>

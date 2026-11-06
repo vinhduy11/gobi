@@ -175,7 +175,8 @@ public enum GitRequest: Equatable, Sendable {
     case checkout(String, create: Bool)
     case stage([String])
     case unstage([String])
-    case commit(String)
+    /// amend replaces the last commit instead of adding one.
+    case commit(String, amend: Bool = false)
     case log(Int)
     case lines(path: String)
     case discard([String])
@@ -188,6 +189,11 @@ public enum GitRequest: Equatable, Sendable {
     case reset(mode: String, target: String)
     case stash(String)
     case unstash
+    case stashList
+    /// The n of stash@{n}; 0 is the newest.
+    case stashApply(Int)
+    case stashPop(Int)
+    case stashDrop(Int)
     case abortMerge
     case rebase(String)
     case abortRebase
@@ -212,7 +218,7 @@ extension GitRequest {
     /// True when git may rewrite files of the working tree: pending auto saves of open buffers must not run over the result.
     public var changesWorkingTree: Bool {
         switch self {
-        case .checkout, .discard, .pull, .merge, .reset, .stash, .unstash, .abortMerge, .rebase, .abortRebase, .continueRebase, .skipRebase,
+        case .checkout, .discard, .pull, .merge, .reset, .stash, .unstash, .stashApply, .stashPop, .abortMerge, .rebase, .abortRebase, .continueRebase, .skipRebase,
              .applyPatch, .continueRevert, .abortRevert, .continueCherryPick, .abortCherryPick:
             return true
         default:
@@ -244,7 +250,7 @@ public enum GitWire {
         case .checkout(let name, let create): writer.uint(1, 4); writer.string(5, name); writer.bool(7, create)
         case .stage(let paths): writer.uint(1, 5); for path in paths { writer.string(6, path) }
         case .unstage(let paths): writer.uint(1, 6); for path in paths { writer.string(6, path) }
-        case .commit(let message): writer.uint(1, 7); writer.string(5, message)
+        case .commit(let message, let amend): writer.uint(1, 7); writer.string(5, message); if amend { writer.bool(7, true) }
         case .log(let count): writer.uint(1, 8); writer.uint(8, UInt64(count))
         case .lines(let path): writer.uint(1, 9); writer.string(5, path)
         case .discard(let paths): writer.uint(1, 10); for path in paths { writer.string(6, path) }
@@ -273,6 +279,10 @@ public enum GitWire {
         case .worktrees: writer.uint(1, 33)
         case .addWorktree(let path, let branch, let create): writer.uint(1, 34); writer.string(5, path); writer.bool(7, create); writer.string(9, branch)
         case .removeWorktree(let path): writer.uint(1, 35); writer.string(5, path)
+        case .stashList: writer.uint(1, 36)
+        case .stashApply(let index): writer.uint(1, 37); writer.uint(8, UInt64(index))
+        case .stashPop(let index): writer.uint(1, 38); writer.uint(8, UInt64(index))
+        case .stashDrop(let index): writer.uint(1, 39); writer.uint(8, UInt64(index))
         }
         return writer.bytes
     }

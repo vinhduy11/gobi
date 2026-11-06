@@ -135,14 +135,19 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         sourceControl.onCommit = { [weak self] in self?.commitChanges() }
         sourceControl.onShowDiff = { [weak self] path in self?.showDiff(path: path) }
         sourceControl.onOpen = { [weak self] path in self?.openFile(self?.root.appendingPathComponent(path) ?? URL(fileURLWithPath: path)) }
-        gitPanel.onSelectFile = { [weak self] path, staged in self?.loadDiff(path: path, staged: staged) }
-        gitPanel.onStage = { [weak self] path in self?.gitAction(.stage([path])) }
-        gitPanel.onUnstage = { [weak self] path in self?.gitAction(.unstage([path])) }
-        gitPanel.onPull = { [weak self] in self?.pullChanges() }
-        gitPanel.onPush = { [weak self] in self?.pushChanges() }
-        gitPanel.onDiscard = { [weak self] path in self?.discardChanges(path) }
-        gitPanel.onCommit = { [weak self] in self?.commitChanges() }
-        gitPanel.onShowLog = { [weak self] in self?.loadLog() }
+        commitPanel.onRefresh = { [weak self] in self?.refreshGit(); self?.loadLog() }
+        commitPanel.onRollback = { [weak self] path in self?.discardChanges(path) }
+        commitPanel.onPull = { [weak self] in self?.pullChanges() }
+        commitPanel.onShowDiff = { [weak self] path in self?.showDiff(path: path) }
+        commitPanel.onToggle = { [weak self] toggle in self?.applyToggle(toggle) }
+        commitPanel.onCommit = { [weak self] message, amend, push in self?.commit(message: message, stageAll: nil, amend: amend, push: push) }
+        commitPanel.onAmend = { [weak self] on in self?.amendChanged(on) }
+        commitPanel.onSettings = { NSApp.sendAction(#selector(AppDelegate.showGitSettings(_:)), to: nil, from: nil) }
+        commitPanel.onModeChanged = { [weak self] _ in self?.loadLog() }
+        commitPanel.onStashNew = { [weak self] in self?.stashChanges() }
+        commitPanel.onStashApply = { [weak self] index in self?.gitOperation(.stashApply(index), title: "Stash applied", reloadFiles: true) }
+        commitPanel.onStashPop = { [weak self] index in self?.gitOperation(.stashPop(index), title: "Stash applied and dropped", reloadFiles: true) }
+        commitPanel.onStashDrop = { [weak self] index in self?.confirmDropStash(index) }
         profilerPanel.onOpenFile = { [weak self] url in self?.loadProfile(url) }
         profilerPanel.onSelectSample = { [weak self] index in if let url = self?.profileURL { self?.profileSample = index; self?.loadProfile(url, sample: index) } }
         profilerPanel.onCapture = { [weak self] address, kind, seconds in self?.captureProfile(address: address, kind: kind, seconds: seconds) }
@@ -248,7 +253,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         bottomPanel.install(testsPanel, forTab: 1)
         bottomPanel.install(debugPanel, forTab: 3)
         bottomPanel.install(profilerPanel, forTab: 4)
-        bottomPanel.install(gitPanel, forTab: 5)
+        bottomPanel.install(diffPanel, forTab: 5)
         bottomPanel.install(findPanel, forTab: 7)
         bottomPanel.install(outputPanel, forTab: 6)
         testsPanel.onRunAll = { [weak self] in self?.runTests() }
@@ -276,9 +281,14 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         sidebarTests.onRunAll = { [weak self] in self?.runTests() }
         sidebarTests.onRunFailed = { [weak self] in self?.rerunFailed() }
         sidebarTestsPanel = sidebarTests
-        let tabsControl = NSSegmentedControl(labels: ["Files", "Symbols", "Tests", "Debug"], trackingMode: .selectOne, target: self, action: #selector(sidebarTabChanged(_:)))
+        let tabsControl = NSSegmentedControl(labels: ["Files", "Symbols", "Tests", "Debug", ""], trackingMode: .selectOne, target: self, action: #selector(sidebarTabChanged(_:)))
         tabsControl.selectedSegment = 0
         tabsControl.segmentStyle = .texturedRounded
+        // Five text labels do not fit 260 pt, so the Commit tab is an icon (Commit mock).
+        tabsControl.setImage(NSImage(systemSymbolName: "arrow.triangle.branch", accessibilityDescription: "Commit"), forSegment: 4)
+        tabsControl.setToolTip("Commit", forSegment: 4)
+        tabsControl.setWidth(30, forSegment: 4)
+        tabsControl.controlSize = .small
         tabsControl.setAccessibilityLabel("Sidebar")
         let filesColumn = NSStackView(views: [sidebar, sourceControl])
         filesColumn.orientation = .vertical
@@ -287,17 +297,18 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         sidebar.widthAnchor.constraint(equalTo: filesColumn.widthAnchor).isActive = true
         sourceControl.widthAnchor.constraint(equalTo: filesColumn.widthAnchor).isActive = true
         sourceControl.isHidden = true
-        sidebarTabs = [filesColumn, symbolsList, sidebarTests, debugNavigator]
+        sidebarTabs = [filesColumn, symbolsList, sidebarTests, debugNavigator, commitPanel]
         symbolsList.isHidden = true
         sidebarTests.isHidden = true
         debugNavigator.isHidden = true
+        commitPanel.isHidden = true
         sidebarTabControl = tabsControl
-        let sidebarColumn = NSStackView(views: [tabsControl, filesColumn, symbolsList, sidebarTests, debugNavigator])
+        let sidebarColumn = NSStackView(views: [tabsControl, filesColumn, symbolsList, sidebarTests, debugNavigator, commitPanel])
         sidebarColumn.orientation = .vertical
         sidebarColumn.spacing = 6
         sidebarColumn.edgeInsets = NSEdgeInsets(top: 8, left: 0, bottom: 0, right: 0)
         sidebarColumn.distribution = .fill
-        for part in [filesColumn, symbolsList, sidebarTests, debugNavigator] { part.widthAnchor.constraint(equalTo: sidebarColumn.widthAnchor).isActive = true; part.setContentHuggingPriority(.defaultLow, for: .vertical) }
+        for part in [filesColumn, symbolsList, sidebarTests, debugNavigator, commitPanel] { part.widthAnchor.constraint(equalTo: sidebarColumn.widthAnchor).isActive = true; part.setContentHuggingPriority(.defaultLow, for: .vertical) }
         tabsControl.widthAnchor.constraint(equalTo: sidebarColumn.widthAnchor, constant: -16).isActive = true
         sidebarView = sidebarColumn
         inspector.outline.onSelect = { [weak self] symbol in self?.currentPane?.reveal(line: symbol.line, character: 0) }
@@ -333,7 +344,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         refreshChrome()
     }
 
-    private var sidebarView: NSView?
+    var sidebarView: NSView?
     private let inspector = InspectorView()
     private let toolbar = ProjectToolbar()
     private var sidebarTabs: [NSView] = []
@@ -353,7 +364,8 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private var errorPaths = Set<String>()
     private var searchToken = 0
     private var searchScope: String?
-    private let gitPanel = GitPanelView()
+    let diffPanel = DiffPanelView()
+    let commitPanel = CommitPanelView()
     private(set) var gitBranches: [GitBranch] = []
     private var gutterMarks: [String: [GitLineChange]] = [:]
     let environments: ProjectEnvironments
@@ -401,6 +413,18 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         guard sidebarTabs.indices.contains(index) else { return }
         sidebarTabControl?.selectedSegment = index
         for (position, view) in sidebarTabs.enumerated() { view.isHidden = position != index }
+    }
+    /// True when the segmented control sits inside the sidebar column (it is not pushed wider than the 260 pt sidebar). Its natural
+    /// width (about 258 pt at the small control size) is more than the room, so AppKit squeezes the segments; the snapshot shows
+    /// every label whole.
+    var sidebarTabsFit: Bool {
+        guard let control = sidebarTabControl, let column = sidebarView else { return false }
+        window?.contentView?.layoutSubtreeIfNeeded()
+        return control.frame.minX >= 0 && control.frame.maxX <= column.bounds.width
+    }
+    var sidebarTabsWidths: String {
+        guard let control = sidebarTabControl, let column = sidebarView else { return "none" }
+        return "control \(Int(control.frame.minX))...\(Int(control.frame.maxX)) in a column \(Int(column.bounds.width)) wide"
     }
     var outlineTitles: [String] { inspector.outline.titles }
     var inspectorFileSummary: [String] { inspector.fileSummary }
@@ -487,7 +511,8 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
                 if !status.branch.isEmpty { self.branchName = status.branch }
                 self.outline.reloadData()
                 self.sourceControl.show(status)
-                self.gitPanel.show(status)
+                self.commitPanel.show(status)
+                if let shown = self.diffPanel.path, !status.changedFiles.contains(where: { $0.path == shown }) { self.diffPanel.showEmpty() }
                 self.refreshChrome()
                 self.updateGitMarks()
             }
@@ -521,24 +546,44 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         }
     }
 
+    /// Opens the Diff tab of the bottom panel on one changed file.
     func showDiff(path: String) {
         bottomPanel.isHidden = false
         bottomPanel.select(tab: 5)
         let staged = gitStatus?.files.first { $0.path == path }.map { $0.staged && !$0.unstaged } ?? false
-        loadDiff(path: path, staged: staged)
-    }
-
-    private func loadDiff(path: String, staged: Bool) {
         git({ try $0.diff(path: path, staged: staged) }) { [weak self] result in
             switch result {
-            case .success(let text): self?.gitPanel.show(diff: text)
-            case .failure(let error): self?.gitPanel.show(diff: "git: \(error)")
+            case .success(let text): self?.diffPanel.show(diff: text, path: path, staged: staged)
+            case .failure(let error): self?.diffPanel.show(error: "git: \(error)", path: path)
             }
         }
     }
 
+    /// Reads the Log and the stash list for the sidebar's Commit tab.
     func loadLog() {
-        git({ try $0.log(50) }) { [weak self] result in if case .success(let commits) = result { self?.gitPanel.show(log: commits) } }
+        git({ try $0.log(50) }) { [weak self] result in if case .success(let commits) = result { self?.commitPanel.show(log: commits) } }
+        git({ try $0.stashes() }) { [weak self] result in if case .success(let list) = result { self?.commitPanel.show(stashes: list) } }
+    }
+
+    /// Ticking a file in the Commit tab stages it, unticking unstages it.
+    func applyToggle(_ toggle: ChangesTree.Toggle) {
+        if toggle.stage.isEmpty && toggle.unstage.isEmpty { return }
+        git({ client in
+            if !toggle.stage.isEmpty { try client.perform(.stage(toggle.stage)) }
+            if !toggle.unstage.isEmpty { try client.perform(.unstage(toggle.unstage)) }
+        }) { [weak self] result in
+            if case .failure(let error) = result { self?.statusBar.set(note: "git: \(error)") }
+            self?.refreshGit()
+        }
+    }
+
+    /// Amend ticked with an empty message: fill in the last commit's message to edit.
+    private func amendChanged(_ on: Bool) {
+        guard on else { return }
+        git({ try $0.log(1) }) { [weak self] result in
+            guard let self, case .success(let list) = result, let text = CommitButtonState.amendPrefill(message: self.commitPanel.messageText, last: list.first) else { return }
+            self.commitPanel.setMessage(text)
+        }
     }
 
     /// Stage, unstage or switch branch, then look at the repository again.
@@ -616,46 +661,31 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         gitAction(.discard([path])) { [weak self] in self?.reloadExplorer(); self?.checkDisk() }
     }
 
-    /// Source control > Commit…: a message, then the staged files (all changes when nothing is staged) are committed.
+    /// Git > Commit… and the Commit… button of Source control: shows the Commit tab with the cursor in the message field.
     func commitChanges() {
-        guard let status = gitStatus, !status.changedFiles.isEmpty else { return }
-        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 84))
-        field.placeholderString = "Commit message"
-        field.cell?.wraps = true
-        field.cell?.isScrollable = false
-        field.usesSingleLineMode = false
-        let staged = status.stagedFiles
-        let note = NSTextField(labelWithString: "")
-        note.textColor = .systemOrange
-        note.font = NSFont.systemFont(ofSize: 11)
-        let box = NSStackView(views: [field, note])
-        box.orientation = .vertical
-        box.alignment = .leading
-        box.frame = NSRect(x: 0, y: 0, width: 360, height: 108)
-        let warn = AppPreferences.git.warnLongSubject
-        let watcher = NotificationCenter.default.addObserver(forName: NSControl.textDidChangeNotification, object: field, queue: .main) { _ in
-            note.stringValue = GitSettings.subjectWarning(for: field.stringValue, enabled: warn) ?? ""
-        }
-        defer { NotificationCenter.default.removeObserver(watcher) }
-        let alert = NSAlert()
-        alert.messageText = "Commit changes"
-        alert.informativeText = "\(staged.isEmpty ? status.changedFiles.count : staged.count) file(s) on \(status.branch). " + (staged.isEmpty ? "Nothing is staged, so all changes are committed." : "Staged files are committed.")
-        alert.accessoryView = box
-        alert.addButton(withTitle: "Commit")
-        alert.addButton(withTitle: "Cancel")
-        alert.window.initialFirstResponder = field
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        commit(message: field.stringValue, stageAll: staged.isEmpty)
+        if sidebarView?.isHidden == true { toggleSidebar() }
+        selectSidebarTab(Self.commitTabIndex)
+        commitPanel.mode = .commit
+        commitPanel.focusMessage()
     }
 
-    func commit(message: String, stageAll: Bool) {
-        let paths = (gitStatus?.changedFiles ?? []).map(\.path)
+    static let commitTabIndex = 4
+
+    /// Commits the staged files (every change when `stageAll` is true, or when nothing is staged and `stageAll` is nil), then
+    /// pushes when asked. A successful commit empties the message field.
+    func commit(message: String, stageAll: Bool?, amend: Bool = false, push: Bool = false) {
+        let status = gitStatus
+        let everything = stageAll ?? (status?.stagedFiles.isEmpty ?? true)
+        let paths = (status?.changedFiles ?? []).map(\.path)
         git({ client in
-            if stageAll { try client.perform(.stage(paths)) }
-            try client.perform(.commit(message))
+            if everything && !paths.isEmpty { try client.perform(.stage(paths)) }
+            try client.perform(.commit(message, amend: amend))
+            if push { try client.perform(.push) }
         }) { [weak self] result in
             switch result {
-            case .success: self?.statusBar.set(note: "Committed")
+            case .success:
+                self?.statusBar.set(note: push ? "Committed and pushed" : "Committed")
+                self?.commitPanel.clearMessage()
             case .failure(let error): self?.statusBar.set(note: "git: \(error)")
             }
             self?.refreshGit()
@@ -717,11 +747,12 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
 
     var sourceControlRows: [String] { sourceControl.rowTexts }
     var sourceControlBranch: String { sourceControl.branchText }
-    var gitPanelFiles: [String] { gitPanel.fileTitles }
-    var gitPushTitle: String { gitPanel.pushTitle }
-    var gitPanelDiff: String { gitPanel.diffText }
-    var gitPanelCommits: [GitCommit] { gitPanel.commits }
-    var gitPanelSections: [String] { gitPanel.sectionTitles }
+    var gitPanelFiles: [String] { commitPanel.fileTitles }
+    var gitPanelDiff: String { diffPanel.diffText }
+    var gitPanelDiffTitle: String { diffPanel.titleText }
+    var gitPanelCommits: [GitCommit] { commitPanel.commits }
+    var gitPanelSections: [String] { commitPanel.sectionTitles }
+    var commitPanelView: CommitPanelView { commitPanel }
 
     func windowDidBecomeKey(_ notification: Notification) {
         if AppPreferences.git.refreshOnFocus { refreshGit() }

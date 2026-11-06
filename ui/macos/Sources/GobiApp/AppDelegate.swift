@@ -1127,13 +1127,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("the gutter marks the changed, added and removed lines (\(String(describing: marks)))", marks?.modified == [2] && marks?.added == [5, 6] && marks?.deletedAfter == [3])
         controller.showDiff(path: "a.go")
         settle(10) { controller.gitPanelDiff.contains("+") }
-        check("the Git tab shows the diff of the selected file", controller.gitPanelDiff.contains("-line2") && controller.gitPanelDiff.contains("+line2 edited"))
-        controller.gitAction(.stage(["a.go"]))
-        settle(10) { controller.gitPanelSections.contains("STAGED") }
-        check("staging moves a file to STAGED (\(controller.gitPanelSections), \(controller.gitPanelFiles))", controller.gitPanelSections.first == "STAGED" && controller.gitPanelFiles.first == "a.go")
+        check("the bottom Diff tab shows the diff of the selected file (\(controller.panelTabTitles[controller.selectedPanelTab]))", controller.selectedPanelTab == 5 && controller.panelTabTitles[5] == "Diff" && controller.gitPanelDiff.contains("-line2") && controller.gitPanelDiff.contains("+line2 edited") && controller.gitPanelDiffTitle.hasPrefix("a.go"))
+        check("the Commit tab lists the changes in Changes and Unversioned Files (\(controller.gitPanelSections), \(controller.gitPanelFiles))", controller.gitPanelSections == ["Changes", "Unversioned Files"] && controller.gitPanelFiles.contains("a.go") && controller.gitPanelFiles.contains("fresh.go") && controller.commitPanelView.checkState(of: "a.go") == .unchecked)
+        controller.commitPanelView.toggleFile("a.go")
+        settle(10) { controller.commitPanelView.checkState(of: "a.go") == .checked }
+        check("ticking a file stages it", controller.commitPanelView.checkState(of: "a.go") == .checked && controller.gitStatus?.stagedFiles.map(\.path) == ["a.go"])
+        controller.commitPanelView.toggleFile("a.go")
+        settle(10) { controller.commitPanelView.checkState(of: "a.go") == .unchecked }
+        check("unticking it unstages it", controller.commitPanelView.checkState(of: "a.go") == .unchecked && controller.gitStatus?.stagedFiles.isEmpty == true)
+        controller.commitPanelView.toggleFile("a.go")
+        settle(10) { controller.commitPanelView.checkState(of: "a.go") == .checked }
+        controller.commitChanges()
+        check("Commit… selects the Commit tab and puts the cursor in the message (\(controller.sidebarTabIndex))", controller.sidebarTabIndex == 4 && controller.commitPanelView.mode == .commit && controller.commitPanelView.messageHasFocus)
+        check("the five sidebar tabs fit the sidebar (\(controller.sidebarTabsWidths))", controller.sidebarTabsFit)
+        check("Commit stays off while the message is empty", !controller.commitPanelView.commitEnabled && !controller.commitPanelView.commitAndPushEnabled)
+        controller.commitPanelView.setMessage(String(repeating: "x", count: 60))
+        check("a long first line shows the warning from Settings > Git (\(controller.commitPanelView.warningText))", controller.commitPanelView.commitEnabled && controller.commitPanelView.warningText.contains("60"))
+        controller.commitPanelView.setMessage("")
         controller.commit(message: "edit a", stageAll: false)
         settle(15) { !controller.sourceControlRows.contains { $0.hasSuffix("a.go") } }
         check("committing removes it from the changes (\(controller.sourceControlRows))", !controller.sourceControlRows.contains { $0.hasSuffix("a.go") } && controller.sourceControlRows.contains("? fresh.go"))
+        check("a committed file leaves the Diff tab empty again (\(controller.gitPanelDiff))", controller.gitPanelDiff == DiffPanelView.emptyText)
         settle(10) { controller.gitPanelCommits.count >= 2 }
         check("the Log lists the new commit first (\(controller.gitPanelCommits.map(\.subject)))", controller.gitPanelCommits.first?.subject == "edit a" && controller.gitPanelCommits.count == 2)
         settle(10) { controller.currentPane?.editor.gitMarks.modified.isEmpty == true }
@@ -1194,7 +1208,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.discardChanges("scratch.go", confirm: false)
         settle(10) { !controller.gitPanelFiles.contains("b.go") && !controller.gitPanelFiles.contains("scratch.go") && !FileManager.default.fileExists(atPath: scratch.path) && (try? String(contentsOf: b, encoding: .utf8)) == bText }
         check("Discard puts the tracked file back and deletes the untracked one (\(controller.gitPanelFiles), \((try? String(contentsOf: b, encoding: .utf8))?.suffix(20) ?? "nil"))", (try? String(contentsOf: b, encoding: .utf8)) == bText && !FileManager.default.fileExists(atPath: scratch.path) && !controller.gitPanelFiles.contains("b.go"))
-        check("Push offers no count when nothing is ahead (\(controller.gitPushTitle))", controller.gitPushTitle == "Push")
 
         // The operations behind the Git menu (tag, stash, patch, reset, rebase, merge/cherry-pick/revert control, remotes, worktrees),
         // through the window's own entry points; the dialogs around them are not exercised.
@@ -1337,6 +1350,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("Worktrees removes it again", !FileManager.default.fileExists(atPath: worktreeFolder))
         _ = gitOut(["branch", "-D", "selftest-wt"])
         _ = gitOut(["tag", "-d", "selftest-tag"])
+
+        // The Commit tab end to end: the message field commits, Amend rewords, Commit and Push reaches a bare remote, and a stash
+        // shows in the Stash segment and pops from it.
+        let panelFile = root.appendingPathComponent("panel.go")
+        selfTestCleanups.append { try? FileManager.default.removeItem(at: panelFile) }
+        let panel = controller.commitPanelView
+        controller.selectSidebarTab(0)
+        controller.showGitLog()
+        check("Show Git Log opens the Commit tab on the Log segment", controller.sidebarTabIndex == 4 && panel.mode == .log)
+        try? "package main\n// panel\n".write(to: panelFile, atomically: true, encoding: .utf8)
+        waitForGit { controller.gitPanelFiles.contains("panel.go") }
+        panel.toggleFile("panel.go")
+        settle(10) { panel.checkState(of: "panel.go") == .checked }
+        panel.setMessage("panel commit")
+        check("with a message the Commit buttons turn on", panel.commitEnabled && panel.commitAndPushEnabled)
+        panel.commitPressed()
+        settle(15) { controller.gitPanelCommits.first?.subject == "panel commit" && panel.messageText.isEmpty && !controller.gitPanelFiles.contains("panel.go") }
+        check("Commit commits the ticked file and clears the field (\(controller.gitPanelCommits.map(\.subject).prefix(2)))", controller.gitPanelCommits.first?.subject == "panel commit" && panel.messageText.isEmpty && !controller.gitPanelFiles.contains("panel.go"))
+        let commitCount = controller.gitPanelCommits.count
+        try? "package main\n// panel amended\n".write(to: panelFile, atomically: true, encoding: .utf8)
+        waitForGit { controller.gitPanelFiles.contains("panel.go") }
+        panel.toggleFile("panel.go")
+        settle(10) { panel.checkState(of: "panel.go") == .checked }
+        panel.toggleAmend(true)
+        settle(10) { panel.messageText == "panel commit" }
+        check("Amend fills the empty field with the last message (\(panel.messageText))", panel.messageText == "panel commit" && panel.isAmending)
+        panel.setMessage("panel reworded")
+        panel.commitPressed()
+        settle(15) { controller.gitPanelCommits.first?.subject == "panel reworded" }
+        check("Commit with Amend replaces the last commit (\(controller.gitPanelCommits.map(\.subject).prefix(2)))", controller.gitPanelCommits.first?.subject == "panel reworded" && controller.gitPanelCommits.count == commitCount && !panel.isAmending && gitOut(["show", "--stat", "--format=", "HEAD"]).contains("panel.go"))
+
+        let bareRemote = scratchFolder.appendingPathComponent("remote.git").path
+        _ = gitOut(["init", "-q", "--bare", bareRemote])
+        _ = gitOut(["remote", "add", "selftest-origin", bareRemote])
+        _ = gitOut(["push", "-q", "-u", "selftest-origin", "main"])
+        try? "package main\n// panel pushed\n".write(to: panelFile, atomically: true, encoding: .utf8)
+        waitForGit { controller.gitPanelFiles.contains("panel.go") }
+        panel.toggleFile("panel.go")
+        settle(10) { panel.checkState(of: "panel.go") == .checked }
+        panel.setMessage("panel pushed")
+        panel.commitAndPushPressed()
+        func remoteSubject() -> String { gitOut(["--git-dir", bareRemote, "log", "-1", "--format=%s", "main"]).trimmingCharacters(in: .whitespacesAndNewlines) }
+        settle(20) { remoteSubject() == "panel pushed" }
+        check("Commit and Push puts the commit on the remote (\(remoteSubject()))", remoteSubject() == "panel pushed" && panel.messageText.isEmpty)
+        _ = gitOut(["remote", "remove", "selftest-origin"])
+
+        try? "package main\n// panel stash\n".write(to: panelFile, atomically: true, encoding: .utf8)
+        waitForGit { controller.gitPanelFiles.contains("panel.go") }
+        controller.stashChanges(message: "panel stash")
+        panel.mode = .stash
+        func panelText() -> String { (try? String(contentsOf: panelFile, encoding: .utf8)) ?? "" }
+        settle(15) { panel.stashTitles.contains { $0.contains("panel stash") } }
+        check("the Stash segment lists the stash (\(panel.stashTitles))", panel.stashTitles.count == 1 && panel.stashTitles[0].hasPrefix("stash@{0}:") && panel.stashTitles[0].contains("panel stash") && !panelText().contains("panel stash"))
+        panel.selectStash(at: 0)
+        panel.stashApplyPressed()
+        settle(15) { panelText().contains("panel stash") }
+        check("Apply brings the edit back and keeps the stash", panelText().contains("panel stash") && panel.stashTitles.count == 1)
+        controller.discardChanges("panel.go", confirm: false)
+        settle(10) { !panelText().contains("panel stash") }
+        panel.selectStash(at: 0)
+        panel.stashPopPressed()
+        settle(15) { panelText().contains("panel stash") && panel.stashTitles.isEmpty }
+        check("Pop brings it back and removes the stash", panelText().contains("panel stash") && panel.stashTitles.isEmpty)
+        controller.discardChanges("panel.go", confirm: false)
+        settle(10) { !panelText().contains("panel stash") }
+        controller.selectSidebarTab(0)
         selfTestExit(failures)
     }
 
@@ -2416,6 +2495,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.advanced.onCheckSetup = { [weak self] in self?.showSetup(nil) }
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)
+    }
+    @objc func showGitSettings(_ sender: Any?) {
+        showSettings(sender)
+        settingsWindow?.select(pane: 5)
     }
     @objc func toggleInspector(_ sender: Any?) { frontProject?.toggleInspector() }
     @objc func toggleBottomPanel(_ sender: Any?) { frontProject?.toggleBottomPanel() }

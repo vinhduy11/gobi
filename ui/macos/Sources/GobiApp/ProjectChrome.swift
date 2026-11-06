@@ -2,7 +2,7 @@ import AppKit
 import GobiModel
 
 /// A thin line across a bar, the way the mock separates regions.
-private final class Hairline: NSView {
+final class Hairline: NSView {
     override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: 1) }
     override func draw(_ dirtyRect: NSRect) {
         NSColor.separatorColor.setFill()
@@ -154,10 +154,10 @@ final class PanelTabButton: NSButton {
     }
 }
 
-/// The bottom panel of the mock: tab row (Problems, Tests, Terminal, Debug, Profiler, Git, Output) over the active tab's
+/// The bottom panel of the mock: tab row (Problems, Tests, Terminal, Debug, Profiler, Diff, Output) over the active tab's
 /// content. Problems is a list; the tabs whose features are not built yet say so.
 final class BottomPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate {
-    static let tabNames = ["Problems", "Tests", "Terminal", "Debug", "Profiler", "Git", "Output", "Find"]
+    static let tabNames = ["Problems", "Tests", "Terminal", "Debug", "Profiler", "Diff", "Output", "Find"]
     private static let notBuilt = [
         "Terminal": "The terminal arrives next.",
         "Debug": "Debugging with dlv comes in a later slice.",

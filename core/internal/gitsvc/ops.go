@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -84,6 +85,50 @@ func (g Git) Unstash(dir string) error {
 	_, err := g.run(dir, nil, "stash", "pop", "-q")
 	return err
 }
+
+// StashEntry is one line of the stash list; Index is the n of stash@{n} (0 is the newest).
+type StashEntry struct {
+	Index   int
+	Message string
+}
+
+func (g Git) StashList(dir string) ([]StashEntry, error) {
+	out, err := g.run(dir, nil, "stash", "list", "--format=%gd%x1f%gs")
+	if err != nil {
+		return nil, err
+	}
+	var list []StashEntry
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		name, message, ok := strings.Cut(line, "\x1f")
+		if !ok {
+			continue
+		}
+		index, err := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(name, "stash@{"), "}"))
+		if err != nil {
+			continue
+		}
+		list = append(list, StashEntry{Index: index, Message: message})
+	}
+	return list, nil
+}
+
+// stashDo runs "git stash <verb> stash@{index}".
+func (g Git) stashDo(dir, verb string, index int) error {
+	if index < 0 {
+		return fmt.Errorf("%d is not a stash index", index)
+	}
+	_, err := g.run(dir, nil, "stash", verb, "-q", "stash@{"+strconv.Itoa(index)+"}")
+	return err
+}
+
+// StashApply brings a stash back and keeps it in the list.
+func (g Git) StashApply(dir string, index int) error { return g.stashDo(dir, "apply", index) }
+
+// StashPop brings a stash back and removes it from the list.
+func (g Git) StashPop(dir string, index int) error { return g.stashDo(dir, "pop", index) }
+
+// StashDrop removes a stash without applying it.
+func (g Git) StashDrop(dir string, index int) error { return g.stashDo(dir, "drop", index) }
 
 func (g Git) AbortMerge(dir string) error {
 	_, err := g.run(dir, nil, "merge", "--abort")

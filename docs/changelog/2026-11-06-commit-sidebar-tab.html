@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Commit sidebar tab</title>
+<style>body{font:14px/1.5 -apple-system,sans-serif;max-width:820px;margin:32px auto;padding:0 16px;color:#1d1d1f}h2{margin-top:28px}code{background:#f2f2f4;padding:1px 4px;border-radius:4px}@media(prefers-color-scheme:dark){body{background:#1e1e1e;color:#f2f2f7}code{background:#2c2c2e}}</style></head>
+<body>
+<h1>Git as a Commit tab in the sidebar</h1>
+<h2>Specs</h2>
+<p>Remove the bottom panel's Git tab and move Git to the left sidebar, laid out like IntelliJ's Commit tool window: Commit, Stash and Log segments, a toolbar, a changes tree with a checkbox per file, Amend, a commit message, Commit and Commit and Push, and a gear for Settings &gt; Git. The bottom tab at index 5 stays and becomes Diff. Amend needs core support, and so does listing, applying, popping and dropping stashes.</p>
+<h2>Actions</h2>
+<ul>
+<li>Core: <code>gitsvc.CommitAmend</code>, <code>StashList</code>, <code>StashApply</code>, <code>StashPop</code>, <code>StashDrop</code>; git channel kinds 36 to 39 and the amend flag on kind 7, documented in <code>wire-protocol.md</code>; temp-repo tests and a daemon wire test written first.</li>
+<li>GobiModel (no Foundation): <code>CommitButtonState</code>, <code>ChangesTree</code> (groups, check state, group toggle, collapse), <code>StashEntry</code>, <code>CommitPanelMode</code>; <code>GitRequest.commit(_, amend:)</code>, <code>.stashList</code>, <code>.stashApply/Pop/Drop</code> with wire tests.</li>
+<li>GobiApp: <code>CommitPanelView</code> (sidebar tab 4), <code>DiffPanelView</code> (bottom tab 5, titled Diff); the old <code>GitPanelView</code> and the commit sheet were removed. Controller: <code>applyToggle</code>, <code>commit(message:stageAll:amend:push:)</code>, Amend prefill, stash operations, Show Git Log and Commit… select the tab.</li>
+<li>Mocks: GitPanel and Main updated first. Self-tests: <code>--selftest-git</code> covers the tree, ticking, commit, Amend, Commit and Push to a bare remote, stash apply and pop, the Diff tab.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>The diff opens in the bottom Diff tab, not in the editor area: editor tabs are tied to file buffers, so a read-only diff tab would touch the tab strip, session restore and saving.</li>
+<li>A tick means staged, so the existing stage model is kept; Commit commits the staged files, or all changes when none is ticked.</li>
+<li>The fifth segment is an icon with a tooltip, because five text labels are wider than the 260 pt sidebar.</li>
+<li>Amend prefills the last commit's subject only (the log carries subjects, not bodies).</li>
+</ul>
+</body></html>

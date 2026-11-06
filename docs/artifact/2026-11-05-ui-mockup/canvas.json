@@ -206,9 +206,9 @@
    "y": 8300
   },
   "GitPanel.dc.html": {
-   "h": 800,
-   "title": "Git: changes, log, diff, branch menu, commit, gutter marks",
-   "w": 1500,
+   "h": 860,
+   "title": "Git: Commit sidebar tab (Commit, Stash, Log), Diff tab, branch menu, sheets, gutter marks",
+   "w": 1800,
    "x": 0,
    "y": 9000
   },

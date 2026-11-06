@@ -117,8 +117,9 @@ extension ProjectWindowController {
     }
 
     func showGitLog() {
-        bottomPanel.isHidden = false
-        bottomPanel.select(tab: 5)
+        if sidebarView?.isHidden == true { toggleSidebar() }
+        selectSidebarTab(Self.commitTabIndex)
+        commitPanel.mode = .log
         loadLog()
     }
 
@@ -162,6 +163,11 @@ extension ProjectWindowController {
     }
 
     func stashChanges(message: String, then: ((Bool) -> Void)? = nil) { gitOperation(.stash(message), title: "Changes stashed", reloadFiles: true, then: then) }
+
+    func confirmDropStash(_ index: Int) {
+        guard confirm("Drop stash@{\(index)}?", "The stashed changes are deleted and cannot be brought back.", button: "Drop") else { return }
+        gitOperation(.stashDrop(index), title: "Stash dropped")
+    }
 
     func unstashChanges(then: ((Bool) -> Void)? = nil) { gitOperation(.unstash, title: "Stash applied", reloadFiles: true, then: then) }
 
