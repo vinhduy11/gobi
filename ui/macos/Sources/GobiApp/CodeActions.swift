@@ -21,20 +21,22 @@ extension ProjectWindowController {
 
     // MARK: references
 
-    /// Find References (⇧F12): gopls lists the uses; one is opened at once, several are offered in a menu at the caret.
-    func findReferences() {
+    /// Find References (⇧F12): gopls lists the uses; one is opened at once, several fill the Usages tab.
+    func findReferences() { startUsages(alwaysPanel: false) }
+
+    /// Find Usages (⌥F7): the Usages tab, even for a single hit.
+    func findUsages() { startUsages(alwaysPanel: true) }
+
+    private func startUsages(alwaysPanel: Bool) {
         guard let pane = currentPane, let client = pane.editorFile.client, let position = caretPosition else { NSSound.beep(); return }
-        let ticket = locationGate.begin(version: pane.editorFile.version)
-        client.references(uri: pane.editorFile.uri, at: position) { [weak self] locations in
-            DispatchQueue.main.async {
-                guard let self, self.locationGate.accepts(ticket, version: pane.editorFile.version) else { return }
-                let inProject = locations.filter { URL(string: $0.uri)?.isFileURL == true }
-                self.lastListedLocations = inProject.count
-                if inProject.isEmpty { self.showNote("No references found"); NSSound.beep(); return }
-                if inProject.count == 1 { self.open(location: inProject[0]); return }
-                if self.presentsLocationMenus { self.offer(locations: inProject, from: pane) }
-            }
-        }
+        usages.start(uri: pane.editorFile.uri, position: position, symbol: wordAtCaret(pane), client: client, alwaysPanel: alwaysPanel)
+    }
+
+    private func wordAtCaret(_ pane: EditorPane) -> String {
+        let text = Array(pane.textView.string.utf16), caret = pane.textView.selectedRange().location
+        let word = CompletionPrefix.current(before: text, caret: caret)
+        let tail = text.dropFirst(caret).prefix { c in (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95 }
+        return word.text + String(decoding: Array(tail), as: UTF16.self)
     }
 
     /// Go to Implementation (⌘F12): the types that implement the interface (or the methods that implement its method) at the caret.

@@ -273,6 +273,8 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         bottomPanel.install(profilerPanel, forTab: .profiler)
         bottomPanel.install(diffPanel, forTab: .diff)
         bottomPanel.install(findPanel, forTab: .find)
+        bottomPanel.install(usagesPanel, forTab: .usages)
+        usages.attach(usagesPanel)
         bottomPanel.install(outputPanel, forTab: .output)
         testsPanel.onRunAll = { [weak self] in self?.runTests() }
         testsPanel.onRunFailed = { [weak self] in self?.rerunFailed() }
@@ -427,6 +429,8 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         split.layoutSubtreeIfNeeded()
     }
     private let findPanel = FindInFilesPanelView()
+    let usagesPanel = UsagesPanelView()
+    private(set) lazy var usages = UsagesFeed(owner: self)
     /// Files that have an error among their problems; the Explorer marks them with a red !.
     private var errorPaths = Set<String>()
     private var searchToken = 0
@@ -1895,6 +1899,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
             handlers["goToDefinition"] = { [weak self] in self?.goToDefinition() }
             handlers["goToImplementation"] = { [weak self] in self?.goToImplementation() }
             handlers["findReferences"] = { [weak self] in self?.findReferences() }
+            handlers["findUsages"] = { [weak self] in self?.findUsages() }
             handlers["renameSymbol"] = { [weak self] in self?.renameSymbol() }
             handlers["codeActions"] = { [weak self] in self?.showCodeActions() }
             if !pane.editorFile.isReadOnlyByLineLength { handlers["formatDocument"] = { [weak pane] in pane?.formatDocument() } }

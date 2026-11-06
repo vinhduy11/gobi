@@ -39,7 +39,7 @@ macOS first; Windows and Linux UIs come later next to it.
 ## Features
 
 - **Editor**: gopls code insight (completion with snippets, signature help, hover, go to definition and
-  implementation, find references, rename, code actions, organize imports, format on save), code lens, a gutter with
+  implementation, find references, Find Usages (⌥F7: a bottom-panel tree of usages by file and enclosing function), rename, code actions, organize imports, format on save), code lens, a gutter with
   breakpoints, git marks and Run buttons on tests, JSON and Markdown built in (syntax errors, formatting, outline,
   live preview).
 - **New Project**: templates for a command-line tool, library, HTTP service, message consumer, scheduled job, `go.work`

@@ -51,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if CommandLine.arguments.contains("--selftest-settings") { runSettingsSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-find") { runFindSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-session") { runSessionSelfTest(); return }
+        if CommandLine.arguments.contains("--selftest-usages") { runUsagesSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-setup") { runSetupSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-run") { runRunSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-crash") { runCrashSelfTest(); return }
@@ -2132,6 +2133,113 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         selfTestExit(failures)
     }
 
+    /// `GobiApp FOLDER --selftest-usages`: Find Usages against a real gopls. The folder needs go.mod, server.go (`Server.Start`,
+    /// `Server.Restart` calling it, an unused `unused` function), main.go and server_test.go (both call `Start`). server.go is the
+    /// only file opened; its edits stay in memory, and the test file is deleted for one check and put back.
+    private func runUsagesSelfTest() {
+        guard let path = CommandLine.arguments.dropFirst().first(where: { !$0.hasPrefix("--") && $0 != snapshotPath }) else { print("usage: GobiApp FOLDER --selftest-usages"); exit(2) }
+        var failures = 0
+        func check(_ name: String, _ passed: Bool) {
+            print(passed ? "  ok   \(name)" : "  FAIL \(name)")
+            if !passed { failures += 1 }
+        }
+        func settle(_ seconds: Double = 30, until condition: () -> Bool) {
+            let deadline = Date().addingTimeInterval(seconds)
+            while !condition() && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.05)) }
+        }
+        let root = URL(fileURLWithPath: path)
+        let original = EditorPreferences.current
+        EditorPreferences.update { $0.autoSave = .off }
+        selfTestCleanups.append { EditorPreferences.current = original }
+        let testFile = root.appendingPathComponent("server_test.go")
+        let testSource = (try? String(contentsOf: testFile, encoding: .utf8)) ?? ""
+        selfTestCleanups.append { try? testSource.write(to: testFile, atomically: true, encoding: .utf8) }
+        let controller = ProjectWindowController(root: root, kind: .module, isTrusted: true)
+        controller.showWindow(nil)
+        controller.openFile(root.appendingPathComponent("server.go"))
+        settle { controller.currentPane?.isConnected == true }
+        settle(4) { false }
+        guard let pane = controller.currentPane else { check("server.go opens", false); selfTestExit(failures) }
+        func caret(on marker: String, occurrence: Int = 0, offset: Int = 2) {
+            var location = 0, found = 0
+            let text = pane.textView.string as NSString
+            var search = NSRange(location: 0, length: text.length)
+            while true {
+                let hit = text.range(of: marker, options: [], range: search)
+                if hit.location == NSNotFound { break }
+                location = hit.location
+                if found == occurrence { break }
+                found += 1
+                search = NSRange(location: hit.upperBound, length: text.length - hit.upperBound)
+            }
+            pane.textView.setSelectedRange(NSRange(location: location + offset, length: 0))
+        }
+        let panel = controller.usagesPanel, feed = controller.usages
+
+        // A symbol nothing else uses: one hit, no tab.
+        caret(on: "func unused", offset: 7)
+        controller.lastListedLocations = 0
+        controller.findReferences()
+        settle { controller.lastListedLocations > 0 }
+        check("Find References with a single hit jumps and leaves the Usages tab alone (\(controller.lastListedLocations) hit, tab \(controller.selectedPanelTab))", controller.lastListedLocations == 1 && controller.selectedPanelTab != .usages)
+
+        // An unsaved line that uses Start, in a buffer gopls has only in memory.
+        let live = "\nfunc unsavedUse(s *Server) { s.Start() }\n"
+        pane.textView.setSelectedRange(NSRange(location: (pane.textView.string as NSString).length, length: 0))
+        pane.textView.insertText(live, replacementRange: pane.textView.selectedRange())
+        settle(2) { false }
+        caret(on: "func (s *Server) Start", offset: "func (s *Server) ".count + 1)
+        check("the editor menu offers Find Usages", controller.editorMenu(for: pane).items.contains { $0.title == "Find Usages" && $0.isEnabled })
+        controller.findUsages()
+        settle { feed.result != nil }
+        let result = feed.result
+        check("Find Usages opens the Usages tab (\(controller.selectedPanelTab))", controller.selectedPanelTab == .usages)
+        check("the files are main.go, server.go and server_test.go (\(panel.fileTitles))", panel.fileTitles == ["main.go", "server.go", "server_test.go"])
+        check("the header counts usages and files (\(panel.headerText))", panel.headerText.contains("Usages of Server.Start") && panel.headerText.hasSuffix(UsageGroups.summary(usages: result?.total ?? -1, files: 3)) && result?.total == 6)
+        check("functions are named after their declarations (\(panel.functionTitles))", ["main", "Server.Start", "Server.Restart", "unsavedUse", "TestStart"].allSatisfy(panel.functionTitles.contains))
+        check("the unsaved line is listed with its live text", feed.result?.lines.contains { $0.uri.hasSuffix("server.go") && feed.cache.peek(path: $0.uri, $0.line)?.contains("unsavedUse") == true } == true)
+        check("closed files were read once each, open ones not at all, and never on the main thread (\(feed.diskReads.mapValues { $0 }))", feed.diskReads.count == 2 && feed.diskReads.values.allSatisfy { $0 == 1 } && feed.diskReads.keys.allSatisfy { !$0.hasSuffix("server.go") } && feed.mainThreadReads == 0)
+        let readsBefore = feed.diskReads
+        panel.renderAllRows()
+        check("drawing every row reads no file and finds every line in the cache (\(feed.cache.misses) misses)", feed.cache.misses == 0 && feed.diskReads == readsBefore)
+
+        // Tests filter: no new request, no new read.
+        let requestsBefore = feed.symbolRequests
+        panel.setIncludesTests(false)
+        check("the Tests checkbox hides the test file without asking gopls or reading again (\(panel.fileTitles))", panel.fileTitles == ["main.go", "server.go"] && feed.symbolRequests == requestsBefore && feed.diskReads == readsBefore)
+        panel.setIncludesTests(true)
+
+        // Next / Previous / Return.
+        panel.select(usageAt: 0)
+        panel.step(1)
+        settle(10) { controller.currentPane?.editorFile.fileURL.lastPathComponent == "server.go" || controller.currentPane?.editorFile.fileURL.lastPathComponent == "main.go" }
+        check("Next opens the following usage in the editor (\(controller.currentPane?.editorFile.fileURL.lastPathComponent ?? "none") line \(controller.currentCaretLine ?? -1))", controller.currentCaretLine != nil && controller.currentCaretLine == feed.result?.lines[1].line)
+        controller.openFile(root.appendingPathComponent("server.go"))
+
+        // An edit makes the result stale; Rerun clears that.
+        pane.textView.setSelectedRange(NSRange(location: (pane.textView.string as NSString).length, length: 0))
+        pane.textView.insertText("// edit\n", replacementRange: pane.textView.selectedRange())
+        settle(5) { panel.isStaleShown }
+        check("a change to a file in the result marks it stale", panel.isStaleShown)
+        feed.result.map { _ in () }
+        panel.onRerun()
+        settle { feed.result != nil && !panel.isStaleShown && panel.fileTitles.count == 3 }
+        check("Rerun lists the usages again and clears the mark (\(panel.fileTitles))", !panel.isStaleShown && panel.fileTitles == ["main.go", "server.go", "server_test.go"])
+
+        // A deleted file is not navigated to.
+        try? FileManager.default.removeItem(at: testFile)
+        controller.openFile(root.appendingPathComponent("main.go"))
+        let before = controller.currentPane?.editorFile.fileURL
+        if let testLine = feed.result?.lines.first(where: { $0.uri.hasSuffix("server_test.go") }) {
+            feed.open(testLine)
+            settle(5) { panel.isStaleShown }
+            check("opening a usage in a deleted file marks the result stale and stays put", panel.isStaleShown && controller.currentPane?.editorFile.fileURL == before)
+        } else {
+            check("the result has a usage in the test file", false)
+        }
+        selfTestExit(failures)
+    }
+
     /// `GobiApp FOLDER --selftest-run`: Run, Run Tests, Run Test at Cursor, Run Failed and Stop against the real `go`. The folder
     /// needs main.go (prints "hello from main") and main_test.go with TestOK, TestBad (fails) and TestSkipped; `--slow FOLDER2`
     /// names a program that prints "started" and then sleeps, for Stop.
@@ -2399,7 +2507,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("Open Recent lists this project first (\(recentMenu?.items.prefix(3).map(\.title) ?? []))", recentMenu?.items.first?.title.hasPrefix(controller.root.lastPathComponent) == true)   // a second project with the same folder name makes the menu add its location
         check("Open Recent ends with Clear Menu", recentMenu?.items.last?.title == "Clear Menu")
         check("the status bar shows the project, not a stale line (\(controller.statusBarTexts.filter { !$0.isEmpty }))", controller.statusBarTexts.contains { $0.hasPrefix("gopls") })
-        check("the bottom panel has the mock's eight tabs", controller.panelTabTitles.count == PanelTab.order.count && controller.panelTabTitles.last == "Find")
+        check("the bottom panel has the mock's nine tabs", controller.panelTabTitles.count == PanelTab.order.count && controller.panelTabTitles.last == "Usages")
         check("the explorer lists the folder (\(controller.explorerRowCount) rows)", controller.explorerRowCount > 0)
         let first = names.first { name in
             var isFolder: ObjCBool = false
@@ -2591,6 +2699,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func commandPalette(_ sender: Any?) { frontProject?.commandPalette { [weak self] action in if let self { MainMenuBuilder.perform(action: action, delegate: self) } } }
 
     @objc func findReferences(_ sender: Any?) { frontProject?.findReferences() }
+    @objc func findUsages(_ sender: Any?) { frontProject?.findUsages() }
     @objc func renameSymbol(_ sender: Any?) { frontProject?.renameSymbol() }
     @objc func organizeImports(_ sender: Any?) { frontProject?.organizeImports() }
     @objc func codeActions(_ sender: Any?) { frontProject?.showCodeActions() }

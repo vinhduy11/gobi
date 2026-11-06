@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Find Usages</title>
+<style>body{font:14px/1.5 -apple-system,sans-serif;max-width:860px;margin:32px auto;padding:0 16px}code{background:#eee;padding:0 3px;border-radius:3px}</style></head>
+<body>
+<h1>Find Usages (2026-11-06)</h1>
+<h2>Specs</h2>
+<p>A usage list for the symbol at the caret in a bottom-panel tab: header with counts, tree of file, enclosing function and line, a Tests checkbox, Rerun, Previous, Next. Find Usages is Option+F7. Find References and the code-lens click open the tab for more than one hit. Results must be right for unsaved buffers, must not be overtaken by newer requests or edits, and no file is read on the main thread. See <code>docs/implement/find-usages.md</code>.</p>
+<h2>Actions</h2>
+<ul>
+<li>GobiModel: <code>UsageGroups</code> (grouping, order, tests filter, 5000 cap, names, excerpt, line validation), <code>UsageContext</code> (stale check), <code>SymbolFetchQueue</code> (four at a time, generations, failures), <code>UsageLineCache</code>; <code>PanelTab.usages</code>; menu entries, icon.</li>
+<li>GobiApp: <code>UsagesPanelView</code>, <code>UsagesFeed</code>; Find References and Find Usages go through the feed; <code>--selftest-usages</code>.</li>
+<li>Tests: UsageGroupsTests, UsageEnrichmentTests (500 files, failure, cancellation, rerun generation, double answer), PanelTabTests, MenuSpecTests; the self-test covers the unsaved buffer, closed files read once, no main-thread reads, no cache misses while drawing, the Tests filter, Next, staleness, Rerun and a deleted file.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>A reply is dropped when the origin file changed during the query (same gate as the other requests); a change after the result shows marks it out of date instead.</li>
+<li>The symbols of closed files are asked again on each Rerun; a modification-time cache was left out until it is measured to matter.</li>
+<li>A file changed on disk by another program does not mark a result out of date; the line check before opening still catches a moved or deleted line.</li>
+<li>The Go to Implementation pop-up still reads files on the main thread; moving it to the panel is a separate change.</li>
+</ul>
+</body></html>

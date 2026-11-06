@@ -93,7 +93,7 @@ public enum MenuSpec {
         MenuDefinition(title: "Go", entries: [
             .item("Back", "⌘["), .item("Forward", "⌘]"), .separator,
             .item("Go to File…", "⌘P", "goToFile"), .item("Go to Symbol in Workspace…", "⌘T", "goToWorkspaceSymbol"), .item("Go to Symbol in File…", "⇧⌘O", "goToFileSymbol"), .separator,
-            .item("Go to Definition", "F12", "goToDefinition"), .item("Go to Implementation", "⌘F12", "goToImplementation"), .item("Find References", "⇧F12", "findReferences"), .item("Go to Test", "⇧⌘T"), .separator,
+            .item("Go to Definition", "F12", "goToDefinition"), .item("Go to Implementation", "⌘F12", "goToImplementation"), .item("Find References", "⇧F12", "findReferences"), .item("Find Usages", "⌥F7", "findUsages"), .item("Go to Test", "⇧⌘T"), .separator,
             .item("Next Problem", "F8"), .item("Previous Problem", "⇧F8"),
             .separator,
             .item("Command Palette…", "⇧⌘P", "commandPalette"),
@@ -173,7 +173,7 @@ public enum MenuSpec {
 public enum ContextMenuSpec {
     public static let editor: [MenuEntry] = [
         .item("Run", "", "runFile"), .item("Debug", "", "debugFile"), .separator,
-        .item("Go to Definition", "F12", "goToDefinition"), .item("Go to Implementation", "⌘F12", "goToImplementation"), .item("Find References", "⇧F12", "findReferences"), .separator,
+        .item("Go to Definition", "F12", "goToDefinition"), .item("Go to Implementation", "⌘F12", "goToImplementation"), .item("Find References", "⇧F12", "findReferences"), .item("Find Usages", "⌥F7", "findUsages"), .separator,
         .item("Rename Symbol…", "F2", "renameSymbol"), .item("Code Actions…", "⌘.", "codeActions"), .item("Format Document", "⌥⇧F", "formatDocument"), .separator,
         .item("Cut", "⌘X", "cut"), .item("Copy", "⌘C", "copy"), .item("Paste", "⌘V", "paste"), .item("Select All", "⌘A", "selectAll"), .separator,
         .item("Reveal in Finder", "", "revealInFinder"), .item("Copy Path", "", "copyPath"),

@@ -100,6 +100,7 @@ enum MainMenuBuilder {
         case "runTests": return #selector(AppDelegate.runTests(_:))
         case "runTestAtCursor": return #selector(AppDelegate.runTestAtCursor(_:))
         case "findReferences": return #selector(AppDelegate.findReferences(_:))
+        case "findUsages": return #selector(AppDelegate.findUsages(_:))
         case "renameSymbol": return #selector(AppDelegate.renameSymbol(_:))
         case "organizeImports": return #selector(AppDelegate.organizeImports(_:))
         case "codeActions": return #selector(AppDelegate.codeActions(_:))

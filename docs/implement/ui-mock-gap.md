@@ -91,6 +91,11 @@ sidebar tabs, bottom panel, status bar), then menus. The terminal gets its mock 
 |---|---|
 | Find tab: query, options, filter, grouped results, replacement, Replace All, Replace in File | Built as an eighth bottom-panel tab. Also built: Replace on a single match, a per-file checkbox that leaves a file out of Replace All, and the last 10 searches in the query field's dropdown (`gobi.findHistory`). Not built: searching only open files |
 
+## Usages
+| Screen (mock) | Status |
+|---|---|
+| Usages tab: header with count, file / function / line tree, Tests checkbox, Rerun, Previous, Next | Built as a ninth bottom-panel tab after Find, Find Usages ⌥F7 in the Go and editor menus. Differences: the Menus mock does not list Find Usages yet; functions show as `func Server.Start` (receiver written `Server.`, not `(s *Server)`); the out-of-date notice and the "Show N more usages" row are not drawn in the mock; the symbols of closed files are asked again on every Rerun (no modification-time cache); a file changed on disk by another program does not mark a result out of date; Go to Implementation still lists its hits in a pop-up menu that reads files on the main thread |
+
 ## JSON and Markdown
 | Screen (mock) | Status |
 |---|---|

@@ -1,10 +1,10 @@
 /// The tabs of the bottom panel. A tab is stored and looked up by its id, never by its position, so adding or moving a tab
 /// cannot change what a saved session or a call site means.
 public enum PanelTab: String, CaseIterable, Sendable {
-    case problems, tests, terminal, debug, profiler, diff, output, find
+    case problems, tests, terminal, debug, profiler, diff, output, find, usages
 
     /// Left to right, as drawn.
-    public static let order: [PanelTab] = [.problems, .tests, .terminal, .debug, .profiler, .diff, .output, .find]
+    public static let order: [PanelTab] = [.problems, .tests, .terminal, .debug, .profiler, .diff, .output, .find, .usages]
 
     public var title: String {
         switch self {
@@ -16,6 +16,7 @@ public enum PanelTab: String, CaseIterable, Sendable {
         case .diff: return "Diff"
         case .output: return "Output"
         case .find: return "Find"
+        case .usages: return "Usages"
         }
     }
 

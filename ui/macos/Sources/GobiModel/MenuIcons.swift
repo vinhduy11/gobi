@@ -34,7 +34,7 @@ public enum MenuIcons {
         "Reset Font Size in All Editors": "textformat.size", "Notifications": "bell", "Enter Full Screen": "arrow.up.left.and.arrow.down.right",
         // Go
         "Back": "chevron.left", "Forward": "chevron.right", "Go to File…": "doc", "Go to Symbol in Workspace…": "number", "Go to Symbol in File…": "number.square",
-        "Go to Definition": "arrow.turn.down.right", "Go to Implementation": "arrow.triangle.branch", "Find References": "arrow.triangle.turn.up.right.diamond",
+        "Go to Definition": "arrow.turn.down.right", "Go to Implementation": "arrow.triangle.branch", "Find References": "arrow.triangle.turn.up.right.diamond", "Find Usages": "list.bullet.rectangle",
         "Go to Test": "checkmark.seal", "Next Problem": "exclamationmark.triangle", "Previous Problem": "exclamationmark.triangle.fill", "Command Palette…": "command",
         // Build and Run
         "Build Project": "hammer", "Build Module": "hammer.fill", "Rebuild Project": "arrow.clockwise", "Build Artifacts": "shippingbox",
