@@ -12,6 +12,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Swift client for `generate/list`, `generate/preview` and `generate/render` with decoding tests on core's golden bytes; presentation state (popup entries by group, dialog form with hints) in `GobiModel`.
 - The language client now declares code action resolve support (with `dataSupport`), so gopls sends refactorings such as Fill struct as data and Gobi asks for the edit with `codeAction/resolve` when you choose one; Organize Imports and the Code Actions menu resolve the same way.
 
+### Fixed
+- The Generate dialog could not be used: it was released as soon as it appeared, so Generate, Cancel and the live preview did nothing. It is now kept alive while open; the preview and multi-line fields show their text, and long labels ("Handler interface") are no longer cut off.
+
 ## [0.1.0-alpha.3] - 2026-11-06
 
 ### Added
