@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.0-alpha.3] - 2026-11-06
+
 ### Added
 - Usages tab in the bottom panel: "Usages of `Server.Start` - 12 in 4 files", a tree of file, enclosing function and line with the match in bold, a Tests checkbox (`_test.go`), Rerun, Previous and Next (⌥↑ / ⌥↓), Return opens the line. Find Usages (Go menu and editor menu, ⌥F7) always opens it; Find References (⇧F12) and the code lens "N references" open it when there is more than one hit (one hit still jumps at once). Open files are read from the live buffer and closed files from disk off the main thread (each file once); the enclosing functions come from gopls document symbols, four closed files at a time, a failing file is listed as "file scope"; at most 5000 usages and then a "Show more" row. A result is marked out of date, with Rerun, when a file it came from changes, and a usage whose line was deleted or moved is not opened. Self-test `--selftest-usages`.
 - Control method `project/templates` (read-only): id, order, group, title, summary and availability of every template, so the New Project list comes from gobid. The app keeps the built-in list as the offline fallback. Wire layout in `docs/architect/wire-protocol.md`.
@@ -225,6 +227,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.
 
-[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.2...HEAD
+[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.3...HEAD
+[0.1.0-alpha.3]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/vinhduy11/gobi/releases/tag/v0.1.0-alpha.1
