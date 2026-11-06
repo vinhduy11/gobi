@@ -210,7 +210,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settle { window.previewString.contains("main_test.go") && !window.previewString.contains("go.work") }
         check("choosing the command-line tool again lists main_test.go and no go.work", window.previewString.contains("main_test.go") && !window.previewString.contains("go.work"))
         // Create a consumer and a job project for real, then build and test them.
-        let scratch = (ProcessInfo.processInfo.environment["TMPDIR"] ?? NSTemporaryDirectory()) + "/newproject-templates-\(getpid())"
+        let scratch = ((ProcessInfo.processInfo.environment["TMPDIR"] ?? NSTemporaryDirectory()) as NSString).appendingPathComponent("newproject-templates-\(getpid())")   // a TMPDIR with a trailing slash must not leave "//" in the expected path
         try? FileManager.default.createDirectory(atPath: scratch, withIntermediateDirectories: true)
         selfTestCleanups.append { try? FileManager.default.removeItem(atPath: scratch) }
         for (id, files) in [("consumer", ["consumer.go", "consumer_test.go", "main.go"]), ("job", ["main.go", "main_test.go"])] {
