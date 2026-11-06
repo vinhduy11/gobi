@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Gobi editor notices</title><script src="./support.js"></script></head>
+<body><x-dc><helmet><style>
+body{margin:0}*{box-sizing:border-box}
+.root{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;background:var(--bg);color:var(--text);padding:28px;{{vars}}}
+.cap{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+.grid{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+.menu{background:var(--card);border:1px solid var(--sep);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:4px}
+.mi{display:flex;justify-content:space-between;gap:24px;padding:4px 10px;border-radius:5px;white-space:nowrap}
+.mi.on{background:var(--accent);color:#fff}.mi.on .t2{color:#fff}.mi.dis{opacity:.45}
+.sep{height:1px;background:var(--sep);margin:4px 6px}
+.t2{color:var(--text2)}.mono{font:12px ui-monospace,"SF Mono",Menlo,monospace}
+.sheet{background:var(--card);border:1px solid var(--sep);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.28);padding:20px 22px 16px;display:flex;flex-direction:column;gap:10px}
+.sheet h4{margin:0;font-size:14px}
+.fld{height:26px;border:1px solid var(--sep);border-radius:6px;padding:0 8px;display:flex;align-items:center;background:var(--field);min-width:0}
+.fr{display:flex;align-items:center;gap:10px}.fr>label{width:92px;flex:none;text-align:right;color:var(--text2)}
+.btns{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.btn{height:26px;padding:0 14px;border:1px solid var(--sep);border-radius:6px;background:var(--card);color:var(--text);font:inherit;cursor:default}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;background:var(--accentBg);color:var(--accentT);font-size:11px}
+.bar{display:flex;align-items:center;gap:10px;height:30px;padding:0 12px;background:var(--notice);border-bottom:1px solid var(--sep)}
+.code{background:var(--editor);border:1px solid var(--sep);border-radius:8px;overflow:hidden;font:12px/20px ui-monospace,"SF Mono",Menlo,monospace}
+.ln{display:flex}.ln i{width:38px;text-align:right;padding-right:10px;color:var(--text2);font-style:normal;flex:none}.ln b{font-weight:400;white-space:pre}
+.kw{color:var(--kw)}.ty{color:var(--ty)}.st{color:var(--st)}
+</style></helmet>
+<div class="root" style="width:1340px;height:380px"><div class="grid"><div><div class="cap">Read-only: file with a very long line</div><div style="border:1px solid var(--sep);border-radius:8px;overflow:hidden;width:620px;background:var(--editor)"><div class="bar"><span>This file has a line of 1,000,000 characters. It is read-only so typing stays fast.</span><span style="flex:1"></span><button class="btn">Open Anyway</button></div><div class="code" style="border:0;border-radius:0;padding:6px 0"><div class="ln"><i>1</i><b>{"events":[{"id":1,"ts":"2026-11-01T10:02:11Z","kind":"login","user":"a…</b></div></div></div></div><div><div class="cap">Go file in a folder without go.mod</div><div style="border:1px solid var(--sep);border-radius:8px;overflow:hidden;width:620px;background:var(--editor)"><div class="bar"><span>This folder has no go.mod, so gopls and Debug are limited. Run still works.</span><span style="flex:1"></span><button class="btn pri">Create go.mod</button><button class="btn">Not Now</button></div><div class="code" style="border:0;border-radius:0;padding:6px 0"><div class="ln"><i>1</i><b><span class="kw">package</span> main</b></div><div class="ln"><i>2</i><b></b></div><div class="ln"><i>3</i><b><span class="kw">func</span> main() {}</b></div></div></div></div></div><div class="t2" style="margin-top:20px;max-width:640px">Not Now is remembered per folder. Create go.mod asks for the module path (default: the folder name) and runs go mod init with the selected toolchain.</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1340,"height":380}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#E9E9EC',card:'#FFFFFF',field:'#FFFFFF',editor:'#FFFFFF',notice:'#FFF4D6',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)',kw:'#AD3DA4',ty:'#3E8087',st:'#C41A16',side:'#EDEDF0',bar:'#F5F5F7'};
+    const D = {bg:'#1A1A1C',card:'#2A2A2C',field:'#1A1A1C',editor:'#1E1E1E',notice:'#4A3F1A',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)',kw:'#FF7AB2',ty:'#6BDFFF',st:'#FF8170',side:'#2A2A2C',bar:'#323235'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script></body></html>

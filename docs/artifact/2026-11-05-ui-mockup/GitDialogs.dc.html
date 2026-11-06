@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Gobi git dialogs</title><script src="./support.js"></script></head>
+<body><x-dc><helmet><style>
+body{margin:0}*{box-sizing:border-box}
+.root{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;background:var(--bg);color:var(--text);padding:28px;{{vars}}}
+.cap{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+.grid{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+.menu{background:var(--card);border:1px solid var(--sep);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:4px}
+.mi{display:flex;justify-content:space-between;gap:24px;padding:4px 10px;border-radius:5px;white-space:nowrap}
+.mi.on{background:var(--accent);color:#fff}.mi.on .t2{color:#fff}.mi.dis{opacity:.45}
+.sep{height:1px;background:var(--sep);margin:4px 6px}
+.t2{color:var(--text2)}.mono{font:12px ui-monospace,"SF Mono",Menlo,monospace}
+.sheet{background:var(--card);border:1px solid var(--sep);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.28);padding:20px 22px 16px;display:flex;flex-direction:column;gap:10px}
+.sheet h4{margin:0;font-size:14px}
+.fld{height:26px;border:1px solid var(--sep);border-radius:6px;padding:0 8px;display:flex;align-items:center;background:var(--field);min-width:0}
+.fr{display:flex;align-items:center;gap:10px}.fr>label{width:92px;flex:none;text-align:right;color:var(--text2)}
+.btns{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.btn{height:26px;padding:0 14px;border:1px solid var(--sep);border-radius:6px;background:var(--card);color:var(--text);font:inherit;cursor:default}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;background:var(--accentBg);color:var(--accentT);font-size:11px}
+.bar{display:flex;align-items:center;gap:10px;height:30px;padding:0 12px;background:var(--notice);border-bottom:1px solid var(--sep)}
+.code{background:var(--editor);border:1px solid var(--sep);border-radius:8px;overflow:hidden;font:12px/20px ui-monospace,"SF Mono",Menlo,monospace}
+.ln{display:flex}.ln i{width:38px;text-align:right;padding-right:10px;color:var(--text2);font-style:normal;flex:none}.ln b{font-weight:400;white-space:pre}
+.kw{color:var(--kw)}.ty{color:var(--ty)}.st{color:var(--st)}
+</style></helmet>
+<div class="root" style="width:1560px;height:820px"><div class="grid"><div><div class="cap">Git > New Tag…</div><div class="sheet" style="width:340px"><h4>New tag</h4><div class="t2">Marks the current commit.</div><div class="fr"><label>Name</label><div class="fld" style="flex:1">v1.0.0</div></div><div class="btns"><button class="btn">Cancel</button><button class="btn pri">Create</button></div></div></div><div><div class="cap">Git > Reset HEAD…</div><div class="sheet" style="width:380px"><h4>Reset HEAD</h4><div class="t2">Moves the current branch to the commit below.</div><div class="fr"><label>Mode</label><div class="fld" style="flex:1">Mixed: keep the changes, unstage them ⌄</div></div><div class="fr"><label>Target</label><div class="fld" style="flex:1">HEAD</div></div><div class="btns"><button class="btn">Cancel</button><button class="btn pri">Reset</button></div></div></div><div><div class="cap">Git > Uncommitted Changes > Stash Changes…</div><div class="sheet" style="width:380px"><h4>Stash changes</h4><div class="t2">Saves the changes and restores a clean tree. Unversioned files are kept.</div><div class="fr"><label>Message</label><div class="fld" style="flex:1">WIP: usages panel</div></div><div class="btns"><button class="btn">Cancel</button><button class="btn pri">Stash</button></div></div></div><div><div class="cap">Git > Rebase…</div><div class="sheet" style="width:400px"><h4>Rebase onto</h4><div class="t2">Replays the commits of the current branch on top of the chosen branch. A conflict stops it; Continue, Skip or Abort are in the Git menu.</div><div class="fr"><label>Branch</label><div class="fld" style="flex:1">main ⌄</div></div><div class="btns"><button class="btn">Cancel</button><button class="btn pri">Rebase</button></div></div></div><div><div class="cap">Git > Manage Remotes…</div><div class="sheet" style="width:440px"><h4>Remotes</h4><div class="t2">Pick a remote to remove, or fill in both fields to add one.</div><div class="fr"><label>Remotes</label><div class="fld" style="flex:1">origin  git@example.com:team/app.git ⌄</div></div><div class="fr"><label>Name</label><div class="fld" style="flex:1">upstream</div></div><div class="fr"><label>Address</label><div class="fld" style="flex:1">git@example.com:org/app.git</div></div><div class="btns"><button class="btn">Close</button><button class="btn">Remove</button><button class="btn pri">Add</button></div></div></div><div><div class="cap">Git > New Worktree…</div><div class="sheet" style="width:440px"><h4>New worktree</h4><div class="t2">Checks a branch out in a second folder, so two branches can be open side by side. The folder must not exist yet.</div><div class="fr"><label>Branch</label><div class="fld" style="flex:1">feature/usages ⌄</div></div><div class="fr"><label>Folder</label><div class="fld" style="flex:1">~/Work/app-usages</div></div><div class="btns"><button class="btn">Cancel</button><button class="btn pri">Create</button></div></div></div><div><div class="cap">Git > Worktrees…</div><div class="sheet" style="width:440px"><h4>Worktrees</h4><div class="t2">Open one in its own window, or remove it (its files are deleted; the branch stays).</div><div class="fr"><label>Worktree</label><div class="fld" style="flex:1">~/Work/app-usages  feature/usages ⌄</div></div><div class="btns"><button class="btn">Close</button><button class="btn">Remove…</button><button class="btn pri">Open</button></div></div></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1560,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#E9E9EC',card:'#FFFFFF',field:'#FFFFFF',editor:'#FFFFFF',notice:'#FFF4D6',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)',kw:'#AD3DA4',ty:'#3E8087',st:'#C41A16',side:'#EDEDF0',bar:'#F5F5F7'};
+    const D = {bg:'#1A1A1C',card:'#2A2A2C',field:'#1A1A1C',editor:'#1E1E1E',notice:'#4A3F1A',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)',kw:'#FF7AB2',ty:'#6BDFFF',st:'#FF8170',side:'#2A2A2C',bar:'#323235'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script></body></html>

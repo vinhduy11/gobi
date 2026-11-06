@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Gobi usages</title><script src="./support.js"></script></head>
+<body><x-dc><helmet><style>
+body{margin:0}*{box-sizing:border-box}
+.root{font:13px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;background:var(--bg);color:var(--text);padding:28px;{{vars}}}
+.cap{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+.grid{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+.menu{background:var(--card);border:1px solid var(--sep);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:4px}
+.mi{display:flex;justify-content:space-between;gap:24px;padding:4px 10px;border-radius:5px;white-space:nowrap}
+.mi.on{background:var(--accent);color:#fff}.mi.on .t2{color:#fff}.mi.dis{opacity:.45}
+.sep{height:1px;background:var(--sep);margin:4px 6px}
+.t2{color:var(--text2)}.mono{font:12px ui-monospace,"SF Mono",Menlo,monospace}
+.sheet{background:var(--card);border:1px solid var(--sep);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.28);padding:20px 22px 16px;display:flex;flex-direction:column;gap:10px}
+.sheet h4{margin:0;font-size:14px}
+.fld{height:26px;border:1px solid var(--sep);border-radius:6px;padding:0 8px;display:flex;align-items:center;background:var(--field);min-width:0}
+.fr{display:flex;align-items:center;gap:10px}.fr>label{width:92px;flex:none;text-align:right;color:var(--text2)}
+.btns{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.btn{height:26px;padding:0 14px;border:1px solid var(--sep);border-radius:6px;background:var(--card);color:var(--text);font:inherit;cursor:default}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;background:var(--accentBg);color:var(--accentT);font-size:11px}
+.bar{display:flex;align-items:center;gap:10px;height:30px;padding:0 12px;background:var(--notice);border-bottom:1px solid var(--sep)}
+.code{background:var(--editor);border:1px solid var(--sep);border-radius:8px;overflow:hidden;font:12px/20px ui-monospace,"SF Mono",Menlo,monospace}
+.ln{display:flex}.ln i{width:38px;text-align:right;padding-right:10px;color:var(--text2);font-style:normal;flex:none}.ln b{font-weight:400;white-space:pre}
+.kw{color:var(--kw)}.ty{color:var(--ty)}.st{color:var(--st)}
+</style></helmet>
+<div class="root" style="width:1440px;height:470px"><div style="border:1px solid var(--sep);border-radius:8px;background:var(--editor);overflow:hidden">
+<div style="display:flex;border-bottom:1px solid var(--sep);background:var(--bar)"><span style="padding:0 10px;height:28px;display:flex;align-items:center;color:var(--text2)">Problems</span><span style="padding:0 10px;height:28px;display:flex;align-items:center;color:var(--text2)">Tests</span><span style="padding:0 10px;height:28px;display:flex;align-items:center;color:var(--text2)">Terminal</span><span style="padding:0 10px;height:28px;display:flex;align-items:center;color:var(--text2)">Debug</span><span style="padding:0 10px;height:28px;display:flex;align-items:center;color:var(--text2)">Profiler</span><span style="padding:0 10px;height:28px;display:flex;align-items:center;color:var(--text2)">Diff</span><span style="padding:0 10px;height:28px;display:flex;align-items:center;color:var(--text2)">Output</span><span style="padding:0 10px;height:28px;display:flex;align-items:center;border-bottom:2px solid var(--accent);font-weight:600">Usages</span><span style="flex:1"></span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--sep)"><b>Usages of <span class="mono">Server.Start</span></b><span class="t2">12 in 4 files</span><span style="flex:1"></span>
+<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)">Tests</label><button class="btn">Rerun</button><button class="btn">Previous ⌥↑</button><button class="btn">Next ⌥↓</button></div>
+<div style="display:flex;gap:8px;height:24px;align-items:center;padding-left:12px;font-weight:600">▾ cmd/api/main.go<span class="t2" style="font-weight:400">2</span></div><div style="display:flex;gap:10px;height:22px;align-items:center;padding-left:48px;background:var(--accentBg)" class="mono"><span class="t2" style="width:34px;text-align:right">31</span><span><span class="kw">if</span> err := srv.<b>Start</b>(ctx); err != nil {</span></div><div style="display:flex;gap:10px;height:22px;align-items:center;padding-left:48px;" class="mono"><span class="t2" style="width:34px;text-align:right">58</span><span>go srv.<b>Start</b>(ctx)</span></div>
+<div style="display:flex;gap:8px;height:24px;align-items:center;padding-left:12px;font-weight:600">▾ internal/server/server.go<span class="t2" style="font-weight:400">3</span></div><div style="display:flex;gap:8px;height:24px;align-items:center;padding-left:30px;font-weight:600">▾ func (s *Server) Restart<span class="t2" style="font-weight:400">1</span></div><div style="display:flex;gap:10px;height:22px;align-items:center;padding-left:48px;" class="mono"><span class="t2" style="width:34px;text-align:right">104</span><span>return s.<b>Start</b>(ctx)</span></div>
+<div style="display:flex;gap:8px;height:24px;align-items:center;padding-left:12px;font-weight:600">▾ internal/server/server_test.go<span class="t2" style="font-weight:400">6</span></div><div style="display:flex;gap:8px;height:24px;align-items:center;padding-left:30px;font-weight:600">▾ func TestStartStop<span class="t2" style="font-weight:400">3</span></div><div style="display:flex;gap:10px;height:22px;align-items:center;padding-left:48px;" class="mono"><span class="t2" style="width:34px;text-align:right">22</span><span>err := s.<b>Start</b>(ctx)</span></div><div style="display:flex;gap:10px;height:22px;align-items:center;padding-left:48px;" class="mono"><span class="t2" style="width:34px;text-align:right">37</span><span>s.<b>Start</b>(ctx) // twice</span></div>
+<div style="display:flex;justify-content:space-between;padding:6px 12px;border-top:1px solid var(--sep);color:var(--text2);font-size:12px"><span>Return or double click opens the line · lists up to 5000 usages</span><span>Code lens “12 references”, ⇧F12 and Find Usages ⌥F7 open this tab when there is more than one</span></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Appearance"},"$preview":{"width":1440,"height":470}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = {bg:'#E9E9EC',card:'#FFFFFF',field:'#FFFFFF',editor:'#FFFFFF',notice:'#FFF4D6',text:'#1D1D1F',text2:'#5C5C61',sep:'#D6D6DA',accent:'#007AFF',accentT:'#0058B8',accentBg:'rgba(0,122,255,.14)',kw:'#AD3DA4',ty:'#3E8087',st:'#C41A16',side:'#EDEDF0',bar:'#F5F5F7'};
+    const D = {bg:'#1A1A1C',card:'#2A2A2C',field:'#1A1A1C',editor:'#1E1E1E',notice:'#4A3F1A',text:'#F2F2F7',text2:'#A8A8AE',sep:'#454549',accent:'#0A84FF',accentT:'#64B0FF',accentBg:'rgba(10,132,255,.28)',kw:'#FF7AB2',ty:'#6BDFFF',st:'#FF8170',side:'#2A2A2C',bar:'#323235'};
+    const p = this.props.dark ? D : L;
+    return { vars: Object.keys(p).map((k) => '--' + k + ':' + p[k]).join(';') };
+  }
+}
+</script></body></html>

@@ -38,10 +38,13 @@ body{margin:0}
     <!-- Templates -->
     <div style="width:230px;background:var(--side);border-right:1px solid var(--sep);flex:none">
       <div class="sec">Go module</div>
-      <div class="row sel">Command-line tool</div>
+      <div class="row">Command-line tool</div>
       <div class="row">Library</div>
+      <div class="sec">Service</div>
       <div class="row">HTTP service</div>
       <div class="row">gRPC service</div>
+      <div class="row sel">Message consumer</div>
+      <div class="row">Scheduled job</div>
       <div class="sec">Workspace</div>
       <div class="row">go.work (multi-module)</div>
       <div class="sec">Other</div>
@@ -51,8 +54,8 @@ body{margin:0}
 
     <!-- Form -->
     <div style="flex:1;padding:24px 24px 0;display:flex;flex-direction:column;min-width:0">
-      <div style="font-size:20px;font-weight:600">Command-line tool</div>
-      <div class="t2" style="margin:2px 0 18px">A <span class="mono">main</span> package with a test, ready to run.</div>
+      <div style="font-size:20px;font-weight:600">Message consumer</div>
+      <div class="t2" style="margin:2px 0 18px">A worker that reads from a source in a loop, stops cleanly on Ctrl-C and has a handler you can test.</div>
 
       <div class="fr"><label>Name</label><div class="fld">hello</div></div>
       <div class="fr"><label>Location</label><div class="fld">~/Work</div><button class="btn">Choose&#8230;</button></div>
@@ -74,7 +77,8 @@ body{margin:0}
       <div class="tr">hello/</div>
       <div class="tr" style="padding-left:14px">go.mod</div>
       <div class="tr" style="padding-left:14px">main.go</div>
-      <div class="tr" style="padding-left:14px">main_test.go</div>
+      <div class="tr" style="padding-left:14px">consumer.go</div>
+      <div class="tr" style="padding-left:14px">consumer_test.go</div>
       <div class="tr" style="padding-left:14px">README.md</div>
       <div class="tr" style="padding-left:14px">.gitignore</div>
       <div class="tr" style="padding-left:14px">.env.example</div>
