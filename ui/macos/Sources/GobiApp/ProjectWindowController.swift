@@ -198,10 +198,13 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     override func showWindow(_ sender: Any?) {
         super.showWindow(sender)
         window?.layoutIfNeeded()
+        placeCentreDivider()
         if let size = window?.contentLayoutRect.size, size.width < 760 || size.height < 480 {
             window?.setContentSize(NSSize(width: 1200, height: 780))
             window?.center()
         }
+        window?.layoutIfNeeded()
+        placeCentreDivider()
     }
 
     static func describe(kind: ProjectKind, trusted: Bool) -> String {
@@ -221,6 +224,10 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         outline.delegate = self
         outline.setAccessibilityLabel("Project files")
         outline.menuProvider = { [weak self] row in self?.explorerMenu(row: row) }
+        outline.target = self
+        outline.doubleAction = #selector(explorerDoubleClicked)
+        outline.registerForDraggedTypes([.fileURL])
+        outline.setDraggingSourceOperationMask(.move, forLocal: true)
         outline.onJumpToSource = { [weak self] in self?.jumpToSourceOfSelection() }
         outline.onCut = { [weak self] in if let self { self.copyToClipboard(self.selectedURLs(), cut: true) } }
         outline.onCopy = { [weak self] in if let self { self.copyToClipboard(self.selectedURLs(), cut: false) } }
@@ -276,8 +283,11 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         // The bottom panel keeps its height and the editor takes the spare. A holding priority above 500 on the editor
         // would make Auto Layout shrink the window instead of stretching the editor.
         centre.setHoldingPriority(.defaultLow, forSubviewAt: 0)
-        centre.setHoldingPriority(.defaultHigh, forSubviewAt: 1)
-        bottomPanel.heightAnchor.constraint(equalToConstant: 210).isActive = true
+        centre.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 1)   // above 250 keeps its height on window resize, below 500 still lets the divider move it
+        centre.autosaveName = "gobi.centreSplit"
+        bottomPanel.heightAnchor.constraint(greaterThanOrEqualToConstant: 90).isActive = true
+        editorColumn.heightAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
+        centreSplit = centre
 
         // Left: Files, Symbols and Tests tabs; right: the inspector.
         let symbolsList = OutlineListView()
@@ -296,13 +306,19 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         tabsControl.setWidth(30, forSegment: 4)
         tabsControl.controlSize = .small
         tabsControl.setAccessibilityLabel("Sidebar")
-        let filesColumn = NSStackView(views: [sidebar, sourceControl])
-        filesColumn.orientation = .vertical
-        filesColumn.spacing = 0
-        filesColumn.distribution = .fill
-        sidebar.widthAnchor.constraint(equalTo: filesColumn.widthAnchor).isActive = true
-        sourceControl.widthAnchor.constraint(equalTo: filesColumn.widthAnchor).isActive = true
+        // The explorer above, the Source control block below, with a divider to drag so the block can be made taller.
+        let filesColumn = NSSplitView()
+        filesColumn.isVertical = false
+        filesColumn.dividerStyle = .thin
+        filesColumn.autosaveName = "gobi.filesSplit"
+        filesColumn.addArrangedSubview(sidebar)
+        filesColumn.addArrangedSubview(sourceControl)
+        filesColumn.setHoldingPriority(.defaultLow, forSubviewAt: 0)
+        filesColumn.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 1)
+        sidebar.heightAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
+        sourceControl.heightAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
         sourceControl.isHidden = true
+        filesSplit = filesColumn
         sidebarTabs = [filesColumn, symbolsList, sidebarTests, debugNavigator, commitPanel]
         symbolsList.isHidden = true
         sidebarTests.isHidden = true
@@ -365,6 +381,48 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private let debugNavigator = DebugNavigatorView()
     private let profilerPanel = ProfilerPanelView()
     private let sourceControl = SourceControlView()
+    private var filesSplit: NSSplitView?
+    private var centreSplit: NSSplitView?
+    private var placedCentreDivider = false
+    private var placedFilesDivider = false
+
+    /// The first time the Source control block shows, and when the person has not moved the divider before, it gets a useful height.
+    private func placeFilesDivider() {
+        guard !placedFilesDivider, let split = filesSplit, !sourceControl.isHidden, split.bounds.height > 400 else { return }
+        placedFilesDivider = true
+        if UserDefaults.standard.object(forKey: "NSSplitView Subview Frames gobi.filesSplit") != nil { return }
+        split.setPosition(split.bounds.height - 240, ofDividerAt: 0)
+    }
+
+    /// The bottom panel starts 210 pt tall unless the person has dragged the divider before (the position is remembered).
+    private func placeCentreDivider() {
+        guard !placedCentreDivider, let split = centreSplit, split.bounds.height > 400 else { return }
+        placedCentreDivider = true
+        if UserDefaults.standard.object(forKey: "NSSplitView Subview Frames gobi.centreSplit") != nil { return }
+        split.setPosition(split.bounds.height - 210, ofDividerAt: 0)
+    }
+
+    /// For tests: the bottom panel's height, and moving its divider the way a drag would.
+    var bottomPanelHeight: CGFloat {
+        centreSplit?.layoutSubtreeIfNeeded()
+        return bottomPanel.isHidden ? 0 : bottomPanel.frame.height
+    }
+    func moveCentreDivider(toBottomHeight height: CGFloat) {
+        guard let split = centreSplit else { return }
+        split.setPosition(split.bounds.height - height, ofDividerAt: 0)
+        split.layoutSubtreeIfNeeded()
+    }
+
+    /// For tests: how tall the Source control block is, and moving the divider the way a drag would.
+    var sourceControlHeight: CGFloat {
+        filesSplit?.layoutSubtreeIfNeeded()
+        return sourceControl.isHidden ? 0 : sourceControl.frame.height
+    }
+    func moveFilesDivider(toBlockHeight height: CGFloat) {
+        guard let split = filesSplit else { return }
+        split.setPosition(split.bounds.height - height, ofDividerAt: 0)
+        split.layoutSubtreeIfNeeded()
+    }
     private let findPanel = FindInFilesPanelView()
     /// Files that have an error among their problems; the Explorer marks them with a red !.
     private var errorPaths = Set<String>()
@@ -517,6 +575,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
                 if !status.branch.isEmpty { self.branchName = status.branch }
                 self.outline.reloadData()
                 self.sourceControl.show(status)
+                self.placeFilesDivider()
                 self.commitPanel.show(status)
                 if let shown = self.diffPanel.path, !status.changedFiles.contains(where: { $0.path == shown }) { self.diffPanel.showEmpty() }
                 self.refreshChrome()
@@ -1106,6 +1165,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
 
     var terminalFindStatus: String { terminalPane?.findStatus ?? "" }
     var terminalAppearance: (fontSize: Int, optionAsMeta: Bool)? { terminalPane?.terminalAppearance }
+    var terminalFontInfo: (family: String, fallbacks: Int)? { terminalPane?.terminalFontInfo }
     var statusNote: String { statusBar.noteText }
     var terminalScrollback: Int? { terminalPane?.scrollbackLines }
     var terminalStartFolder: String { terminalPane?.lastStartFolder ?? "" }
@@ -2049,6 +2109,62 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         case nil: return .labelColor
         }
     }
+
+    // MARK: drag and drop in the explorer (rows can be dragged onto a folder to move them there)
+
+    func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> NSPasteboardWriting? { (item as? FileNode).map { $0.url as NSURL } }
+
+    /// Whether `urls` may be moved into `folder`: inside the project, not into themselves, not where they already are.
+    func explorerDropAllowed(_ urls: [URL], onto folder: URL) -> Bool {
+        guard !urls.isEmpty, folder.path == root.path || isInsideProject(folder) else { return false }
+        for url in urls {
+            guard isInsideProject(url) else { return false }
+            if FileOperations.isSameOrInside(folder.path, root: url.path) { return false }   // into itself or below itself
+        }
+        return urls.contains { $0.deletingLastPathComponent().path != folder.path }
+    }
+
+    @discardableResult
+    func performExplorerDrop(_ urls: [URL], onto folder: URL) -> Bool {
+        guard explorerDropAllowed(urls, onto: folder) else { return false }
+        return !moveItems(urls, to: folder).isEmpty
+    }
+
+    private func droppedURLs(_ info: NSDraggingInfo) -> [URL] {
+        (info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
+    }
+
+    /// The folder a drop on `item` lands in: the folder itself, the folder of a file, or the project folder.
+    private func dropFolder(for item: Any?) -> (folder: URL, node: FileNode?) {
+        guard let node = item as? FileNode else { return (root, nil) }
+        if node.isDirectory { return (node.url, node) }
+        return (node.url.deletingLastPathComponent(), nil)
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, validateDrop info: NSDraggingInfo, proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
+        let target = dropFolder(for: item)
+        // Always drop ON the folder, never between rows.
+        outlineView.setDropItem(target.node, dropChildIndex: NSOutlineViewDropOnItemIndex)
+        return explorerDropAllowed(droppedURLs(info), onto: target.folder) ? .move : []
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, acceptDrop info: NSDraggingInfo, item: Any?, childIndex index: Int) -> Bool {
+        performExplorerDrop(droppedURLs(info), onto: dropFolder(for: item).folder)
+    }
+
+    /// A double click on a folder opens (or closes) it; a file is already open from the single click.
+    @objc private func explorerDoubleClicked() { activateExplorerRow(outline.clickedRow) }
+
+    func activateExplorerRow(_ row: Int) {
+        guard row >= 0, let node = outline.item(atRow: row) as? FileNode, node.isDirectory else { return }
+        if outline.isItemExpanded(node) { outline.collapseItem(node) } else { outline.expandItem(node) }
+    }
+
+    /// For tests: the row of a top-level entry of the explorer, and whether it is expanded.
+    func explorerRow(named name: String) -> Int? {
+        (0 ..< outline.numberOfRows).first { (outline.item(atRow: $0) as? FileNode)?.url.lastPathComponent == name }
+    }
+    func isExplorerRowExpanded(_ row: Int) -> Bool { (outline.item(atRow: row) as? FileNode).map { outline.isItemExpanded($0) } ?? false }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
         if isReloadingExplorer { return }

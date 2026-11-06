@@ -51,6 +51,7 @@ public struct TerminalSettings: Equatable, Sendable {
     }
     public static let fontSizes = [11, 12, 13, 14, 16, 18]
     public static let scrollbackLines = [1_000, 5_000, 10_000, 50_000]
+    public var fontName = "SF Mono"
     public var fontSize = 12
     public var cursor = Cursor.block
     public var blink = true
@@ -68,11 +69,12 @@ public struct TerminalSettings: Equatable, Sendable {
         return s
     }
 
-    public func encoded() -> String { "fontSize=\(fontSize)\ncursor=\(cursor.rawValue)\nblink=\(blink)\noptionAsMeta=\(optionAsMeta)\nbell=\(bell.rawValue)\nscrollback=\(scrollback)\nstartIn=\(startIn.rawValue)\ncopyOnSelect=\(copyOnSelect)" }
+    public func encoded() -> String { "fontName=\(fontName)\nfontSize=\(fontSize)\ncursor=\(cursor.rawValue)\nblink=\(blink)\noptionAsMeta=\(optionAsMeta)\nbell=\(bell.rawValue)\nscrollback=\(scrollback)\nstartIn=\(startIn.rawValue)\ncopyOnSelect=\(copyOnSelect)" }
 
     public static func decodeOrDefault(_ text: String) -> TerminalSettings {
         let map = Lines.parse(text)
         var s = TerminalSettings()
+        if let v = map["fontName"], !v.isEmpty { s.fontName = v }
         if let v = map["fontSize"].flatMap({ Int($0) }) { s.fontSize = v }
         if let v = map["cursor"].flatMap(Cursor.init(rawValue:)) { s.cursor = v }
         if let v = map["blink"] { s.blink = v == "true" }

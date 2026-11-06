@@ -337,6 +337,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let modRow = (0 ..< controller.explorerRowCount).first { controller.explorerRowTitle($0) == "go.mod" }
         check("Go Mod Tidy and Download Go Modules are live on go.mod", modRow.flatMap { controller.explorerMenu(row: $0) }.map { menu in ["Go Mod Tidy", "Download Go Modules"].allSatisfy { title in menu.items.first { $0.title == title }?.isEnabled == true } } ?? false)
 
+        // The bottom panel is not locked to one height: its divider moves it, and it keeps a few rows.
+        let panelHeight = controller.bottomPanelHeight
+        check("the bottom panel starts about 210 pt tall (\(Int(panelHeight)) pt)", panelHeight >= 190 && panelHeight <= 230)
+        controller.moveCentreDivider(toBottomHeight: 340)
+        check("dragging its divider makes it taller (\(Int(panelHeight)) to \(Int(controller.bottomPanelHeight)) pt)", controller.bottomPanelHeight >= 320)
+        controller.moveCentreDivider(toBottomHeight: 20)
+        check("and it cannot be dragged smaller than a few rows (\(Int(controller.bottomPanelHeight)) pt)", controller.bottomPanelHeight >= 90)
+        controller.moveCentreDivider(toBottomHeight: panelHeight)
+
         // A project with no files: the explorer has no rows, but a right click on the empty space still gives the project's menu,
         // and New makes files (a Go file takes the package of the folder).
         let emptyRoot = root.appendingPathComponent("gobi-empty-project")
@@ -357,7 +366,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("the explorer lists what was made (\(emptyController.explorerNames))", Set(emptyController.explorerNames) == ["cart.go", "cart_test.go", "internal", "notes.md"])
 
         // Typing: brackets and quotes close themselves, a closer is skipped over, Backspace takes a pair, Return keeps the indentation.
-        if emptyController.newEntry(.file, in: emptyRoot, name: "typing.go") != nil, let view = emptyController.currentPane?.textView {
+        if let typingURL = emptyController.newEntry(.file, in: emptyRoot, name: "typing.go"), let view = emptyController.currentPane?.textView {
             func reset() { view.insertText("", replacementRange: NSRange(location: 0, length: (view.string as NSString).length)) }
             func type(_ text: String) { for character in text { view.insertText(String(character), replacementRange: NSRange(location: NSNotFound, length: 0)) } }
             reset(); type("{")
@@ -382,8 +391,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             reset(); type("{")
             check("with the setting off a { stays alone", view.string == "{")
             EditorPreferences.current = before
+            // Leave the folder as it was for the checks that follow: no open tab, no file.
+            emptyController.closeTab(typingURL.path, force: true)
+            try? FileManager.default.removeItem(at: typingURL)
+            emptyController.reloadExplorer()
         }
         runFileOperationChecks(emptyController, root: emptyRoot, scratch: root.appendingPathComponent("gobi-scratch-trash"), check: check, addCleanup: { selfTestCleanups.append($0) })
+        // Drag and drop in the explorer: a file dropped on a folder moves into it; never into itself or where it already is.
+        if let source = emptyController.newEntry(.file, in: emptyRoot, name: "drop.txt"), let target = emptyController.newEntry(.folder, in: emptyRoot, name: "dropdst") {
+            check("a file may be dropped on another folder", emptyController.explorerDropAllowed([source], onto: target))
+            check("but not on the folder it is already in", !emptyController.explorerDropAllowed([source], onto: emptyRoot))
+            check("and a folder may not be dropped on itself", !emptyController.explorerDropAllowed([target], onto: target))
+            check("or on something outside the project", !emptyController.explorerDropAllowed([source], onto: root.deletingLastPathComponent()))
+            check("a drop moves the file", emptyController.performExplorerDrop([source], onto: target) && FileManager.default.fileExists(atPath: target.appendingPathComponent("drop.txt").path) && !FileManager.default.fileExists(atPath: source.path))
+        }
+
+        // A double click on a folder opens it (and again closes it).
+        if let folder = emptyController.newEntry(.folder, in: emptyRoot, name: "dblclick") {
+            try? "package dblclick\n".write(to: folder.appendingPathComponent("x.go"), atomically: true, encoding: .utf8)
+            emptyController.reloadExplorer()
+            let row = emptyController.explorerRow(named: "dblclick") ?? -1
+            emptyController.activateExplorerRow(row)
+            check("a double click on a folder opens it (row \(row))", row >= 0 && emptyController.isExplorerRowExpanded(row))
+            emptyController.activateExplorerRow(row)
+            check("and a second one closes it again", row >= 0 && !emptyController.isExplorerRowExpanded(row))
+        }
         emptyController.window?.close()
         check("and absent on a plain Go file", explorerMenu?.items.first { $0.title == "Go Mod Tidy" }?.isEnabled == false)
 
@@ -1155,6 +1187,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.openFile(root.appendingPathComponent("a.go"))
         settle { controller.gitStatus != nil && !controller.sourceControlRows.isEmpty }
         check("Source control shows the branch (\(controller.sourceControlBranch))", controller.sourceControlBranch.hasPrefix("main"))
+        let blockHeight = controller.sourceControlHeight
+        check("the Source control block is tall enough to read (\(Int(blockHeight)) pt)", blockHeight >= 150)
+        controller.moveFilesDivider(toBlockHeight: blockHeight + 120)
+        check("dragging the divider makes the Source control block taller (\(Int(blockHeight)) to \(Int(controller.sourceControlHeight)) pt)", controller.sourceControlHeight > blockHeight + 60)
         check("and the changed files with their letters (\(controller.sourceControlRows))", controller.sourceControlRows.contains("M a.go") && controller.sourceControlRows.contains("? fresh.go"))
         settle(15) { !(controller.currentPane?.editor.gitMarks.modified.isEmpty ?? true) }
         let marks = controller.currentPane?.editor.gitMarks
@@ -1581,6 +1617,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settle { controller.terminalSessionCount == 1 }
         AppPreferences.update(\.terminal) { $0.fontSize = 16; $0.optionAsMeta = true; $0.cursor = .bar }
         check("Terminal settings reach the open terminal (\(String(describing: controller.terminalAppearance)))", controller.terminalAppearance?.fontSize == 16 && controller.terminalAppearance?.optionAsMeta == true)
+
+        let installedIcons = TerminalFont.iconChain()
+        AppPreferences.update(\.terminal) { $0.fontName = "Menlo" }
+        let fontInfo = controller.terminalFontInfo
+        check("the terminal font family follows Settings (\(fontInfo?.family ?? "none"))", fontInfo?.family == "Menlo")
+        check("icon fonts found on this machine are its fallbacks (\(installedIcons.count) installed, \(fontInfo?.fallbacks ?? -1) in the font)", fontInfo?.fallbacks == installedIcons.count)
+        AppPreferences.update(\.terminal) { $0.fontName = "SF Mono" }
         settle(10) { !settings.terminal.shellTitles.isEmpty && settings.terminal.shellTitles.count > 1 }
         check("the Terminal tab lists the shells (\(settings.terminal.shellTitles))", settings.terminal.shellTitles.contains { $0.hasSuffix("(login shell)") })
 

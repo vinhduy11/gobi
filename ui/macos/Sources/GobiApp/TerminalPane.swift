@@ -380,7 +380,7 @@ final class TerminalPane: NSView, TerminalViewDelegate {
     /// Font size, cursor and Option key from Settings > Terminal.
     private func applySettings(to view: TerminalView) {
         let settings = AppPreferences.terminal
-        view.font = NSFont.monospacedSystemFont(ofSize: CGFloat(settings.fontSize), weight: .regular)
+        view.font = TerminalFont.make(name: settings.fontName, size: CGFloat(settings.fontSize))
         view.optionAsMetaKey = settings.optionAsMeta
         (view as? GobiTerminalView)?.copyOnSelect = settings.copyOnSelect
         let style: CursorStyle
@@ -407,6 +407,13 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         guard sessions.indices.contains(selected) else { return nil }
         let view = sessions[selected].view
         return (Int(view.font.pointSize), view.optionAsMetaKey)
+    }
+
+    /// For the self-test: the family of the selected terminal's font and how many icon fallbacks it has.
+    var terminalFontInfo: (family: String, fallbacks: Int)? {
+        guard sessions.indices.contains(selected) else { return nil }
+        let font = sessions[selected].view.font
+        return (font.familyName ?? font.fontName, TerminalFont.fallbackCount(of: font))
     }
 
     /// For the self-test: the scrollback the selected terminal was made with, and what copy on select has seen.

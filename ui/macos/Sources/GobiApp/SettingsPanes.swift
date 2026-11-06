@@ -206,7 +206,9 @@ final class GeneralSettingsPane: SettingsPane, NSTableViewDataSource, NSTableVie
 
 final class TerminalSettingsPane: SettingsPane {
     let shell = settingsPopup(["Login shell"])
+    let font = settingsPopup(TerminalFont.choices())
     let size = settingsPopup(TerminalSettings.fontSizes.map { "\($0) pt" })
+    let iconHint = settingsHint(TerminalFonts.iconHint(chain: TerminalFont.iconChain()))
     let cursor = NSSegmentedControl(labels: ["Block", "Bar", "Underline"], trackingMode: .selectOne, target: nil, action: nil)
     let blink = settingsCheckbox("Blink")
     let optionAsMeta = settingsCheckbox("Use Option as Meta")
@@ -219,14 +221,15 @@ final class TerminalSettingsPane: SettingsPane {
 
     override init(frame: NSRect) {
         super.init(frame: frame)
-        for control in [shell, size, bell, startIn, scrollback] { control.target = self; control.action = #selector(changed) }
+        for control in [shell, font, size, bell, startIn, scrollback] { control.target = self; control.action = #selector(changed) }
         for box in [blink, optionAsMeta, copyOnSelect] { box.target = self; box.action = #selector(changed) }
         cursor.target = self
         cursor.action = #selector(changed)
         install([
             settingsRow("Shell", [shell]),
             settingsRow("Start in", [startIn, settingsHint("new terminals")]),
-            settingsRow("Font", [size, settingsHint("SF Mono")]),
+            settingsRow("Font", [font, size]),
+            settingsRow("", [iconHint]),
             settingsRow("Cursor", [cursor, blink]),
             settingsRow("Scrollback", [scrollback, settingsHint("new terminals")]),
             settingsRow("Keys", [optionAsMeta, copyOnSelect]),
@@ -254,6 +257,8 @@ final class TerminalSettingsPane: SettingsPane {
         shell.addItems(withTitles: items.isEmpty ? ["Login shell"] : items.map(\.title))
         if let index = items.firstIndex(where: \.isChecked) { shell.selectItem(at: index) }
         let settings = AppPreferences.terminal
+        if font.itemTitles.contains(settings.fontName) { font.selectItem(withTitle: settings.fontName) } else { font.selectItem(at: 0) }
+        iconHint.stringValue = TerminalFonts.iconHint(chain: TerminalFont.iconChain())
         size.selectItem(at: TerminalSettings.fontSizes.firstIndex(of: settings.fontSize) ?? 1)
         cursor.selectedSegment = [.block, .bar, .underline].firstIndex(of: settings.cursor) ?? 0
         blink.state = settings.blink ? .on : .off
@@ -270,6 +275,7 @@ final class TerminalSettingsPane: SettingsPane {
         let items = ShellChoice.menuItems(shells: shells, login: login.isEmpty ? (ProcessInfo.processInfo.environment["SHELL"] ?? "") : login, selected: "")
         if items.indices.contains(shell.indexOfSelectedItem) { WindowSettings.terminalShell = items[shell.indexOfSelectedItem].path == login ? "" : items[shell.indexOfSelectedItem].path }
         AppPreferences.update(\.terminal) {
+            $0.fontName = font.titleOfSelectedItem ?? "SF Mono"
             $0.fontSize = TerminalSettings.fontSizes[max(0, size.indexOfSelectedItem)]
             $0.cursor = [.block, .bar, .underline][max(0, cursor.selectedSegment)]
             $0.blink = blink.state == .on

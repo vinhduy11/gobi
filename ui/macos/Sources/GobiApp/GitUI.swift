@@ -36,7 +36,8 @@ final class SourceControlView: NSView, NSTableViewDataSource, NSTableViewDelegat
         scroll.documentView = table
         scroll.hasVerticalScroller = true
         scroll.drawsBackground = false
-        scroll.heightAnchor.constraint(equalToConstant: 110).isActive = true
+        // The list is as tall as the split view above it lets it be (drag the divider); never smaller than a few rows.
+        scroll.heightAnchor.constraint(greaterThanOrEqualToConstant: 66).isActive = true
         commit.target = self
         commit.action = #selector(commitPressed)
         commit.bezelStyle = .rounded

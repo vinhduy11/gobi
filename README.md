@@ -91,7 +91,7 @@ cd ui/macos
 open ../../dist/Gobi.app             # Welcome window: Open… a folder, or pick a recent project
 ```
 
-The app is signed ad hoc, so on another Mac use right click > Open the first time. A release build is signed with
+The app is signed ad hoc and not notarized yet, so macOS blocks the first launch: see [`docs/macos-security.md`](docs/macos-security.md) for the steps (Open Anyway in System Settings > Privacy & Security on macOS 15 and later, right click > Open before), the checksum check, the permission prompts and what Gobi does on your machine. A release build is signed with
 `SIGN_IDENTITY=… ./scripts/make-app.sh` and notarized with `./scripts/notarize.sh`.
 
 Core (`gobid`):
