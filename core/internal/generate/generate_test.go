@@ -42,6 +42,10 @@ func goldenCases() []goldenCase {
 		{"string", Request{Item: ItemString, Context: structCtx}},
 		{"options", Request{Item: ItemOptions, Context: structCtx}},
 		{"error-type", Request{Item: ItemErrorType, AskedName: "parse", Context: structCtx}},
+		{"implement", Request{Item: ItemImplement, Values: []ParamValue{{Key: "interface", Values: []string{"Store"}}}, Context: Context{
+			Path: "/p/mem.go", Package: "demo", Kind: KindStruct, Name: "Mem", Fields: []Field{{Name: "data", Type: "map[string]string"}},
+			Source: "package demo\n\nimport \"context\"\n\ntype Store interface {\n\tGet(ctx context.Context, id string) (string, error)\n\tPut(id, value string) error\n\tClose()\n\tKeys(prefix ...string) []string\n}\n\ntype Mem struct{ data map[string]string }\n\nfunc (m *Mem) Close() {}\n",
+		}}},
 		{"test", Request{Item: ItemTest, Context: Context{
 			Path: "/p/calc.go", Package: "demo", Kind: KindFunc, Name: "Divide",
 			Source: "package demo\n\nimport \"errors\"\n\nfunc Divide(a, b int) (int, error) {\n\tif b == 0 {\n\t\treturn 0, errors.New(\"divide by zero\")\n\t}\n\treturn a / b, nil\n}\n",
@@ -299,5 +303,40 @@ func TestTestItemCopiesImportsOfParameterTypes(t *testing.T) {
 		if !strings.Contains(content, want) {
 			t.Errorf("missing %q in\n%s", want, content)
 		}
+	}
+}
+
+func TestImplementIsOfferedOnAStructOnlyWhenTheFileHasAnInterface(t *testing.T) {
+	has := func(src string) *Item {
+		items, err := List(Context{Path: "/p/a.go", Package: "demo", Kind: KindStruct, Name: "Mem", Source: src, Fields: []Field{{Name: "a", Type: "int"}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := range items {
+			if items[i].ID == ItemImplement {
+				return &items[i]
+			}
+		}
+		return nil
+	}
+	item := has("package demo\n\ntype A interface{ M() }\ntype B interface{ N() }\ntype Mem struct{ a int }\n")
+	if item == nil || item.Title != "Implement Interface…" || item.Params[0].Default[0] != "A" {
+		t.Errorf("item = %+v", item)
+	}
+	if has("package demo\n\ntype Mem struct{ a int }\n") != nil {
+		t.Error("no interface in the file: nothing to implement")
+	}
+}
+
+func TestImplementRefusesWhatItCannotDo(t *testing.T) {
+	base := Request{Item: ItemImplement, Context: Context{Path: "/p/a.go", Package: "demo", Kind: KindStruct, Name: "Mem",
+		Fields: []Field{{Name: "a", Type: "int"}}, Source: "package demo\n\ntype A interface{ M() }\ntype Mem struct{ a int }\nfunc (m *Mem) M() {}\n"}}
+	base.Values = []ParamValue{{Key: "interface", Values: []string{"A"}}}
+	if _, err := Render(base); err == nil || !strings.Contains(err.Error(), "already has every method") {
+		t.Errorf("complete type: err = %v", err)
+	}
+	base.Values = []ParamValue{{Key: "interface", Values: []string{"Missing"}}}
+	if _, err := Render(base); err == nil || !strings.Contains(err.Error(), "not declared in this file") {
+		t.Errorf("unknown interface: err = %v", err)
 	}
 }

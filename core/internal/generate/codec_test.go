@@ -2,6 +2,7 @@ package generate
 
 import (
 	"bytes"
+	"encoding/hex"
 	"reflect"
 	"testing"
 
@@ -119,5 +120,15 @@ func TestPatternItemGoldenBytes(t *testing.T) {
 	}
 	if !bytes.Equal(list, want) {
 		t.Errorf("bytes = % x\nwant    % x", list, want)
+	}
+}
+
+// Golden bytes of a whole request: the Swift client asserts the same bytes (GenerateWireTests).
+const requestGoldenHex = "0a072f702f612e676f120464656d6f180220052a067374727563743201543a130a01611206737472696e671a06737472696e67420d7061636b6167652064656d6f0a48035206737472696e675a01616201786a140a014d12080a01781203696e741a056572726f7272080a01701203696e747a056572726f72820101528a0104312e32339201180a0a737472617465676965731204466173741204536166659201130a087374726174656779120750726963696e679a010466696c65"
+
+func TestRequestGoldenBytes(t *testing.T) {
+	got := hex.EncodeToString(encodeRequest(sampleRequest()))
+	if got != requestGoldenHex {
+		t.Errorf("request bytes = %s", got)
 	}
 }

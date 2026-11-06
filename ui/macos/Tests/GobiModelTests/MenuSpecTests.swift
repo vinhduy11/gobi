@@ -11,7 +11,7 @@ struct MenuSpecTests {
     private let mock: [(String, [String])] = [
         ("Gobi", ["About Gobi|", "Check for Updates…|", "-", "Settings…|⌘,", "-", "Services|", "-", "Hide Gobi|⌘H", "Hide Others|⌥⌘H", "-", "Quit Gobi|⌘Q"]),
         ("File", ["New Project…|⇧⌘N", "New File|⌘N", "-", "Open…|⌘O", "Open Recent|", "Clone Repository…|⇧⌘K", "Import Existing Code…|", "-", "Close Tab|⌘W", "Close Project|⇧⌘W", "-", "Save|⌘S", "Save All|⌥⌘S", "Reveal in Finder|"]),
-        ("Edit", ["Undo|⌘Z", "Redo|⇧⌘Z", "-", "Cut|⌘X", "Copy|⌘C", "Paste|⌘V", "Paste from History…|⇧⌘V", "Paste as Plain Text|⌥⇧⌘V", "Select All|⌘A", "-", "Find|▸", "Find in Files…|⇧⌘F", "-", "Copy Path|⇧⌘C", "Copy Reference|⌥⇧⌘C", "-", "Sort Lines|", "Reverse Lines|", "-", "Column Selection Mode|⇧⌘8", "-", "Format Document|⌥⇧F", "Organize Imports|⌃⌥O", "Rename Symbol…|F2", "Code Actions…|⌘.", "Parameter Info|⇧⌘Space", "Toggle Comment|⌘/", "-", "Macros|", "Bookmarks|", "-", "AutoFill|", "Start Dictation…|", "Emoji & Symbols|"]),
+        ("Edit", ["Undo|⌘Z", "Redo|⇧⌘Z", "-", "Cut|⌘X", "Copy|⌘C", "Paste|⌘V", "Paste from History…|⇧⌘V", "Paste as Plain Text|⌥⇧⌘V", "Select All|⌘A", "-", "Find|▸", "Find in Files…|⇧⌘F", "-", "Copy Path|⇧⌘C", "Copy Reference|⌥⇧⌘C", "-", "Sort Lines|", "Reverse Lines|", "-", "Column Selection Mode|⇧⌘8", "-", "Format Document|⌥⇧F", "Organize Imports|⌃⌥O", "Generate…|⌃N", "Rename Symbol…|F2", "Code Actions…|⌘.", "Parameter Info|⇧⌘Space", "Toggle Comment|⌘/", "-", "Macros|", "Bookmarks|", "-", "AutoFill|", "Start Dictation…|", "Emoji & Symbols|"]),
         ("View", ["Tool Windows|", "Appearance|", "-", "Toggle Sidebar|⌘0", "Toggle Inspector|⌥⌘0", "Toggle Bottom Panel|⌘J", "New Terminal|⌃⇧`", "-", "Quick Definition|⌥Space", "Quick Type Definition|", "-", "Recent Locations|⇧⌘E", "Recent Files|", "Recent Changes|⌥⇧C", "-", "Compare with Clipboard|", "-", "Markdown Preview|⇧⌘V", "Editor Layout|", "Quick Switch Scheme…|⌃`", "-", "Zoom In|⌘+", "Zoom Out|⌘−", "Actual Size|⌘0", "Reset Font Size in All Editors|", "-", "Notifications|", "Enter Full Screen|⌃⌘F"]),
         ("Go", ["Back|⌘[", "Forward|⌘]", "-", "Go to File…|⌘P", "Go to Symbol in Workspace…|⌘T", "Go to Symbol in File…|⇧⌘O", "-", "Go to Definition|F12", "Go to Implementation|⌘F12", "Find References|⇧F12", "Find Usages|⌥F7", "Go to Test|⇧⌘T", "-", "Next Problem|F8", "Previous Problem|⇧F8", "-", "Command Palette…|⇧⌘P"]),
         ("Build", ["Build Project|⌘F9", "Build Module|⇧⌘F9", "Rebuild Project|", "-", "Build Artifacts|"]),
@@ -102,16 +102,28 @@ struct ContextMenuSpecTests {
     private func rows(_ entries: [MenuEntry]) -> [String] { entries.map { $0.isSeparator ? "-" : "\($0.title)|\($0.children.isEmpty ? $0.shortcut : "▸")" } }
 
     @Test func theEditorMenuIsTheMocks() {
-        #expect(rows(ContextMenuSpec.editor) == ["Run|", "Debug|", "-", "Go to Definition|F12", "Go to Implementation|⌘F12", "Find References|⇧F12", "Find Usages|⌥F7", "-", "Rename Symbol…|F2", "Code Actions…|⌘.", "Format Document|⌥⇧F", "-", "Cut|⌘X", "Copy|⌘C", "Paste|⌘V", "Select All|⌘A", "-", "Reveal in Finder|", "Copy Path|"])
+        #expect(rows(ContextMenuSpec.editor) == ["Run|", "Debug|", "-", "Go to Definition|F12", "Go to Implementation|⌘F12", "Find References|⇧F12", "Find Usages|⌥F7", "-", "Generate…|⌃N", "Rename Symbol…|F2", "Code Actions…|⌘.", "Format Document|⌥⇧F", "-", "Cut|⌘X", "Copy|⌘C", "Paste|⌘V", "Select All|⌘A", "-", "Reveal in Finder|", "Copy Path|"])
     }
 
     @Test func theExplorerMenuIsTheMocks() {
-        #expect(rows(ContextMenuSpec.explorer) == ["Run|", "Debug|", "-", "New|▸", "-", "Cut|⌘X", "Copy|⌘C", "Copy Path|▸", "Paste|⌘V", "-", "Jump to Source|F4", "Reveal in Finder|", "Find in Files…|⇧⌘F", "Replace in Files…|⇧⌘R", "-", "Refactor|▸", "-", "Format Document|⌥⇧F", "Organize Imports|⌃⌥O", "Delete…|⌫", "-", "Create go.mod|", "Go Mod Tidy|","Download Go Modules|", "Build Module|"])
+        #expect(rows(ContextMenuSpec.explorer) == ["Run|", "Debug|", "-", "New|▸", "Generate|▸", "-", "Cut|⌘X", "Copy|⌘C", "Copy Path|▸", "Paste|⌘V", "-", "Jump to Source|F4", "Reveal in Finder|", "Find in Files…|⇧⌘F", "Replace in Files…|⇧⌘R", "-", "Refactor|▸", "-", "Format Document|⌥⇧F", "Organize Imports|⌃⌥O", "Delete…|⌫", "-", "Create go.mod|", "Go Mod Tidy|","Download Go Modules|", "Build Module|"])
     }
 
     @Test func theCopyPathSubmenuOffersThreeForms() {
         let copyPath = ContextMenuSpec.explorer.first { $0.title == "Copy Path" }
         #expect(copyPath?.children.map(\.title) == ["Absolute Path", "Path from Project Root", "File Name"])
+    }
+
+    @Test func theExplorerGenerateSubmenuListsTheFolderItems() {
+        let generate = ContextMenuSpec.explorer.first { $0.title == "Generate" }
+        #expect(generate?.children.map(\.title) == ["HTTP Handler…", "Message Consumer…", "Repository…", "Config Loader…", "Worker with Graceful Shutdown…"])
+        #expect(generate?.children.map(\.action) == ["generateHandler", "generateConsumer", "generateRepository", "generateConfig", "generateWorker"])
+    }
+
+    @Test func generateHasOneShortcutEverywhere() {
+        let bar = MenuSpec.all.flatMap(\.entries).filter { $0.action == "generate" }
+        #expect(bar.count == 1 && bar[0].shortcut == "⌃N")
+        #expect(ContextMenuSpec.editor.first { $0.action == "generate" }?.shortcut == "⌃N")
     }
 
     @Test func theTabMenuIsTheMocks() {

@@ -117,6 +117,20 @@ struct LSPEditResultsTests {
         #expect(LSPResults.codeActions([commandOnly]).isEmpty)
     }
 
+    @Test func anActionWithOnlyDataKeepsItsJSONSoItCanBeResolvedLater() throws {
+        let action: [String: Any] = ["title": "Fill Server", "kind": "refactor.rewrite.fillStruct", "data": ["uri": "file:///a.go", "fixType": "fillstruct"]]
+        let found = LSPResults.codeActions([action])
+        #expect(found.count == 1 && found[0].edits.isEmpty)
+        let json = try #require(found[0].resolveData)
+        #expect(json.contains("\"Fill Server\"") && json.contains("\"fixType\"") && json.contains("fillstruct"))
+    }
+
+    @Test func aResolvedActionGivesItsEdit() {
+        let resolved: [String: Any] = ["title": "Fill Server", "kind": "refactor.rewrite.fillStruct", "edit": ["documentChanges": [["textDocument": ["uri": "file:///a.go", "version": 1], "edits": [["range": range(5, 0, 5, 0), "newText": "x"]]]]]]
+        let action = LSPResults.resolvedCodeAction(resolved, fallback: CodeAction(title: "Fill Server", kind: "k", edits: [:]))
+        #expect(action.edits["file:///a.go"]?.count == 1 && action.resolveData == nil)
+    }
+
     @Test func referencesAreLocations() {
         let found = LSPResults.locations([["uri": "file:///a.go", "range": range(3, 1, 3, 4)], ["uri": "file:///b.go", "range": range(9, 2, 9, 5)]])
         #expect(found.map(\.start.line) == [3, 9])
@@ -210,5 +224,11 @@ struct LSPCapabilitiesTests {
         let textDocument = LSPClient.clientCapabilities["textDocument"] as? [String: Any]
         let symbol = textDocument?["documentSymbol"] as? [String: Any]
         #expect(symbol?["hierarchicalDocumentSymbolSupport"] as? Bool == true)
+    }
+
+    @Test func editResolutionIsAdvertisedForCodeActions() {
+        let textDocument = LSPClient.clientCapabilities["textDocument"] as? [String: Any]
+        let resolve = (textDocument?["codeAction"] as? [String: Any])?["resolveSupport"] as? [String: Any]
+        #expect(resolve?["properties"] as? [String] == ["edit"])
     }
 }

@@ -109,6 +109,12 @@ public final class LSPClient: @unchecked Sendable {
             "completion": ["completionItem": ["snippetSupport": true]],
             "signatureHelp": ["signatureInformation": ["documentationFormat": ["plaintext"], "parameterInformation": ["labelOffsetSupport": true]]],
             "documentSymbol": ["hierarchicalDocumentSymbolSupport": true],
+            // Edits of some actions (fill struct) come through codeAction/resolve; the client resolves them when the user picks one.
+            "codeAction": [
+                "codeActionLiteralSupport": ["codeActionKind": ["valueSet": ["quickfix", "refactor", "refactor.extract", "refactor.inline", "refactor.rewrite", "source", "source.organizeImports", "source.fixAll"]]],
+                "resolveSupport": ["properties": ["edit"]],
+                "dataSupport": true,   // without it gopls answers with a command it would run itself instead of data to resolve
+            ],
         ],
         "general": ["positionEncodings": ["utf-16"]],
     ]

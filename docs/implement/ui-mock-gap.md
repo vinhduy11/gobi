@@ -110,3 +110,13 @@ Done: the project window saves its tabs, carets and layout on close and quit and
 | Screen (mock) | Status |
 |---|---|
 | Editor notice "This folder has no go.mod…" with Create go.mod and Not Now (ExternalChange mock), Explorer menu "Create go.mod" (ContextMenus mock) | Built. The New submenu of the explorer mock is drawn closed, so "Go Package…" has no drawn item. Not built: a Create go.mod item in the Go menu; Debug still runs `dlv debug` on the package and needs a go.mod |
+
+## Generate
+| Screen (mock) | Status |
+|---|---|
+| Editor and Explorer menus: Generate… ⌃N, Generate ▸ with five folder items | Built as drawn. Edit menu: "Generate…" ⌃N before Rename Symbol… (the Menus mock gained that line first) |
+| Generate popup at the caret | Built. The popup lists only what applies to the caret (the mock draws every item at once); titles and details come from core, so they differ in wording from the mock (for example "Test for Server" instead of "Table-driven Test for Server"; "Builder", "Iterator" and "Singleton" without the parenthesis). "Implement Interface…" works for interfaces declared in the same file only. Fill struct appears as an extra entry only when gopls offers it |
+| Design Pattern… dialog (Strategy) | Built: the pattern's parameters as fields (names as a comma list, signature and field lists one per line), Insert ⌄ "Current file" / "New file", live preview, Cancel / Generate. The new file is named after the pattern (`strategy.go`), not after the interface (`compressor.go` in the mock). No description paragraph: the one-line detail from core is shown instead |
+| Other items (constructor, getters and setters…) | The mock has no dialog for them. Items that need a name or have several fields to choose from open the same dialog (name, field ticks, preview); the others insert at once |
+| Explorer folder items | Each opens the dialog (one or two names) and creates one new file in the folder. A name that already exists in the package is not detected (core sees the folder, not the other files) |
+

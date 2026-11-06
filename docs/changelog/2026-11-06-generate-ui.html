@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Generate in the macOS app</title>
+<style>body{font:15px/1.5 -apple-system,system-ui,sans-serif;max-width:820px;margin:2rem auto;padding:0 1rem;color:#1d1d1f}h2{margin-top:1.8rem}code{background:#f2f2f4;padding:1px 4px;border-radius:4px}</style></head><body>
+<h1>Generate in the macOS app (stages 4b, 4c-UI, 4d)</h1>
+<h2>Specs</h2>
+<p>Generate… (⌃N, editor and Explorer menus, Edit menu) shows what applies at the caret, runs the Design Pattern dialog with a live preview,
+inserts the result as one undoable edit, creates files for tests and new-file patterns, offers gopls' Fill struct, and offers five
+folder items in the Explorer. The mocks are the Generate and Context menus boards.</p>
+<h2>Actions</h2>
+<ul>
+<li><code>GobiModel</code>: <code>Generate.swift</code> (wire types), <code>GenerateContext.swift</code> (request from the symbol model, signature parser, caret placement), <code>GeneratePopup.swift</code> (entries by group, dialog form and hints, icons); menu spec, icons, <code>CodeAction.resolveData</code>, <code>GoModule.goDirective</code>.</li>
+<li><code>GobiClient</code>: <code>ControlClient.generateList/Preview/Render</code>, <code>codeAction/resolve</code>, code action capabilities with <code>dataSupport</code>.</li>
+<li><code>GobiApp</code>: <code>GenerateUI.swift</code>, <code>GenerateSheet.swift</code>, <code>GenerateSelfTest.swift</code>, <code>--selftest-generate</code>.</li>
+<li>Core: folder items (<code>folder.go</code>), Implement Interface (<code>implement.go</code>), request golden bytes shared with Swift.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>Resolve support makes gopls send every lazy action without its edit; the client resolves on use instead of keeping the old capabilities, because the owner chose <code>codeAction/resolve</code> for Fill struct.</li>
+<li>Implement Interface works from the same buffer only: gopls offers it as a quick fix for a type error, and the owner chose our own snippet.</li>
+<li>The popup lists what applies (the mock draws everything); titles come from core.</li>
+</ul>
+</body></html>

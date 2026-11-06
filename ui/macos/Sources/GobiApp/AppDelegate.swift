@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if CommandLine.arguments.contains("--selftest-trust") { runTrustSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-terminal") { runTerminalSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-codehelp") { runCodeHelpSelfTest(); return }
+        if CommandLine.arguments.contains("--selftest-generate") { runGenerateSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-lang") { runLanguageSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-toolchain") { runToolchainSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-debug") { runDebugSelfTest(); return }
@@ -326,6 +327,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         if let snapshotPath { controller.snapshotWindow(to: snapshotPath) }
         selfTestExit(failures)
+    }
+
+    /// `GobiApp FIXTURE --selftest-generate`: see `runGenerateChecks`.
+    private func runGenerateSelfTest() {
+        guard let path = CommandLine.arguments.dropFirst().first(where: { !$0.hasPrefix("--") && $0 != snapshotPath }) else { print("usage: GobiApp FIXTURE --selftest-generate"); exit(2) }
+        selfTestExit(runGenerateChecks(fixture: URL(fileURLWithPath: path), addCleanup: { selfTestCleanups.append($0) }))
     }
 
     /// `GobiApp FOLDER --selftest-codehelp`: right-click menus, Go to Definition and Format Document against a real gopls.
@@ -2702,6 +2709,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func findUsages(_ sender: Any?) { frontProject?.findUsages() }
     @objc func renameSymbol(_ sender: Any?) { frontProject?.renameSymbol() }
     @objc func organizeImports(_ sender: Any?) { frontProject?.organizeImports() }
+    @objc func generate(_ sender: Any?) { frontProject?.showGenerate() }
     @objc func codeActions(_ sender: Any?) { frontProject?.showCodeActions() }
     @objc func parameterInfo(_ sender: Any?) { frontProject?.showParameterInfo() }
 

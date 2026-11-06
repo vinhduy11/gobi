@@ -1,3 +1,4 @@
+import Foundation
 import GobiModel
 
 /// Reads the answers gopls sends (already decoded from JSON into dictionaries and arrays) into plain values. Anything that
@@ -87,15 +88,25 @@ public enum LSPResults {
         return byFile.filter { !$0.value.isEmpty }
     }
 
-    /// Code actions that come with an edit. Ones that only run a server command are left out.
+    /// Code actions that come with an edit, and ones that come with `data` only (the edit is fetched by `codeAction/resolve` when
+    /// the user picks it). Ones that only run a server command are left out.
     public static func codeActions(_ result: Any?) -> [CodeAction] {
         guard let list = result as? [Any] else { return [] }
         return list.compactMap { entry in
             guard let action = entry as? [String: Any], let title = action["title"] as? String else { return nil }
+            let kind = action["kind"] as? String ?? ""
             let edits = workspaceEdit(action["edit"])
-            guard !edits.isEmpty else { return nil }
-            return CodeAction(title: title, kind: action["kind"] as? String ?? "", edits: edits)
+            if !edits.isEmpty { return CodeAction(title: title, kind: kind, edits: edits) }
+            guard action["data"] != nil, action["command"] == nil, JSONSerialization.isValidJSONObject(action),
+                  let data = try? JSONSerialization.data(withJSONObject: action), let json = String(data: data, encoding: .utf8) else { return nil }
+            return CodeAction(title: title, kind: kind, edits: [:], resolveData: json)
         }
+    }
+
+    /// The answer of `codeAction/resolve`: the action with its edit, or `fallback` without one when the answer has none.
+    public static func resolvedCodeAction(_ result: Any?, fallback: CodeAction) -> CodeAction {
+        guard let action = result as? [String: Any] else { return CodeAction(title: fallback.title, kind: fallback.kind, edits: [:]) }
+        return CodeAction(title: fallback.title, kind: fallback.kind, edits: workspaceEdit(action["edit"]))
     }
 
     /// The same answer with ranges, detail and the version it was read at.

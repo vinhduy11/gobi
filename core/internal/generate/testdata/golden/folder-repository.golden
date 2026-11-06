@@ -1,0 +1,70 @@
+// file: user_repository.go
+package demo
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"sync"
+)
+
+// ErrUserNotFound is returned when no User has the given ID; test for it with errors.Is.
+var ErrUserNotFound = errors.New("user not found")
+
+// User is the stored record.
+type User struct {
+	ID   string
+	Name string
+	Age  int
+}
+
+// UserRepository stores User records.
+type UserRepository interface {
+	Get(ctx context.Context, id string) (User, error)
+	Save(ctx context.Context, item User) error
+	Delete(ctx context.Context, id string) error
+}
+
+// MemoryUserRepository keeps records in a map and is safe for concurrent use. Replace it with an implementation
+// backed by your database; the interface stays the same.
+type MemoryUserRepository struct {
+	mu    sync.RWMutex
+	items map[string]User
+}
+
+var _ UserRepository = (*MemoryUserRepository)(nil)
+
+// NewMemoryUserRepository returns an empty repository.
+func NewMemoryUserRepository() *MemoryUserRepository {
+	return &MemoryUserRepository{items: map[string]User{}}
+}
+
+// Get returns the record with the given ID, or an error wrapping ErrUserNotFound.
+func (r *MemoryUserRepository) Get(ctx context.Context, id string) (User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	item, ok := r.items[id]
+	if !ok {
+		return User{}, fmt.Errorf("get %q: %w", id, ErrUserNotFound)
+	}
+	return item, nil
+}
+
+// Save stores item under its ID, replacing any earlier record.
+func (r *MemoryUserRepository) Save(ctx context.Context, item User) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.items[item.ID] = item
+	return nil
+}
+
+// Delete removes the record with the given ID, or returns an error wrapping ErrUserNotFound.
+func (r *MemoryUserRepository) Delete(ctx context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.items[id]; !ok {
+		return fmt.Errorf("delete %q: %w", id, ErrUserNotFound)
+	}
+	delete(r.items, id)
+	return nil
+}

@@ -125,3 +125,18 @@ Pattern submenu and dialog, (4d) Explorer folder items stacked in that order. Th
 needs the owner's OK once.
 
  CHANGELOG, README (shortcut), mock gap file, report in `docs/changelog/`.
+
+## Stages 4b to 4d status (macOS UI)
+Done: Swift wire client and presentation state (`GobiModel/Generate*.swift`), ⌃N and the menu entries, the popup at the caret
+built from `documentSymbolInfos`, the dialog with live preview, one-`apply` insertion with the request version and `RequestGate`,
+file creation, Fill struct, Explorer folder items (core: `folder.go`) and Implement Interface… (core: `implement.go`), and
+`--selftest-generate`.
+- gopls finding: with `resolveSupport` alone gopls still answered Fill struct as a `gopls.apply_fix` command; the client must also
+  declare `dataSupport` to get `data` for `codeAction/resolve`. Declaring resolve makes gopls send *every* lazily computed action
+  without its edit, so Organize Imports and the Code Actions menu now resolve before applying (`CodeAction.resolveData`).
+- Implement Interface… reads the interface from the same buffer (core parses it); an interface from another file or package is not
+  offered. Getters and setters, constructor and the other struct items take the symbol model's field names and type text.
+- Known limits: the symbol model gives no underlying basic type, so `String()` uses `%v` for a named string type; folder items do not
+  see declarations in sibling files (a name clash shows up in the compiler); the dialog has no per-field tick for the struct items
+  that insert at once.
+

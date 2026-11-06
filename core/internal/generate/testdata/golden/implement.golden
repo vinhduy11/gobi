@@ -1,0 +1,35 @@
+// file: mem.go
+package demo
+
+import "context"
+
+type Store interface {
+	Get(ctx context.Context, id string) (string, error)
+	Put(id, value string) error
+	Close()
+	Keys(prefix ...string) []string
+}
+
+type Mem struct{ data map[string]string }
+
+var _ Store = (*Mem)(nil)
+
+// Get implements Store.
+func (m *Mem) Get(ctx context.Context, id string) (r0 string, r1 error) {
+	// TODO: implement Get.
+	return
+}
+
+// Put implements Store.
+func (m *Mem) Put(id string, value string) (r0 error) {
+	// TODO: implement Put.
+	return
+}
+
+// Keys implements Store.
+func (m *Mem) Keys(prefix ...string) (r0 []string) {
+	// TODO: implement Keys.
+	return
+}
+
+func (m *Mem) Close() {}

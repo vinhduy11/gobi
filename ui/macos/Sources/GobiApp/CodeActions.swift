@@ -150,7 +150,7 @@ extension ProjectWindowController {
             DispatchQueue.main.async {
                 guard let self else { return }
                 guard let action = actions.first else { self.showNote("Imports are already in order"); return }
-                _ = self.applyWorkspaceEdit(action.edits, named: "Organize Imports")
+                self.perform(action, named: "Organize Imports")
             }
         }
     }
@@ -181,7 +181,19 @@ extension ProjectWindowController {
 
     @objc private func chooseAction(_ item: NSMenuItem) {
         guard let box = item.representedObject as? ActionBox else { return }
-        _ = applyWorkspaceEdit(box.action.edits, named: box.action.title)
+        perform(box.action, named: box.action.title)
+    }
+
+    /// Applies a code action. gopls sends some without their edit; those are resolved first (`codeAction/resolve`).
+    func perform(_ action: CodeAction, named name: String) {
+        guard let client = currentPane?.editorFile.client else { return }
+        client.resolve(action) { [weak self] resolved in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if resolved.edits.isEmpty { self.showNote("\(name): no changes"); return }
+                _ = self.applyWorkspaceEdit(resolved.edits, named: name)
+            }
+        }
     }
 
     // MARK: applying edits

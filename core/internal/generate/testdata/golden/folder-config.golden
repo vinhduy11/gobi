@@ -1,0 +1,48 @@
+// file: config_loader.go
+package demo
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"time"
+)
+
+// Config holds the settings read from the environment.
+type Config struct {
+	Addr        string
+	ReadTimeout time.Duration
+	Port        int
+	Debug       bool
+}
+
+// LoadConfig reads a Config from the variables named APP_<FIELD>. A variable that is not set keeps the
+// field's zero value; one that cannot be parsed is an error.
+func LoadConfig() (Config, error) {
+	var cfg Config
+	if v, ok := os.LookupEnv("APP_ADDR"); ok {
+		cfg.Addr = v
+	}
+	if v, ok := os.LookupEnv("APP_READ_TIMEOUT"); ok {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			return cfg, fmt.Errorf("APP_READ_TIMEOUT: %w", err)
+		}
+		cfg.ReadTimeout = d
+	}
+	if v, ok := os.LookupEnv("APP_PORT"); ok {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return cfg, fmt.Errorf("APP_PORT: %w", err)
+		}
+		cfg.Port = n
+	}
+	if v, ok := os.LookupEnv("APP_DEBUG"); ok {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return cfg, fmt.Errorf("APP_DEBUG: %w", err)
+		}
+		cfg.Debug = b
+	}
+	return cfg, nil
+}

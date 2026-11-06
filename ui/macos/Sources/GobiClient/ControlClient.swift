@@ -186,6 +186,21 @@ public final class ControlClient: @unchecked Sendable {
         return try SearchResults.parse(reply.result)
     }
 
+    /// The Generate items that apply at the caret described by `request`. Blocks; run it off the main thread.
+    public func generateList(_ request: GenerateRequest) throws -> GenerateList {
+        try GenerateList.parse(try callRaw("generate/list") { $0.append(request.encode()) }.result)
+    }
+
+    /// The code an item would insert, for the dialog's preview (no edits).
+    public func generatePreview(_ request: GenerateRequest) throws -> GenerateResult {
+        try GenerateResult.parse(try callRaw("generate/preview") { $0.append(request.encode()) }.result)
+    }
+
+    /// The edits to apply to the buffer (one set, formatted, imports included) and the files to create.
+    public func generateRender(_ request: GenerateRequest) throws -> GenerateResult {
+        try GenerateResult.parse(try callRaw("generate/render") { $0.append(request.encode()) }.result)
+    }
+
     private func callRaw(_ method: String, _ params: (inout WireWriter) -> Void) throws -> ControlWire.Reply {
         let id = nextID
         nextID += 1

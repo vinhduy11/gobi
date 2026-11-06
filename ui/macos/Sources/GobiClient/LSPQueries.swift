@@ -1,3 +1,4 @@
+import Foundation
 import GobiModel
 
 /// The questions the editor asks gopls. Each answers on gopls' reader thread, so a caller that touches UI hops to the main thread.
@@ -68,6 +69,14 @@ extension LSPClient {
         if !kinds.isEmpty { context["only"] = kinds }
         _ = request("textDocument/codeAction", params: ["textDocument": ["uri": uri], "range": range, "context": context]) { result in
             if case .success(let value) = result { completion(LSPResults.codeActions(value)) } else { completion([]) }
+        }
+    }
+
+    /// Asks the server for the edit of an action it sent without one. An action that has its edit is returned as it is.
+    public func resolve(_ action: CodeAction, completion: @escaping (CodeAction) -> Void) {
+        guard action.edits.isEmpty, let json = action.resolveData, let raw = try? JSONSerialization.jsonObject(with: Data(json.utf8)) else { completion(action); return }
+        _ = request("codeAction/resolve", params: raw) { result in
+            if case .success(let value) = result { completion(LSPResults.resolvedCodeAction(value, fallback: action)) } else { completion(CodeAction(title: action.title, kind: action.kind, edits: [:])) }
         }
     }
 

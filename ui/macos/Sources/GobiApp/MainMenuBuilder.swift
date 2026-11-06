@@ -103,6 +103,7 @@ enum MainMenuBuilder {
         case "findUsages": return #selector(AppDelegate.findUsages(_:))
         case "renameSymbol": return #selector(AppDelegate.renameSymbol(_:))
         case "organizeImports": return #selector(AppDelegate.organizeImports(_:))
+        case "generate": return #selector(AppDelegate.generate(_:))
         case "codeActions": return #selector(AppDelegate.codeActions(_:))
         case "parameterInfo": return #selector(AppDelegate.parameterInfo(_:))
         case "goToFile": return #selector(AppDelegate.goToFile(_:))

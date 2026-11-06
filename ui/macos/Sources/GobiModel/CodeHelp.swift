@@ -60,10 +60,13 @@ public struct CodeAction: Equatable {
     public var title: String
     public var kind: String
     public var edits: [String: [TextEdit]]
+    /// The action as JSON when the server sent it without an edit and expects `codeAction/resolve` to fill one in; nil otherwise.
+    public var resolveData: String?
 
-    public init(title: String, kind: String, edits: [String: [TextEdit]]) {
+    public init(title: String, kind: String, edits: [String: [TextEdit]], resolveData: String? = nil) {
         self.title = title
         self.kind = kind
         self.edits = edits
+        self.resolveData = resolveData
     }
 }

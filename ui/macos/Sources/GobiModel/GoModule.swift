@@ -32,6 +32,15 @@ public enum GoModule {
         return parts.count == 2 ? parts.joined(separator: ".") : nil
     }
 
+    /// The version on the `go` line of a go.mod ("1.23", "1.24.1"); nil when there is none.
+    public static func goDirective(in goMod: String) -> String? {
+        for line in goMod.split(separator: "\n") {
+            let parts = line.split(separator: " ", omittingEmptySubsequences: true)
+            if parts.count >= 2, parts[0] == "go" { return String(parts[1]) }
+        }
+        return nil
+    }
+
     public static func source(module: String, goVersion: String?) -> String {
         guard let goVersion, let short = majorMinor(of: goVersion) else { return "module \(module)\n" }
         return "module \(module)\n\ngo \(short)\n"

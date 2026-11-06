@@ -66,7 +66,7 @@ public enum MenuSpec {
             .separator,
             .item("Column Selection Mode", "⇧⌘8"),
             .separator,
-            .item("Format Document", "⌥⇧F", "formatDocument"), .item("Organize Imports", "⌃⌥O", "organizeImports"), .item("Rename Symbol…", "F2", "renameSymbol"),
+            .item("Format Document", "⌥⇧F", "formatDocument"), .item("Organize Imports", "⌃⌥O", "organizeImports"), .item("Generate…", "⌃N", "generate"), .item("Rename Symbol…", "F2", "renameSymbol"),
             .item("Code Actions…", "⌘.", "codeActions"), .item("Parameter Info", "⇧⌘Space", "parameterInfo"), .item("Toggle Comment", "⌘/"),
             .separator,
             .submenu("Macros"), .submenu("Bookmarks"),
@@ -174,7 +174,7 @@ public enum ContextMenuSpec {
     public static let editor: [MenuEntry] = [
         .item("Run", "", "runFile"), .item("Debug", "", "debugFile"), .separator,
         .item("Go to Definition", "F12", "goToDefinition"), .item("Go to Implementation", "⌘F12", "goToImplementation"), .item("Find References", "⇧F12", "findReferences"), .item("Find Usages", "⌥F7", "findUsages"), .separator,
-        .item("Rename Symbol…", "F2", "renameSymbol"), .item("Code Actions…", "⌘.", "codeActions"), .item("Format Document", "⌥⇧F", "formatDocument"), .separator,
+        .item("Generate…", "⌃N", "generate"), .item("Rename Symbol…", "F2", "renameSymbol"), .item("Code Actions…", "⌘.", "codeActions"), .item("Format Document", "⌥⇧F", "formatDocument"), .separator,
         .item("Cut", "⌘X", "cut"), .item("Copy", "⌘C", "copy"), .item("Paste", "⌘V", "paste"), .item("Select All", "⌘A", "selectAll"), .separator,
         .item("Reveal in Finder", "", "revealInFinder"), .item("Copy Path", "", "copyPath"),
     ]
@@ -182,6 +182,10 @@ public enum ContextMenuSpec {
     public static let explorer: [MenuEntry] = [
         .item("Run", "", "runFile"), .item("Debug", "", "debugFile"), .separator,
         .submenu("New", nil, [.item("File…", "", "newFile"), .item("Folder…", "", "newFolder"), .separator, .item("Go File…", "", "newGoFile"), .item("Go Test File…", "", "newGoTestFile"), .item("Go Package…", "", "newGoPackage")]),
+        .submenu("Generate", nil, [
+            .item("HTTP Handler…", "", "generateHandler"), .item("Message Consumer…", "", "generateConsumer"), .item("Repository…", "", "generateRepository"),
+            .item("Config Loader…", "", "generateConfig"), .item("Worker with Graceful Shutdown…", "", "generateWorker"),
+        ]),
         .separator,
         .item("Cut", "⌘X", "cutFiles"), .item("Copy", "⌘C", "copyFiles"),
         .submenu("Copy Path", nil, [.item("Absolute Path", "", "copyPath"), .item("Path from Project Root", "", "copyRelativePath"), .item("File Name", "", "copyFileName")]),

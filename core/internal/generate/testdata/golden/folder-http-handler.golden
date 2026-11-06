@@ -1,0 +1,50 @@
+// file: users_handler.go
+package demo
+
+import (
+	"encoding/json"
+	"log/slog"
+	"net/http"
+)
+
+// UsersHandler serves the /users endpoints.
+type UsersHandler struct {
+	logger *slog.Logger
+}
+
+// NewUsersHandler returns a handler that logs through logger.
+func NewUsersHandler(logger *slog.Logger) *UsersHandler {
+	return &UsersHandler{logger: logger}
+}
+
+// Register adds the routes to mux. Method and wildcard patterns need Go 1.22 or later.
+func (h *UsersHandler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /users", h.list)
+	mux.HandleFunc("GET /users/{id}", h.get)
+	mux.HandleFunc("POST /users", h.create)
+}
+
+func (h *UsersHandler) list(w http.ResponseWriter, r *http.Request) {
+	h.writeJSON(w, http.StatusOK, []string{}) // TODO: return the real list
+}
+
+func (h *UsersHandler) get(w http.ResponseWriter, r *http.Request) {
+	h.writeJSON(w, http.StatusOK, map[string]string{"id": r.PathValue("id")}) // TODO: load it
+}
+
+func (h *UsersHandler) create(w http.ResponseWriter, r *http.Request) {
+	var in map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+	h.writeJSON(w, http.StatusCreated, in) // TODO: store it
+}
+
+func (h *UsersHandler) writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		h.logger.Error("write response", "err", err)
+	}
+}

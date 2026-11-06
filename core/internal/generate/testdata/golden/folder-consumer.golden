@@ -1,0 +1,45 @@
+// file: orders_consumer.go
+package demo
+
+import (
+	"context"
+	"log/slog"
+)
+
+// OrdersMessage is one delivery from the broker.
+type OrdersMessage struct {
+	Key, Value []byte
+}
+
+// OrdersHandler processes one message. A returned error is logged and the consumer moves on to the next message.
+type OrdersHandler func(ctx context.Context, msg OrdersMessage) error
+
+// OrdersConsumer reads messages from a channel until the context ends or the channel closes. Feed the channel from your
+// client library (a Kafka reader, an MQTT subscription, ...) so this loop stays free of any broker dependency.
+type OrdersConsumer struct {
+	source <-chan OrdersMessage
+	handle OrdersHandler
+	logger *slog.Logger
+}
+
+// NewOrdersConsumer returns a consumer that passes every message from source to handle.
+func NewOrdersConsumer(source <-chan OrdersMessage, handle OrdersHandler, logger *slog.Logger) *OrdersConsumer {
+	return &OrdersConsumer{source: source, handle: handle, logger: logger}
+}
+
+// Run blocks until ctx is cancelled (it returns ctx.Err()) or the source is closed (it returns nil).
+func (c *OrdersConsumer) Run(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case msg, ok := <-c.source:
+			if !ok {
+				return nil
+			}
+			if err := c.handle(ctx, msg); err != nil {
+				c.logger.Error("handle message", "key", string(msg.Key), "err", err)
+			}
+		}
+	}
+}

@@ -45,6 +45,10 @@ macOS first; Windows and Linux UIs come later next to it.
 - **New Project**: templates for a command-line tool, library, HTTP service, message consumer, scheduled job, `go.work`
   workspace and empty module (all stdlib-only, created offline, with an optional sample test); the list comes from the
   daemon. A gRPC service is listed but not available yet.
+- **Generate** (⌃N, right-click menu, Edit menu): constructor, getters and setters, `String()`, error type, functional options,
+  table-driven test, `main()`, HTTP handler, mock and "Implement Interface…" at the caret, gopls' Fill struct, and the 22 classic
+  design patterns in idiomatic Go with a parameter dialog and live preview; on a folder in the Explorer: HTTP handler,
+  message consumer, repository, config loader and a worker with graceful shutdown. Each insertion is one Undo step.
 - **Run and test**: Run, Run Tests, Run Test at Cursor, Run on Multiple Go Versions, build and rebuild; output with
   clickable `file:line` links; a Tests tree with filter and jump to the failing line; Go version per project
   (installs from go.dev with `golang.org/dl`); environment profiles with secrets kept in the Keychain and `.env` files.

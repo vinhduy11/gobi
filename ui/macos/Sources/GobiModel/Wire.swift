@@ -33,6 +33,9 @@ public struct WireWriter {
 
     public mutating func bool(_ number: Int, _ value: Bool) { uint(number, value ? 1 : 0) }
 
+    /// Adds fields that were already encoded (a message built elsewhere, written as the params themselves).
+    public mutating func append(_ encoded: [UInt8]) { bytes.append(contentsOf: encoded) }
+
     public mutating func raw(_ number: Int, _ value: [UInt8]) {
         tag(number, 2)
         varint(UInt64(value.count))

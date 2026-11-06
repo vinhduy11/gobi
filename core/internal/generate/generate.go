@@ -237,6 +237,8 @@ func List(ctx Context) ([]Item, error) {
 		if name := testName(ctx); ctx.Name != "" && !strings.HasSuffix(ctx.Path, "_test.go") && !p.declared[name] {
 			add(Item{ID: ItemTest, Title: "Test for " + ctx.Name, Detail: name})
 		}
+	case KindFolder:
+		items = append(items, folderItems()...)
 	case KindEmpty, KindFile:
 		if (ctx.Kind == KindEmpty && (ctx.Package == "main" || ctx.Package == "")) ||
 			(ctx.Kind == KindFile && ctx.Package == "main" && !p.declared["main"]) {
@@ -245,6 +247,11 @@ func List(ctx Context) ([]Item, error) {
 		add(Item{ID: ItemHandler, Title: "HTTP handler…", Detail: "func(w http.ResponseWriter, r *http.Request)", NeedsName: true})
 		add(errorTypeItem())
 		items = append(items, patternItems()...)
+	}
+	if ctx.Kind == KindStruct && ctx.Name != "" {
+		if item, ok := implementItem(p); ok {
+			add(item)
+		}
 	}
 	return items, nil
 }

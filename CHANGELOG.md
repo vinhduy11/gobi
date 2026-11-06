@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+- Generate… in the macOS app (⌃N, the editor's right-click menu, the Edit menu): a popup at the caret listing what applies to the struct, function, interface or empty file under it (from gopls' document symbols), "Design Pattern ▸" with the 22 patterns by group, a dialog with the pattern's parameters, per-field ticks, an "Insert: current file / new file" choice and a live preview, and gopls' "Fill struct" when it offers it (`codeAction/resolve`). Insertion is one `apply`, so one Undo restores the text; a reply for a buffer that changed meanwhile is dropped. Files (tests, patterns written to a new file) are created in the project and opened. `--selftest-generate` covers it.
+- Explorer > Generate ▸ on a folder: HTTP Handler…, Message Consumer…, Repository…, Config Loader… and Worker with Graceful Shutdown… (stdlib-only templates in `core/internal/generate`, each with a golden and a go vet / go test run), and "Implement Interface…" for an interface declared in the same file.
+- Swift client for `generate/list`, `generate/preview` and `generate/render` with decoding tests on core's golden bytes; presentation state (popup entries by group, dialog form with hints) in `GobiModel`.
+- The language client now declares code action resolve support (with `dataSupport`), so gopls sends refactorings such as Fill struct as data and Gobi asks for the edit with `codeAction/resolve` when you choose one; Organize Imports and the Code Actions menu resolve the same way.
+
 ## [0.1.0-alpha.3] - 2026-11-06
 
 ### Added

@@ -87,6 +87,11 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     /// References and Implementation share one gate: only the newest answer is shown, and only for the text it was asked about.
     var locationGate = RequestGate()
     var presentsLocationMenus = true
+    /// Generate: only the newest list or render counts, and only for the text it was asked about; the dialog's preview has its own gate.
+    var generateGate = RequestGate()
+    var generatePreviewGate = RequestGate()
+    /// The self-test turns the pop-up and the dialog off (they would hold the run loop) and drives the same steps directly.
+    var presentsGenerateUI = true
     private(set) var currentPane: EditorPane?
     var tabs = TabStrip()
     var tabTitles: [String] { tabBar.titles }
@@ -1901,6 +1906,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
             handlers["findReferences"] = { [weak self] in self?.findReferences() }
             handlers["findUsages"] = { [weak self] in self?.findUsages() }
             handlers["renameSymbol"] = { [weak self] in self?.renameSymbol() }
+            if url.pathExtension == "go" { handlers["generate"] = { [weak self] in self?.showGenerate() } }
             handlers["codeActions"] = { [weak self] in self?.showCodeActions() }
             if !pane.editorFile.isReadOnlyByLineLength { handlers["formatDocument"] = { [weak pane] in pane?.formatDocument() } }
         }
@@ -1942,6 +1948,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         handlers["newGoFile"] = { [weak self] in self?.newEntry(.goFile, in: target) }
         handlers["newGoTestFile"] = { [weak self] in self?.newEntry(.goTestFile, in: target) }
         handlers["newGoPackage"] = { [weak self] in self?.newGoPackage(in: target) }
+        for (action, id) in ProjectWindowController.folderGenerateItems { handlers[action] = { [weak self] in self?.generateInFolder(target, itemID: id) } }
         if isTrusted, !hasGoModule(forDirectory: "") { handlers["createGoMod"] = { [weak self] in self?.createGoMod() } }
         // Cut, Copy, Delete, Rename and Move act on the selected rows (the row clicked when it was not selected); Paste goes into the
         // folder clicked, next to the file clicked, or into the project folder from empty space.

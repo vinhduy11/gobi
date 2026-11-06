@@ -1,0 +1,47 @@
+// file: worker_worker.go
+package demo
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+)
+
+// Worker calls work every interval until its context ends. The call in progress is allowed to finish.
+type Worker struct {
+	interval time.Duration
+	work     func(ctx context.Context) error
+	logger   *slog.Logger
+}
+
+// NewWorker returns a worker that runs work every interval.
+func NewWorker(interval time.Duration, work func(ctx context.Context) error, logger *slog.Logger) *Worker {
+	return &Worker{interval: interval, work: work, logger: logger}
+}
+
+// Run blocks until ctx is cancelled, then returns once the work in progress has finished. work receives a context that is
+// not cancelled with ctx, so it completes instead of being cut off; keep it short enough for your shutdown deadline.
+func (w *Worker) Run(ctx context.Context) error {
+	ticker := time.NewTicker(w.interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			if err := w.work(context.WithoutCancel(ctx)); err != nil {
+				w.logger.Error("work failed", "err", err)
+			}
+		}
+	}
+}
+
+// RunUntilSignal runs the worker until the process receives SIGINT or SIGTERM, then returns after the work in progress.
+func (w *Worker) RunUntilSignal() error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return w.Run(ctx)
+}

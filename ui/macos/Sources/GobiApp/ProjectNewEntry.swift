@@ -81,7 +81,7 @@ extension ProjectWindowController {
     }
 
     /// The `package` of the first Go file in the folder (a test file's `_test` suffix left off), or nil when there is none.
-    private func packageOfGoFiles(in folder: URL, among names: [String]) -> String? {
+    func packageOfGoFiles(in folder: URL, among names: [String]) -> String? {
         for name in names.sorted() where name.hasSuffix(".go") {
             guard let text = try? String(contentsOf: folder.appendingPathComponent(name), encoding: .utf8) else { continue }
             for line in text.split(separator: "\n", omittingEmptySubsequences: true) where line.hasPrefix("package ") {

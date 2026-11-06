@@ -74,5 +74,7 @@ public enum MenuIcons {
         "Replace in Files…": "arrow.2.squarepath", "Refactor": "wand.and.stars", "Rename…": "pencil", "Move…": "folder.badge.questionmark", "Delete…": "trash",
         "Create go.mod": "doc.badge.plus", "Go Mod Tidy": "sparkles", "Download Go Modules": "arrow.down.circle", "Close": "xmark", "Close Others": "xmark.square",
         "Close Tabs to the Right": "arrow.right.to.line.compact",
+        "Generate…": "wand.and.stars", "Generate": "wand.and.stars", "HTTP Handler…": "network", "Message Consumer…": "tray.and.arrow.down",
+        "Repository…": "externaldrive", "Config Loader…": "slider.horizontal.3", "Worker with Graceful Shutdown…": "timer",
     ]
 }

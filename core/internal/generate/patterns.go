@@ -28,7 +28,10 @@ type patternDef struct {
 	ID, Title, Group, Detail string
 	Note                     string // the simpler Go idiom, when there is one
 	Params                   []ParamSpec
-	Reserved                 map[string][]string // parameter key -> names it must not use
+	Folder                   bool                                                                 // an Explorer item: offered for a folder, always written to a new file named after FileKey
+	FileKey, FileSuffix      string                                                               // the answer that names the file (snake_case) and the suffix before .go
+	Reserved                 map[string][]string                                                  // parameter key -> names it must not use
+	Prepare                  func(req Request, p *parsed, r *renderer, data map[string]any) error // adds data from the file itself
 	Tmpl                     string
 }
 
@@ -44,12 +47,17 @@ func concat(groups ...[]patternDef) []patternDef {
 }
 
 func findPattern(id string) (patternDef, bool) {
-	for _, d := range catalogue {
+	for _, d := range allDefs() {
 		if d.ID == id {
 			return d, true
 		}
 	}
 	return patternDef{}, false
+}
+
+// allDefs is every definition a template exists for: the patterns, the folder items and Implement Interface.
+func allDefs() []patternDef {
+	return append(append([]patternDef{implementDef}, catalogue...), folderCatalogue...)
 }
 
 func patternItems() []Item {
@@ -62,6 +70,9 @@ func patternItems() []Item {
 
 // header is the comment that names the pattern, links the reference and points at a simpler Go idiom when there is one.
 func (d patternDef) header() string {
+	if d.Folder {
+		return ""
+	}
 	lines := []string{"// " + d.Title + " pattern: https://refactoring.guru/design-patterns/" + d.ID}
 	if d.Note != "" {
 		for i, line := range strings.Split(d.Note, "\n") {
@@ -77,11 +88,11 @@ func (d patternDef) header() string {
 var patternTemplates = func() *template.Template {
 	root := template.New("").Funcs(template.FuncMap{
 		"pkg":   func(string) string { return "" }, // replaced per render, it records the imports
-		"local": local, "lower": strings.ToLower, "recv": recv, "recvSig": recvSig, "stub": stub, "nextOf": nextOf,
+		"local": local, "lower": strings.ToLower, "upper": strings.ToUpper, "snake": func(s string) string { return strings.ToLower(strings.Join(words(s), "_")) }, "fail": failTemplate, "recv": recv, "recvSig": recvSig, "stub": stub, "nextOf": nextOf,
 		"isSlice": func(t string) bool { return strings.HasPrefix(t, "[]") },
 		"isMap":   func(t string) bool { return strings.HasPrefix(t, "map[") },
 	})
-	for _, d := range catalogue {
+	for _, d := range allDefs() {
 		template.Must(root.New(d.ID).Parse(d.Tmpl))
 	}
 	return root
@@ -94,7 +105,7 @@ func renderPattern(def patternDef, req Request) (string, []importSpec, *parsed, 
 		return "", nil, nil, err
 	}
 	r := &renderer{names: importNames(p.file)}
-	if req.Target == TargetFile { // a new file starts without imports
+	if req.Target == TargetFile || def.Folder { // a new file starts without imports
 		r.names = map[string]string{}
 	}
 	data, err := def.data(req, p, r)
@@ -168,6 +179,9 @@ func (d patternDef) data(req Request, p *parsed, r *renderer) (map[string]any, e
 		if len(values) == 0 {
 			values = spec.Default
 		}
+		if len(values) == 0 {
+			return nil, fmt.Errorf("%s: needs an answer", spec.Label)
+		}
 		value, err := parseParam(spec, values, r)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", spec.Label, err)
@@ -193,6 +207,11 @@ func (d patternDef) data(req Request, p *parsed, r *renderer) (map[string]any, e
 	}
 	if fieldParams != nil {
 		data["r"] = recv(mainType, fieldParams...)
+	}
+	if d.Prepare != nil {
+		if err := d.Prepare(req, p, r, data); err != nil {
+			return nil, err
+		}
 	}
 	return data, nil
 }
@@ -432,6 +451,9 @@ func nextOf(list []string, i int) string { return list[(i+1)%len(list)] }
 
 // patternResult places a rendered pattern: into the current file, or into a new <pattern>.go next to it.
 func patternResult(def patternDef, req Request, result Result, needs []importSpec, p *parsed) (Result, error) {
+	if def.Folder {
+		return folderResult(def, req, result, needs)
+	}
 	dir, current := filepath.Dir(req.Path), true
 	if fi, err := osStat(req.Path); err == nil && fi.IsDir() {
 		dir, current = req.Path, false
