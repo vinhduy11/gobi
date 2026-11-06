@@ -73,6 +73,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     var goModNoticePaths = Set<String>()
     private var branchName: String?
     private var gitClient: GitClient?
+    private var gitRefreshGeneration = 0
     /// Which Go this project uses (Auto, or a pinned version), the Go versions found on this machine, and what that resolves to.
     private(set) var toolchainSelection = ToolchainSelection()
     private(set) var goInstalls: [GoInstall] = []
@@ -564,12 +565,16 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     func refreshGit() {
         guard isTrusted else { return }
         let root = self.root.path
+        gitRefreshGeneration += 1
+        let mine = gitRefreshGeneration
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self else { return }
             if self.gitClient == nil { self.gitClient = try? GitClient(workspaceRoot: root, trusted: true, gitPath: AppPreferences.git.gitPath) }
             guard let status = try? self.gitClient?.status() else { return }
             let branches = (try? self.gitClient?.branches()) ?? []
             DispatchQueue.main.async {
+                // Refreshes run side by side; an older answer that arrives last would show the tree as it was.
+                guard mine == self.gitRefreshGeneration else { return }
                 self.gitStatus = status
                 self.gitBranches = branches
                 if !status.branch.isEmpty { self.branchName = status.branch }

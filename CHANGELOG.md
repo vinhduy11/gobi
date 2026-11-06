@@ -12,6 +12,12 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - A notice in the editor for a Go file in a project with no go.mod: "Create go.mod" and "Not Now" (remembered per project; Restricted Mode shows the text without the button). Create go.mod writes `module <folder name as a module path>` and `go <major.minor of the Go in use>` in the project root, refreshes the explorer, the inspector and the status bar and restarts gopls for the open Go files. Also in the Explorer menu (only while go.mod is missing and the project is trusted).
 - Explorer > New > Go Package…: a folder and a file of the same name with `package <name>` (the name must be a Go identifier and not exist yet).
 
+### Fixed
+- Accepting a completion left the letters typed after the list opened: typing `pac` and choosing `package` gave `packageac`. gopls' replace range is worked out when the request is sent (after `p`), so the later `ac` was not replaced; the range is now stretched to the caret.
+- The Source control block under the Explorer and the bottom panel (Problems, Tests, Terminal, Output…) had a fixed height; both now have a divider you can drag (minimum heights keep them usable, the position is remembered).
+- A double click on a folder in the Explorer opens or closes it.
+- Git status could show an older state: refreshes run side by side and a slow, older answer arriving last replaced the newer one (changed files missing from the Commit tab, a ticked file losing its tick). Only the newest refresh is applied now.
+
 ## [0.1.0-alpha.1] - 2026-11-06
 
 ### Added
@@ -152,9 +158,6 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `ui/macos/`: quick open on one panel: Go to File (⌘P), Command Palette (⇧⌘P, every live menu command with its menu and shortcut), Go to Symbol in File (⇧⌘O) and in Workspace (⌘T) through gopls. `Fuzzy` ranks matches (name prefix, name contains, letters in order with word-start bonus).
 
 ### Fixed
-- Accepting a completion left the letters typed after the list opened: typing `pac` and choosing `package` gave `packageac`. gopls' replace range is worked out when the request is sent (after `p`), so the later `ac` was not replaced; the range is now stretched to the caret.
-- The Source control block under the Explorer and the bottom panel (Problems, Tests, Terminal, Output…) had a fixed height; both now have a divider you can drag (minimum heights keep them usable, the position is remembered).
-- A double click on a folder in the Explorer opens or closes it.
 - After an update the new app kept using the old gobid, because the daemon outlives the app that started it, so fixes in gobid (such as the PATH fix) did not take effect until the old daemon was killed by hand. The first time the app connects it now compares the daemon's start time with the time the bundled `gobid` file was written, and when the daemon is older it asks it to stop and starts the new one. A daemon that is newer is never touched.
 - Setup said `go` was missing although it is installed: an app opened from Finder or the Dock gets only the system `PATH`, so `/usr/local/go/bin` (the Go installer) and `/opt/homebrew/bin` (Homebrew) were not searched. gobid now adds those, the directories listed in `/etc/paths` and `/etc/paths.d`, `/usr/local/bin` and `~/go/bin` to its `PATH` at start, after the entries already there, so go, gopls, dlv and git are found the same way as in a terminal.
 - Right-clicking in the Explorer did nothing in a project with no files yet (and below the last row of any project): the menu was only offered for a row. A click on empty space now gives the menu of the project folder.
