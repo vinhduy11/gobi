@@ -28,6 +28,7 @@ enum MainMenuBuilder {
             let item = NSMenuItem(title: entry.title, action: selector(for: entry.action), keyEquivalent: "")
             item.target = isResponderChainAction(entry.action) ? nil : target
             if item.action == nil { item.isEnabled = false }
+            MenuIconImage.apply(to: item, title: entry.title)
             item.identifier = entry.action.map { NSUserInterfaceItemIdentifier($0) }
             applyShortcut(keymap.shortcut(for: menuPath + " ▸ " + entry.title, default: entry.shortcut), to: item)
             if entry.action == "openRecent" || entry.action == "recentFiles" {

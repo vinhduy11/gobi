@@ -24,6 +24,16 @@ Order: mock → behavior contract → vectors → code (TDD) → scenarios → m
    `docs/implement/ui-parity-matrix.md` (macOS / Linux / Windows: not started, passes, waived with reason).
 6. **Docs**: README, CHANGELOG, `docs/implement/ui-mock-gap.md`, the report in `docs/changelog/`.
 
+## Menus: every item has a leading icon
+Every item of the menu bar, the context menus, the popup lists opened from a menu and the toolbar's ⋮ menu starts with an
+SF Symbol, so no line is bare. macOS 26 draws icons by itself on items with a system action (Cut, Copy, Paste, Quit…) and none
+on the others, which looks uneven; therefore all items get one, system-action items included (an explicit image replaces the
+automatic one). Icon names live in `GobiModel/MenuIcons.swift`, keyed by title; `MenuIconImage` (GobiApp) applies them, and
+items built from data at run time (branches, recent files, toolchains) name their symbol directly. A new menu title needs a
+`MenuIcons` entry (`MenuIconsTests` fails otherwise, and also on entries no menu uses), and the mock shows the same icon. The
+self-test checks that every built item has an image and that every symbol name exists on this macOS. Separators, section
+headings and the system's own menus (Services) are exempt; check marks for a chosen item stay.
+
 ## Cross-platform parity (the macOS app must not hide behaviour Linux or Windows would lack)
 - `GobiModel` and `GobiClient` stay free of AppKit, Darwin and Foundation-only APIs (`check-layers.sh`); they must build and
   pass on Linux (CI). Do not add a macOS-only call to them.

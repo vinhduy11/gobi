@@ -2323,6 +2323,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("project kind is \(controller.kind)", controller.kind == ProjectKind.detect(entryNames: names))
         let titles = NSApp.mainMenu?.items.map { $0.submenu?.title ?? $0.title } ?? []
         check("the menu bar has the mock's menus (\(titles.joined(separator: ", ")))", titles == ["Gobi", "File", "Edit", "View", "Go", "Build", "Run", "Git", "Window", "Help"])
+        // macOS 26 puts icons on the items with a system action and none on the others; every item here gets its own, so no line is bare.
+        func bareItems(_ menu: NSMenu, _ path: String) -> [String] {
+            menu.items.flatMap { item -> [String] in
+                if item.isSeparatorItem { return [] }
+                let name = path + item.title
+                return (item.image == nil ? [name] : []) + (item.title == "Services" ? [] : item.submenu.map { bareItems($0, name + " ▸ ") } ?? [])
+            }
+        }
+        let bare = (NSApp.mainMenu?.items ?? []).flatMap { bar in bar.submenu.map { bareItems($0, bar.submenu?.title ?? "" + " ▸ ") } ?? [] }
+        check("every menu item has an icon (\(bare.prefix(6)))", bare.isEmpty)
+        check("every icon name exists on this macOS (\(MenuIconImage.unknownSymbols))", MenuIconImage.unknownSymbols.isEmpty)
+        let editorMenu = ContextMenus.build(ContextMenuSpec.editor, handlers: [:]), explorerMenu = ContextMenus.build(ContextMenuSpec.explorer, handlers: [:])
+        check("every context menu item has an icon (\((bareItems(editorMenu, "") + bareItems(explorerMenu, "")).prefix(6)))", (bareItems(editorMenu, "") + bareItems(explorerMenu, "")).isEmpty)
         // Live items of the new menus are wired: each has an action and its id, and the not-built ones stay disabled.
         func menuItem(_ menuTitle: String, _ itemTitle: String) -> NSMenuItem? { NSApp.mainMenu?.items.compactMap { $0.submenu }.first { $0.title == menuTitle }?.items.first { $0.title == itemTitle } }
         let wired = [("Git", "Commit…"), ("Git", "Push…"), ("Git", "Rebase…"), ("Git", "New Tag…"), ("Build", "Build Project"), ("Build", "Rebuild Project"), ("Run", "Debug"), ("Run", "Stop"), ("Run", "Attach to Process…"),
@@ -2482,7 +2495,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.removeAllItems()
             let live = menu.title == "Environment" ? frontProject?.environmentMenu() : frontProject?.toolchainMenu()
             for item in live?.items ?? [] { live?.removeItem(item); menu.addItem(item) }
-            if live == nil { menu.addItem(withTitle: "No Project Open", action: nil, keyEquivalent: "").isEnabled = false }
+            if live == nil { let none = menu.addItem(withTitle: "No Project Open", action: nil, keyEquivalent: ""); none.isEnabled = false; MenuIconImage.set("minus.circle", on: none) }
             return
         }
         if menu.title == "Recent Files" { fillRecentFiles(menu); return }
@@ -2492,12 +2505,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for entry in entries {
             let item = menu.addItem(withTitle: entry.title, action: #selector(openRecent(_:)), keyEquivalent: "")
             item.representedObject = entry.path
+            MenuIconImage.set("folder", on: item)
             item.toolTip = (entry.path as NSString).abbreviatingWithTildeInPath
         }
-        if entries.isEmpty { menu.addItem(withTitle: "No Recent Projects", action: nil, keyEquivalent: "").isEnabled = false }
+        if entries.isEmpty { let none = menu.addItem(withTitle: "No Recent Projects", action: nil, keyEquivalent: ""); none.isEnabled = false; MenuIconImage.set("minus.circle", on: none) }
         menu.addItem(.separator())
         let clear = menu.addItem(withTitle: "Clear Menu", action: #selector(clearRecents(_:)), keyEquivalent: "")
         clear.isEnabled = !entries.isEmpty
+        MenuIconImage.set("trash", on: clear)
     }
 
     @objc func openRecent(_ sender: NSMenuItem) {

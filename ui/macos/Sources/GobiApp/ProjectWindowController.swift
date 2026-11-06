@@ -770,6 +770,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         menu.autoenablesItems = false
         for branch in gitBranches {
             let item = NSMenuItem(title: branch.name, action: #selector(MenuAction.fire(_:)), keyEquivalent: "")
+            MenuIconImage.set("arrow.triangle.branch", on: item)
             let behaviour = MenuAction { [weak self] in self?.switchBranch(branch.name) }
             item.target = behaviour
             item.representedObject = behaviour
@@ -778,11 +779,13 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         }
         menu.addItem(.separator())
         let create = NSMenuItem(title: "New Branch…", action: #selector(MenuAction.fire(_:)), keyEquivalent: "")
+        MenuIconImage.apply(to: create, title: "New Branch…")
         let behaviour = MenuAction { [weak self] in self?.newBranch() }
         create.target = behaviour
         create.representedObject = behaviour
         menu.addItem(create)
         let merge = NSMenuItem(title: "Merge into Current Branch…", action: #selector(MenuAction.fire(_:)), keyEquivalent: "")
+        MenuIconImage.set("arrow.triangle.merge", on: merge)
         let mergeBehaviour = MenuAction { [weak self] in self?.mergeIntoCurrent() }
         merge.target = mergeBehaviour
         merge.representedObject = mergeBehaviour
@@ -887,6 +890,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         for (title, run) in [("Reveal in Finder", { [weak self] in if let root = self?.root { NSWorkspace.shared.activateFileViewerSelecting([root]) } }),
                              ("Copy Path", { [weak self] in if let path = self?.root.path { ContextMenus.copyToPasteboard(path) } })] as [(String, () -> Void)] {
             let item = NSMenuItem(title: title, action: #selector(MenuAction.fire(_:)), keyEquivalent: "")
+            MenuIconImage.apply(to: item, title: title)
             let behaviour = MenuAction(run)
             item.target = behaviour
             item.representedObject = behaviour
@@ -1120,6 +1124,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         menu.autoenablesItems = false
         for profile in environments.file.profiles {
             let item = NSMenuItem(title: profile.name + (profile.isRemote ? "  (remote)" : ""), action: #selector(MenuAction.fire(_:)), keyEquivalent: "")
+            MenuIconImage.set("globe", on: item)
             let behaviour = MenuAction { [weak self] in self?.selectEnvironment(profile.name) }
             item.target = behaviour
             item.representedObject = behaviour
@@ -1128,6 +1133,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         }
         if !environments.file.profiles.isEmpty { menu.addItem(.separator()) }
         let manage = NSMenuItem(title: "Manage Environments…", action: #selector(MenuAction.fire(_:)), keyEquivalent: "")
+        MenuIconImage.apply(to: manage, title: "Manage Environments…")
         let behaviour = MenuAction { NSApp.sendAction(#selector(AppDelegate.showEnvironments(_:)), to: nil, from: nil) }
         manage.target = behaviour
         manage.representedObject = behaviour
@@ -1484,6 +1490,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         menu.autoenablesItems = false
         for entry in ToolchainChoice.menuItems(selection: toolchainSelection, goMod: moduleFacts, installs: goInstalls) {
             let item = NSMenuItem(title: entry.title, action: #selector(MenuAction.fire(_:)), keyEquivalent: "")
+            MenuIconImage.set("wrench", on: item)
             let behaviour = MenuAction { [weak self] in self?.selectToolchain(version: entry.version) }
             item.target = behaviour
             item.representedObject = behaviour
@@ -1492,11 +1499,13 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         }
         menu.addItem(.separator())
         let multi = NSMenuItem(title: "Run on Multiple Go Versions…", action: #selector(MenuAction.fire(_:)), keyEquivalent: "")
+        MenuIconImage.apply(to: multi, title: "Run on Multiple Go Versions…")
         let multiBehaviour = MenuAction { NSApp.sendAction(#selector(AppDelegate.runMultiVersion(_:)), to: nil, from: nil) }
         multi.target = multiBehaviour
         multi.representedObject = multiBehaviour
         menu.addItem(multi)
         let manage = NSMenuItem(title: "Manage Go Toolchains…", action: #selector(MenuAction.fire(_:)), keyEquivalent: "")
+        MenuIconImage.apply(to: manage, title: "Manage Go Toolchains…")
         let behaviour = MenuAction { NSApp.sendAction(#selector(AppDelegate.showToolchains(_:)), to: nil, from: nil) }
         manage.target = behaviour
         manage.representedObject = behaviour

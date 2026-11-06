@@ -77,6 +77,7 @@ extension ProjectWindowController {
             let relative = StatusBar.relativePath(projectRoot: root.path, file: url.path)
             let line = (try? String(contentsOf: url, encoding: .utf8))?.split(separator: "\n", omittingEmptySubsequences: false)[safe: location.start.line].map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
             let item = NSMenuItem(title: "\(relative):\(location.start.line + 1)   \(line.prefix(80))", action: #selector(chooseLocation(_:)), keyEquivalent: "")
+            MenuIconImage.set("doc.text", on: item)
             item.target = self
             item.representedObject = LocationBox(location)
             menu.addItem(item)
@@ -164,6 +165,7 @@ extension ProjectWindowController {
                 menu.autoenablesItems = false
                 for action in actions.prefix(30) {
                     let item = NSMenuItem(title: action.title, action: #selector(self.chooseAction(_:)), keyEquivalent: "")
+                    MenuIconImage.set("lightbulb", on: item)
                     item.target = self
                     item.representedObject = ActionBox(action)
                     menu.addItem(item)

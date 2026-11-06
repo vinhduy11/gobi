@@ -23,6 +23,7 @@ enum ContextMenus {
             if entry.isSeparator { menu.addItem(.separator()); continue }
             let item = NSMenuItem(title: entry.title, action: nil, keyEquivalent: "")
             MainMenuBuilder.applyShortcut(entry.shortcut, to: item)
+            MenuIconImage.apply(to: item, title: entry.title)
             if !entry.children.isEmpty {
                 // A submenu is enabled when something in it is.
                 let submenu = build(entry.children, handlers: handlers)

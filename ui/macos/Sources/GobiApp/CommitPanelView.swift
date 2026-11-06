@@ -162,8 +162,8 @@ final class CommitPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate,
         changesTable.target = self
         changesTable.doubleAction = #selector(rowDoubleClicked)
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Show Diff", action: #selector(diffPressed), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Roll Back…", action: #selector(rollbackPressed), keyEquivalent: ""))
+        menu.addItem(MenuIconImage.apply(to: NSMenuItem(title: "Show Diff", action: #selector(diffPressed), keyEquivalent: ""), title: "Show Diff"))
+        menu.addItem(MenuIconImage.apply(to: NSMenuItem(title: "Roll Back…", action: #selector(rollbackPressed), keyEquivalent: ""), title: "Roll Back…"))
         menu.items.forEach { $0.target = self }
         changesTable.menu = menu
         overlay(emptyLabel, on: scroll)

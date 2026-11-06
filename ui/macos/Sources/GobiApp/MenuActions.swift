@@ -66,11 +66,14 @@ extension AppDelegate {
         for path in files {
             let entry = menu.addItem(withTitle: (path as NSString).lastPathComponent, action: #selector(openRecentFile(_:)), keyEquivalent: "")
             entry.representedObject = path
+            MenuIconImage.set("doc", on: entry)
             entry.toolTip = (path as NSString).abbreviatingWithTildeInPath
         }
-        if files.isEmpty { menu.addItem(withTitle: frontProject == nil ? "No Project Open" : "No Recent Files", action: nil, keyEquivalent: "").isEnabled = false }
+        if files.isEmpty { let none = menu.addItem(withTitle: frontProject == nil ? "No Project Open" : "No Recent Files", action: nil, keyEquivalent: ""); none.isEnabled = false; MenuIconImage.set("minus.circle", on: none) }
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Clear Menu", action: #selector(clearRecentFiles(_:)), keyEquivalent: "").isEnabled = !files.isEmpty
+        let clear = menu.addItem(withTitle: "Clear Menu", action: #selector(clearRecentFiles(_:)), keyEquivalent: "")
+        clear.isEnabled = !files.isEmpty
+        MenuIconImage.set("trash", on: clear)
     }
 
     // MARK: Window
