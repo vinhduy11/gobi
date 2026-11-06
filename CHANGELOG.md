@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.0-alpha.4] - 2026-11-06
+
 ### Added
 - Generate… in the macOS app (⌃N, the editor's right-click menu, the Edit menu): a popup at the caret listing what applies to the struct, function, interface or empty file under it (from gopls' document symbols), "Design Pattern ▸" with the 22 patterns by group, a dialog with the pattern's parameters, per-field ticks, an "Insert: current file / new file" choice and a live preview, and gopls' "Fill struct" when it offers it (`codeAction/resolve`). Insertion is one `apply`, so one Undo restores the text; a reply for a buffer that changed meanwhile is dropped. Files (tests, patterns written to a new file) are created in the project and opened. `--selftest-generate` covers it.
 - Explorer > Generate ▸ on a folder: HTTP Handler…, Message Consumer…, Repository…, Config Loader… and Worker with Graceful Shutdown… (stdlib-only templates in `core/internal/generate`, each with a golden and a go vet / go test run), and "Implement Interface…" for an interface declared in the same file.
@@ -233,7 +235,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.
 
-[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.3...HEAD
+[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.4...HEAD
+[0.1.0-alpha.4]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.3...v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/vinhduy11/gobi/releases/tag/v0.1.0-alpha.1
