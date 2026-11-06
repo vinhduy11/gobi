@@ -57,6 +57,7 @@ import (
 //	               (repeated), 8 most results (0: 2000), 9 absolute project folder
 //	               result: 1 match (repeated: 1 path, 2 line (0-based), 3 start, 4 end (UTF-16 columns), 5 text, 6 column where the text
 //	               starts, 7 replacement), 2 files with matches, 3 files skipped, 4 truncated (bool)
+//	generate/list, generate/preview, generate/render  params and results: see internal/generate/codec.go
 //	tools/install  params: 1 tool name; result: empty. Runs `go install`; the client asks the user first.
 const (
 	controlID      = 1
@@ -217,6 +218,8 @@ func handleControl(method string, params []byte, hooks controlHooks) ([]byte, er
 		return nil, nil
 	case "search/files":
 		return searchFiles(fields)
+	case "generate/list", "generate/preview", "generate/render":
+		return generateControl(method, fields)
 	case "tools/install":
 		return nil, toolchain.Install(context.Background(), toolchain.FromOS(), text(1))
 	case "project/templates":

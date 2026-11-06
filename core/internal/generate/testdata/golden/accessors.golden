@@ -1,0 +1,22 @@
+// file: server.go
+package demo
+
+import "log/slog"
+
+type Server struct {
+	addr   string
+	port   int
+	logger *slog.Logger
+}
+
+// Addr returns the addr field.
+func (s *Server) Addr() string { return s.addr }
+
+// SetAddr sets the addr field.
+func (s *Server) SetAddr(addr string) { s.addr = addr }
+
+// Port returns the port field.
+func (s *Server) Port() int { return s.port }
+
+// SetPort sets the port field.
+func (s *Server) SetPort(port int) { s.port = port }

@@ -1,0 +1,19 @@
+// file: server.go
+package demo
+
+import "log/slog"
+
+type Server struct {
+	addr   string
+	port   int
+	logger *slog.Logger
+}
+
+// NewServer returns a Server with its fields set.
+func NewServer(addr string, port int, logger *slog.Logger) *Server {
+	return &Server{
+		addr:   addr,
+		port:   port,
+		logger: logger,
+	}
+}

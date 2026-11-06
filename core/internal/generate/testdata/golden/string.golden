@@ -1,0 +1,18 @@
+// file: server.go
+package demo
+
+import (
+	"fmt"
+	"log/slog"
+)
+
+type Server struct {
+	addr   string
+	port   int
+	logger *slog.Logger
+}
+
+// String implements fmt.Stringer.
+func (s *Server) String() string {
+	return fmt.Sprintf("Server{addr: %s, port: %d, logger: %v}", s.addr, s.port, s.logger)
+}

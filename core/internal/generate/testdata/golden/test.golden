@@ -1,0 +1,44 @@
+// file: calc.go
+package demo
+
+import "errors"
+
+func Divide(a, b int) (int, error) {
+	if b == 0 {
+		return 0, errors.New("divide by zero")
+	}
+	return a / b, nil
+}
+// file: calc_test.go
+package demo
+
+import (
+	"reflect"
+	"testing"
+)
+
+func TestDivide(t *testing.T) {
+	tests := []struct {
+		name    string
+		a       int
+		b       int
+		want    int
+		wantErr bool
+	}{
+		// Add cases here.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Divide(tt.a, tt.b)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Divide() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err != nil {
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Divide() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

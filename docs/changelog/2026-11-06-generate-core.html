@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Generate core engine (stage 4a)</title>
+<style>body{font:15px/1.5 -apple-system,sans-serif;max-width:46rem;margin:2rem auto;padding:0 1rem}code{background:#eee;padding:0 .25em}</style></head>
+<body>
+<h1>Generate core engine (stage 4a)</h1>
+<h2>Specs</h2>
+<p>Generation lives in the Go core: an item catalogue with applicability from a caret context, rendering with <code>text/template</code>, final text formatted with <code>go/format</code>, import edits through <code>go/ast</code> so one apply is one undo step. Control messages <code>generate/list</code>, <code>generate/preview</code>, <code>generate/render</code> carry a buffer version that every reply echoes. Plus a gopls code-action inventory. No UI.</p>
+<h2>Actions</h2>
+<ul>
+<li>New package <code>core/internal/generate</code>: nine items, import block edits (existing block, none, single line, aliased, blank), UTF-16 edit ranges, <code>ApplyEdits</code>, wire codec with golden bytes.</li>
+<li>Daemon: <code>generate.go</code> dispatches the three methods; layer table lists the package as a service.</li>
+<li>Tests: one exact golden per item; a temp-module test runs <code>gofmt -l</code>, <code>go vet</code> and <code>go test</code>; mixed-field <code>String()</code>; import cases; version echo.</li>
+<li>Opt-in <code>TestGoplsCodeActionInventory</code>; results in <code>docs/implement/generate.md</code>.</li>
+<li>Docs: wire protocol, CHANGELOG.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>Hand-rolled import insertion over <code>golang.org/x/tools</code>: no new dependency, touches only the import lines; handles stdlib grouping only, third-party imports are added only to new test files.</li>
+<li>Pointer receivers everywhere; the UI could pass the receiver kind later.</li>
+<li>The test item creates a new <code>_test.go</code> and refuses if one exists, since core cannot see unsaved test buffers.</li>
+<li>The mock relies on the UI sending a flattened method set.</li>
+<li>Implement interface and generate test are built from our own snippets, not gopls (see the inventory).</li>
+</ul>
+</body></html>

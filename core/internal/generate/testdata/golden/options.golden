@@ -1,0 +1,37 @@
+// file: server.go
+package demo
+
+import "log/slog"
+
+type Server struct {
+	addr   string
+	port   int
+	logger *slog.Logger
+}
+
+// ServerOption configures a Server (the functional options pattern).
+type ServerOption func(*Server)
+
+// WithAddr sets the addr field.
+func WithAddr(addr string) ServerOption {
+	return func(s *Server) { s.addr = addr }
+}
+
+// WithPort sets the port field.
+func WithPort(port int) ServerOption {
+	return func(s *Server) { s.port = port }
+}
+
+// WithLogger sets the logger field.
+func WithLogger(logger *slog.Logger) ServerOption {
+	return func(s *Server) { s.logger = logger }
+}
+
+// NewServer returns a Server configured by opts.
+func NewServer(opts ...ServerOption) *Server {
+	s := &Server{}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}

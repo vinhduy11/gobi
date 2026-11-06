@@ -1,0 +1,36 @@
+// file: server.go
+package demo
+
+import (
+	"errors"
+	"log/slog"
+)
+
+type Server struct {
+	addr   string
+	port   int
+	logger *slog.Logger
+}
+
+// ErrParse is the sentinel for parse failures; test for it with errors.Is.
+var ErrParse = errors.New("parse failed")
+
+// ParseError describes a failed parse and wraps the cause.
+type ParseError struct {
+	Op  string // what was being done
+	Err error  // the cause, may be nil
+}
+
+// Error implements the error interface.
+func (e *ParseError) Error() string {
+	if e.Err == nil {
+		return "parse: " + e.Op
+	}
+	return "parse: " + e.Op + ": " + e.Err.Error()
+}
+
+// Unwrap returns the cause so that errors.Is and errors.As see through the error.
+func (e *ParseError) Unwrap() error { return e.Err }
+
+// Is reports whether target is ErrParse, so errors.Is(err, ErrParse) matches any ParseError.
+func (e *ParseError) Is(target error) bool { return target == ErrParse }

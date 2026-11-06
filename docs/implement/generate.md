@@ -71,12 +71,45 @@ pattern (22 goldens) plus a generated example test that exercises it. A short co
 its refactoring.guru page, with a note when Go has a simpler idiom (Singleton, Iterator, Strategy). Mock: Generate board,
 "Design Pattern ▸" submenu; the parameter dialog and preview are drawn on the same board in the next mock round.
 
+## gopls inventory
+Recorded with a real gopls v0.24.0 (`TestGoplsCodeActionInventory` in `core/internal/daemon`, opt-in with `GOBI_REAL_GOPLS=1`,
+skipped when gopls is absent; run with `-v` for the table). The probe declares `codeActionLiteralSupport`, `resolveSupport` for
+`edit`, `workspace.applyEdit` and `documentChanges` with resource operations, which is what the UI would declare.
+
+| Item | gopls action | `codeAction` answer | What it takes to get the edit |
+|---|---|---|---|
+| Implement interface | quickfix "Declare missing methods of Store" (`quickfix`) | no `edit`, no `command`, only `data` | `codeAction/resolve` returns a `WorkspaceEdit` (`documentChanges`, one text edit in the file). It exists **only when a type-error diagnostic is in the request context** (`*Mem does not implement Store`), not for a bare type name. |
+| Generate test | "Add test for Divide" (`source.addTest`) | `command` `gopls.add_test`, no `edit`, no `data` | `workspace/executeCommand`; the edit does not come back as the result (`null`) but as a **server-to-client `workspace/applyEdit` request**: a `create` resource operation for `calc_test.go` plus a text document edit with 3 edits. Fails with "package has type errors" when the package does not compile. |
+| Fill struct | "Fill Server" (`refactor.rewrite.fillStruct`) | no `edit`, no `command`, only `data` | `codeAction/resolve` returns a `WorkspaceEdit` with one text edit. Needs the caret inside the `{}` of a composite literal. |
+
+Conclusions:
+- The current parser keeps only actions with an `edit`; **none of the three arrives that way**. Two need `codeAction/resolve`
+  (implement interface, fill struct) and one needs `workspace/executeCommand` plus answering `workspace/applyEdit` (generate test).
+- Implement interface cannot be driven from a menu entry "pick an interface for this struct": gopls offers it as a quickfix for an
+  existing error. To use it Generate would have to insert `var _ Iface = (*T)(nil)` first and then request the quickfix, which is
+  two edits (two undo steps) and a round trip. Decision for stage 4b: build "Implement interface" from our own snippet (the
+  mock generator already renders method sets), and keep gopls only for fill struct, where it is the right tool.
+- Generate test: gopls creates `<file>_test.go` itself and only for a compiling package. Decision: Generate keeps its own
+  table-driven test (works in a package with errors, one reviewed style, no `applyEdit` plumbing). gopls' Add test stays
+  reachable from the normal code-action list; if the UI later shows it, the broker must forward the `workspace/applyEdit`
+  request to the UI and relay the reply.
+- Fill struct: needs `codeAction/resolve` in the UI client (`resolveSupport: edit`). Small, and worth doing in 4b.
+- Not needed: `Command` handling beyond what Generate test would require; the 4b UI work therefore adds `codeAction/resolve` only.
+
+Owner decision (approved): Implement interface and Generate test are built from our own snippets, as recommended above; gopls is used only for Fill struct (`codeAction/resolve`).
+
 ## Tests (TDD)
 Go: one golden per item and per pattern (temp module: gofmt, vet, test), mixed field types for `String()`, import block edit
 (existing block, no block, aliased import), wire goldens for the three messages. Swift: one Undo restores the exact pre-generation
 text, a reply for a changed buffer is dropped, decoding. Menus: update the exact context-menu vectors and the Code-menu transcript
 in `MenuSpecTests` (`:104`, `:121`), action-id uniqueness, selector mapping, shortcut parsing and context-menu/menu-bar parity; `--selftest-generate` (caret in a
 struct → Generate → text inserted → undo → file compiles).
+
+## Stage 4a status (core)
+Done in `core/internal/generate`, the three control messages and their wire goldens: constructor, accessors, `String()`, error type,
+functional options, table-driven test, `main()`, HTTP handler and mock of an interface. Known limits, to revisit in 4b: the test
+item creates `<file>_test.go` and refuses when it already exists (core does not see unsaved test buffers); the mock does not
+flatten embedded interfaces (the UI sends the method set); `String()` and the other receivers are pointer receivers.
 
 ## Order and branch
 ## Branch stack (all plans)

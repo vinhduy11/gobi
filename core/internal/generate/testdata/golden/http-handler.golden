@@ -1,0 +1,17 @@
+// file: h.go
+package demo
+
+import (
+	"io"
+	"net/http"
+)
+
+// ordersHandler serves orders requests.
+func ordersHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = io.WriteString(w, "ok\n")
+}

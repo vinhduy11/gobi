@@ -1,0 +1,51 @@
+// file: store.go
+package demo
+
+type Store interface {
+	Get(id string) (string, error)
+	Put(id, value string) error
+	Close()
+	Keys(prefix ...string) []string
+}
+
+// MockStore is a test double for Store; set the Func field of each method a test calls.
+type MockStore struct {
+	GetFunc   func(string) (string, error)
+	PutFunc   func(string, string) error
+	CloseFunc func()
+	KeysFunc  func(...string) []string
+}
+
+var _ Store = (*MockStore)(nil)
+
+// Get calls GetFunc and panics when it is not set.
+func (m *MockStore) Get(id string) (string, error) {
+	if m.GetFunc == nil {
+		panic("MockStore.Get: GetFunc is not set")
+	}
+	return m.GetFunc(id)
+}
+
+// Put calls PutFunc and panics when it is not set.
+func (m *MockStore) Put(id string, value string) error {
+	if m.PutFunc == nil {
+		panic("MockStore.Put: PutFunc is not set")
+	}
+	return m.PutFunc(id, value)
+}
+
+// Close calls CloseFunc and panics when it is not set.
+func (m *MockStore) Close() {
+	if m.CloseFunc == nil {
+		panic("MockStore.Close: CloseFunc is not set")
+	}
+	m.CloseFunc()
+}
+
+// Keys calls KeysFunc and panics when it is not set.
+func (m *MockStore) Keys(prefix ...string) []string {
+	if m.KeysFunc == nil {
+		panic("MockStore.Keys: KeysFunc is not set")
+	}
+	return m.KeysFunc(prefix...)
+}
