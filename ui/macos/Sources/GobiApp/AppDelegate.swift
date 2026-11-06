@@ -357,7 +357,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let blankMenu = emptyController.explorerMenu(row: -1)
         check("right-clicking the empty space of an empty project gives the project's menu (\(blankMenu?.items.map(\.title).prefix(4).joined(separator: ", ") ?? "none"))", blankMenu != nil && blankMenu?.items.first { $0.title == "New" }?.isEnabled == true)
         let newItems = blankMenu?.items.first { $0.title == "New" }?.submenu?.items.map { $0.isEnabled } ?? []
-        check("every New entry is live (\(newItems))", !newItems.isEmpty && newItems.filter { $0 }.count == 4)
+        check("every New entry is live (\(newItems))", !newItems.isEmpty && newItems.filter { $0 }.count == 5)   // File, Folder, Go File, Go Test File and Go Package; the separator is not live
         let goFile = emptyController.newEntry(.goFile, in: emptyRoot, name: "cart")
         check("New > Go File makes cart.go with the folder's package", goFile.flatMap { try? String(contentsOf: $0, encoding: .utf8) } == "package gobi_empty_project\n")
         let testFile = emptyController.newEntry(.goTestFile, in: emptyRoot, name: "cart")
