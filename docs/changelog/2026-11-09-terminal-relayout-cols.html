@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Terminal relayout columns</title>
+<body style="font-family:system-ui;max-width:760px;margin:2rem auto;padding:0 1rem">
+<h1>Terminal: recompute columns after layout</h1>
+<h2>Specs</h2>
+<p>In the Terminal tab, <code>pwd</code> output wrapped after "servi" and the last character repeated to the right edge before "ce". Expected: the line shows as printed.</p>
+<h2>Actions</h2>
+<ul>
+<li><code>GobiTerminalView.layout()</code> (<code>TerminalPane.swift</code>) re-assigns <code>frame</code> when the laid-out size changed, so SwiftTerm recomputes columns and the pty is resized.</li>
+<li>Project and global branching rule now accept <code>main</code> as the base branch (<code>docs/claude/git.md</code>).</li>
+<li>Checked by running the rebuilt app; the fault is gone. No automated test: <code>GobiApp</code> has no test target, and a headless SwiftTerm reproduction did not show the fault.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>Chose a layout hook over finding which layout path skipped SwiftTerm's resize: the root path was not pinned down, the hook covers all of them, and costs one comparison per layout.</li>
+<li>No unit test, because the fault could not be reproduced outside the app; a regression is caught only by hand.</li>
+</ul>
+</body></html>

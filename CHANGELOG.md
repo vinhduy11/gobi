@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+- Terminal: a dim "Starting shell…" line shows while the shell starts, and goes away with the first output.
+
+### Fixed
+- Terminal: the mouse wheel did nothing in full-screen programs such as Claude Code. It is now sent to the program as wheel events (or arrow keys on the alternate screen); Shift keeps the local scrollback.
+- Terminal: everything was underlined after Claude Code started, because SwiftTerm read `ESC[>4m` (modifyOtherKeys reset) as "underline on". Gobi now drops that sequence from the shell's output.
+- Terminal: a line printed while the view was narrow showed its last character repeated to the right edge once the panel was wider. The terminal view now recomputes its columns after every layout that changes its size.
+
 ## [0.1.0-alpha.5] - 2026-11-06
 
 ### Added

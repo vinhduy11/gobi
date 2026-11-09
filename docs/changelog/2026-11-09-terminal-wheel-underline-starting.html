@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Terminal wheel, underline, starting line</title>
+<body style="font-family:system-ui;max-width:760px;margin:2rem auto;padding:0 1rem">
+<h1>Terminal: wheel scrolling, stray underline, "Starting shell…"</h1>
+<h2>Specs</h2>
+<ul><li>The wheel did nothing inside Claude Code in the Gobi terminal.</li>
+<li>Every line was underlined once Claude Code started.</li>
+<li>Opening a terminal showed nothing for a second or more while the shell started.</li></ul>
+<h2>Actions</h2>
+<ul>
+<li><code>GobiTerminalView.forwardWheel</code> and a local scroll-wheel monitor in <code>TerminalPane</code>: the wheel goes to the program as wheel mouse events when it asked for the mouse, else as arrow keys on the alternate screen; Shift keeps local scrollback.</li>
+<li><code>TerminalOutputFilter</code> (GobiModel) drops <code>ESC [ &gt; Pm m</code>, which SwiftTerm read as SGR underline; held across chunk boundaries. 4 tests in <code>TerminalOutputFilterTests</code>, red then green.</li>
+<li>A dim "Starting shell…" line, cleared on the first output, an exit or an error.</li></ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>SwiftTerm's <code>scrollWheel</code> is not <code>open</code> and the version is pinned, so a monitor and an output filter were used instead of patching or forking it.</li>
+<li>The wheel position sent to the program is the pointer's share of the view, not an exact cell.</li>
+<li>The wheel and starting-line changes have no automated test (the app target has none); the filter is unit tested and was checked against a real captured Claude Code stream.</li>
+<li>"Starting shell…" hides the delay rather than shortening it; most of it is the user's shell startup files.</li></ul>
+</body></html>

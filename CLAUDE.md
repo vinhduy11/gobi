@@ -13,3 +13,7 @@ A Go IDE, macOS first, built on the official Go toolchain. Read a reference file
 ## Safety
 
 **See [`docs/claude/safety.md`](docs/claude/safety.md)** — workspace trust, secrets, non-local target guardrails.
+
+## Git
+
+**See [`docs/claude/git.md`](docs/claude/git.md)** — branches are cut from `main` (or `master` where a repo has it), not only `master`.

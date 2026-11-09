@@ -82,6 +82,40 @@ final class GobiTerminalView: TerminalView {
     var copyOnSelect = false
     private(set) var selectionEvents = 0
     private var lastCopied = ""
+    private var laidOutSize = NSSize.zero
+
+    /// SwiftTerm recomputes its columns only when `frame` is assigned, and some layout paths resize the view without that.
+    /// Assigning the same frame after a layout that changed the size makes the buffer match the view.
+    override func layout() {
+        super.layout()
+        guard bounds.size != laidOutSize else { return }
+        laidOutSize = bounds.size
+        frame = frame
+    }
+
+    /// SwiftTerm scrolls its own scrollback on the wheel and never tells the program. A full-screen program (Claude Code, vim, less)
+    /// has no scrollback to show, so the wheel goes to it: as wheel mouse events when it asked for the mouse, else as arrow keys on the
+    /// alternate screen. Shift keeps the local scroll.
+    /// Returns whether the event was handed to the program (SwiftTerm's `scrollWheel` cannot be overridden, so the pane calls this first).
+    func forwardWheel(_ event: NSEvent) -> Bool {
+        let terminal = getTerminal()
+        let mouse = terminal.mouseMode != .off
+        guard !event.modifierFlags.contains(.shift), mouse || terminal.isCurrentBufferAlternate, event.deltaY != 0 else { return false }
+        let up = event.deltaY > 0
+        let steps = min(max(Int(abs(event.deltaY)), 1), 5)
+        if mouse {
+            let point = convert(event.locationInWindow, from: nil)
+            let col = min(max(Int(point.x / max(bounds.width, 1) * CGFloat(terminal.cols)), 0), terminal.cols - 1)
+            let row = min(max(Int((bounds.height - point.y) / max(bounds.height, 1) * CGFloat(terminal.rows)), 0), terminal.rows - 1)
+            let flags = terminal.encodeButton(button: up ? 4 : 5, release: false, shift: false, meta: false, control: event.modifierFlags.contains(.control))
+            for _ in 0..<steps { terminal.sendEvent(buttonFlags: flags, x: col, y: row) }
+        } else {
+            let key: UInt8 = up ? UInt8(ascii: "A") : UInt8(ascii: "B")
+            let arrow: [UInt8] = [0x1b, terminal.applicationCursor ? UInt8(ascii: "O") : UInt8(ascii: "["), key]
+            for _ in 0..<steps { send(arrow) }
+        }
+        return true
+    }
 
     override func selectionChanged(source: Terminal) {
         super.selectionChanged(source: source)
@@ -113,11 +147,16 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         var split: Session?
         /// Text typed before the shell connected, sent once it has.
         var pending: [[UInt8]] = []
+        /// True while the "Starting shell…" line is on screen, until the shell's first output or an error replaces it.
+        var starting = true
+        /// Drops escape sequences SwiftTerm misreads (see `TerminalOutputFilter`); keeps the unfinished tail between chunks.
+        var outputFilter = TerminalOutputFilter()
         init(view: TerminalView, title: String) { self.view = view; self.title = title }
     }
 
     private let root: URL
     private let trusted: Bool
+    private var wheelMonitor: Any?
     private var sessions: [Session] = []
     private var selected = 0
     private let strip = NSStackView()
@@ -145,12 +184,20 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         super.init(frame: .zero)
         build()
         if trusted { loadShells() }
+        wheelMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            guard let self, let window = self.window, event.window === window else { return event }
+            let hit = window.contentView?.hitTest(event.locationInWindow)
+            return (hit as? GobiTerminalView)?.forwardWheel(event) == true ? nil : event
+        }
         NotificationCenter.default.addObserver(forName: AppPreferences.didChange, object: nil, queue: .main) { [weak self] _ in self?.applySettingsToAll() }
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    deinit { sessions.forEach { $0.client?.close(); $0.split?.client?.close() } }
+    deinit {
+        if let wheelMonitor { NSEvent.removeMonitor(wheelMonitor) }
+        sessions.forEach { $0.client?.close(); $0.split?.client?.close() }
+    }
 
     /// What the selected terminal shows, as text, for the self-test.
     var screenText: String {
@@ -346,6 +393,7 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         let chosen = ShellChoice.effective(selected: WindowSettings.terminalShell, shells: shells, login: loginShell)
         let title = TerminalTitle.make(shellPath: chosen.isEmpty ? ProcessInfo.processInfo.environment["SHELL"] : chosen, folder: root.lastPathComponent)
         let session = Session(view: view, title: title)
+        view.feed(text: "\u{1b}[2mStarting shell…\u{1b}[0m")
         let rootPath = AppPreferences.terminal.startIn.folder(project: root.path, home: NSHomeDirectory())
         lastStartFolder = rootPath
         let shell = WindowSettings.terminalShell
@@ -357,10 +405,16 @@ final class TerminalPane: NSView, TerminalViewDelegate {
                     session.client = client
                     for queued in session.pending { client.send(queued) }
                     session.pending.removeAll()
-                    client.onOutput = { [weak view] bytes in DispatchQueue.main.async { view?.feed(byteArray: bytes[...]) } }
+                    client.onOutput = { [weak view, weak session] bytes in
+                        DispatchQueue.main.async {
+                            if session?.starting == true { session?.starting = false; view?.feed(text: "\r\u{1b}[2K") }
+                            view?.feed(byteArray: (session?.outputFilter.filter(bytes) ?? bytes)[...])
+                        }
+                    }
                     client.onExit = { [weak view, weak session] code, message in
                         DispatchQueue.main.async {
                             session?.exited = true
+                            if session?.starting == true { session?.starting = false; view?.feed(text: "\r\u{1b}[2K") }
                             let text = message.isEmpty ? "\r\n[Process exited with code \(code)]\r\n" : "\r\n\(message)\r\n"
                             view?.feed(text: text)
                         }
@@ -371,7 +425,7 @@ final class TerminalPane: NSView, TerminalViewDelegate {
                 }
             } catch {
                 AppLog.shared.logError("terminal channel: cannot start a terminal: \(error)")
-                DispatchQueue.main.async { view?.feed(text: "Cannot start a terminal: \(error)\r\n") }
+                DispatchQueue.main.async { session.starting = false; view?.feed(text: "\r\u{1b}[2KCannot start a terminal: \(error)\r\n") }
             }
         }
         return session
