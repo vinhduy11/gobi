@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+  <channel>
+    <title>Gobi</title>
+    <link>https://github.com/vinhduy11/gobi</link>
+    <description>Updates for Gobi</description>
+    <item>
+      <title>0.1.0-alpha.9</title>
+      <sparkle:version>70</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-alpha.9</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>prerelease</sparkle:channel>
+      <pubDate>Tue, 10 Nov 2026 09:21:39 +0000</pubDate>
+      <sparkle:fullReleaseNotesLink>https://github.com/vinhduy11/gobi/releases/tag/v0.1.0-alpha.9</sparkle:fullReleaseNotesLink>
+      <enclosure url="https://github.com/vinhduy11/gobi/releases/download/v0.1.0-alpha.9/Gobi-0.1.0-alpha.9.dmg" length="12806493" type="application/x-apple-diskimage" sparkle:edSignature="sKCA24ilnWH4X3k4BH7Frs6+YpDjA/G+S+uFkmS/gaRWcN2ahMlqcJbuxd2J0pRYh7Hsgj5Ta8eQS5wtKGOzCA==" />
+    </item>
+  </channel>
+</rss>
