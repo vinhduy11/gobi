@@ -147,6 +147,19 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         sourceControl.onCommit = { [weak self] in self?.commitChanges() }
         sourceControl.onShowDiff = { [weak self] path in self?.showDiff(path: path) }
         sourceControl.onOpen = { [weak self] path in self?.openFile(self?.root.appendingPathComponent(path) ?? URL(fileURLWithPath: path)) }
+        sourceControl.onStage = { [weak self] paths in self?.gitAction(.stage(paths)) }
+        sourceControl.onUnstage = { [weak self] paths in self?.gitAction(.unstage(paths)) }
+        sourceControl.onDiscard = { [weak self] paths in self?.discardChanges(paths: paths) }
+        sourceControl.onIgnore = { [weak self] paths in self?.addToGitignore(paths) }
+        sourceControl.onReveal = { [weak self] path in
+            if let self { NSWorkspace.shared.activateFileViewerSelecting([self.root.appendingPathComponent(path)]) }
+        }
+        sourceControl.onCopyPath = { [weak self] paths, relative in
+            guard let self else { return }
+            let text = paths.map { relative ? $0 : self.root.appendingPathComponent($0).path }.joined(separator: "\n")
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+        }
         commitPanel.onRefresh = { [weak self] in self?.refreshGit(); self?.loadLog() }
         commitPanel.onRollback = { [weak self] path in self?.discardChanges(path) }
         commitPanel.onPull = { [weak self] in self?.pullChanges() }
@@ -813,17 +826,37 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     func pushChanges() { gitAction(.push) }
 
     /// Asks, then throws the file's changes away (a tracked file goes back to the last commit, an untracked one is deleted).
-    func discardChanges(_ path: String, confirm: Bool = true) {
+    func discardChanges(_ path: String, confirm: Bool = true) { discardChanges(paths: [path], confirm: confirm) }
+
+    /// The same for several files, with one question.
+    func discardChanges(paths: [String], confirm: Bool = true) {
+        guard !paths.isEmpty else { return }
         if confirm {
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = "Discard changes to \((path as NSString).lastPathComponent)?"
-            alert.informativeText = "The edits are thrown away and the file goes back to the last commit. This cannot be undone. Untracked files are deleted."
+            alert.messageText = paths.count == 1 ? "Discard changes to \((paths[0] as NSString).lastPathComponent)?" : "Discard changes to \(paths.count) files?"
+            alert.informativeText = "The edits are thrown away and the files go back to the last commit. This cannot be undone. Untracked files are deleted."
             alert.addButton(withTitle: "Discard")
             alert.addButton(withTitle: "Cancel")
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }
-        gitAction(.discard([path])) { [weak self] in self?.reloadExplorer(); self?.checkDisk() }
+        gitAction(.discard(paths)) { [weak self] in self?.reloadExplorer(); self?.checkDisk() }
+    }
+
+    /// Adds untracked files or folders (paths relative to the project) to the project's .gitignore, which is created when there is none.
+    func addToGitignore(_ paths: [String]) {
+        let file = root.appendingPathComponent(".gitignore")
+        let existing = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+        guard let text = GitIgnore.appending(paths, to: existing) else { statusBar.set(note: "Already in .gitignore"); return }
+        do {
+            try text.write(to: file, atomically: true, encoding: .utf8)
+        } catch {
+            statusBar.set(note: "Cannot write .gitignore: \(error.localizedDescription)")
+            return
+        }
+        refreshGit()
+        reloadExplorer()
+        checkDisk()
     }
 
     /// Git > Commit… and the Commit… button of Source control: shows the Commit tab with the cursor in the message field.
@@ -920,6 +953,12 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private var isReloadingExplorer = false
 
     var sourceControlRows: [String] { sourceControl.rowTexts }
+    /// For tests: the right-click menu of a Source control row, and choosing one of its items the way a click would.
+    func sourceControlMenu(row: Int) -> NSMenu { sourceControl.menu(forRow: row) }
+    func chooseSourceControlItem(row: Int, title: String) {
+        let menu = sourceControl.menu(forRow: row)
+        if let item = menu.items.first(where: { $0.title == title }) { menu.performActionForItem(at: menu.index(of: item)) }
+    }
     var sourceControlBranch: String { sourceControl.branchText }
     var gitPanelFiles: [String] { commitPanel.fileTitles }
     var gitPanelDiff: String { diffPanel.diffText }

@@ -2,7 +2,7 @@ import AppKit
 import GobiModel
 
 /// The Source control block under the Explorer (Main mock): the branch, the changed files with their letters, and Commit….
-final class SourceControlView: NSView, NSTableViewDataSource, NSTableViewDelegate {
+final class SourceControlView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
     private let branch = NSTextField(labelWithString: "")
     private let table = NSTableView()
     private let commit = NSButton(title: "Commit…", target: nil, action: nil)
@@ -10,6 +10,13 @@ final class SourceControlView: NSView, NSTableViewDataSource, NSTableViewDelegat
     var onCommit: () -> Void = {}
     var onOpen: (String) -> Void = { _ in }
     var onShowDiff: (String) -> Void = { _ in }
+    // The right-click menu: each acts on the files it was opened for (the selection when the clicked row is in it, else that row).
+    var onStage: ([String]) -> Void = { _ in }
+    var onUnstage: ([String]) -> Void = { _ in }
+    var onDiscard: ([String]) -> Void = { _ in }
+    var onIgnore: ([String]) -> Void = { _ in }
+    var onReveal: (String) -> Void = { _ in }
+    var onCopyPath: ([String], _ relative: Bool) -> Void = { _, _ in }
 
     var branchText: String { branch.stringValue }
     var rowTexts: [String] { files.map { $0.mark.badge + " " + $0.path } }
@@ -31,6 +38,10 @@ final class SourceControlView: NSView, NSTableViewDataSource, NSTableViewDelegat
         table.delegate = self
         table.target = self
         table.doubleAction = #selector(rowOpened)
+        table.allowsMultipleSelection = true
+        let contextMenu = NSMenu()
+        contextMenu.delegate = self
+        table.menu = contextMenu
         table.setAccessibilityLabel("Changed files")
         let scroll = NSScrollView()
         scroll.documentView = table
@@ -74,6 +85,59 @@ final class SourceControlView: NSView, NSTableViewDataSource, NSTableViewDelegat
 
     @objc private func commitPressed() { onCommit() }
     @objc private func rowOpened() { if table.clickedRow >= 0, files.indices.contains(table.clickedRow) { onOpen(files[table.clickedRow].path) } }
+
+    // MARK: right-click menu
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        guard table.clickedRow >= 0, files.indices.contains(table.clickedRow) else { return }
+        let built = self.menu(forRow: table.clickedRow)
+        for item in built.items { built.removeItem(item); menu.addItem(item) }
+    }
+
+    /// The files a menu opened on `row` acts on: the selected rows when `row` is one of them, else just that row.
+    func targets(forRow row: Int) -> [GitFile] {
+        guard files.indices.contains(row) else { return [] }
+        let selected = table.selectedRowIndexes
+        return selected.contains(row) ? selected.compactMap { files.indices.contains($0) ? files[$0] : nil } : [files[row]]
+    }
+
+    /// The menu for a right-click on `row`: open and diff for one file, stage or unstage, discard, ignore (untracked files), and the path commands.
+    func menu(forRow row: Int) -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        let chosen = targets(forRow: row)
+        guard !chosen.isEmpty else { return menu }
+        let paths = chosen.map(\.path)
+        let single = chosen.count == 1 ? chosen[0] : nil
+        let isFolder = single?.path.hasSuffix("/") == true
+        func add(_ title: String, enabled: Bool = true, _ action: @escaping () -> Void) {
+            let item = NSMenuItem(title: title, action: #selector(menuItemChosen(_:)), keyEquivalent: "")
+            item.target = self
+            item.isEnabled = enabled
+            item.representedObject = action
+            menu.addItem(item)
+        }
+        if let single {
+            add("Open", enabled: !isFolder) { [weak self] in self?.onOpen(single.path) }
+            add("Show Diff", enabled: !isFolder) { [weak self] in self?.onShowDiff(single.path) }
+            menu.addItem(.separator())
+        }
+        let toStage = chosen.filter { !$0.staged || $0.unstaged }.map(\.path)
+        let toUnstage = chosen.filter(\.staged).map(\.path)
+        add("Stage", enabled: !toStage.isEmpty) { [weak self] in self?.onStage(toStage) }
+        add("Unstage", enabled: !toUnstage.isEmpty) { [weak self] in self?.onUnstage(toUnstage) }
+        add("Discard Changes…") { [weak self] in self?.onDiscard(paths) }
+        let untracked = chosen.filter { $0.mark == .untracked }.map(\.path)
+        if !untracked.isEmpty { add("Add to .gitignore") { [weak self] in self?.onIgnore(untracked) } }
+        menu.addItem(.separator())
+        if let single { add("Reveal in Finder") { [weak self] in self?.onReveal(single.path) } }
+        add("Copy Path") { [weak self] in self?.onCopyPath(paths, false) }
+        add("Copy Relative Path") { [weak self] in self?.onCopyPath(paths, true) }
+        return menu
+    }
+
+    @objc private func menuItemChosen(_ sender: NSMenuItem) { (sender.representedObject as? () -> Void)?() }
 
     func numberOfRows(in tableView: NSTableView) -> Int { files.count }
 

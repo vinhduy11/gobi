@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+- Source control (the block in the sidebar) has a right-click menu on its changed files: Open, Show Diff, Stage, Unstage, Discard Changes…, Add to .gitignore (untracked files; a root-anchored pattern, written to the project's .gitignore), Reveal in Finder, Copy Path and Copy Relative Path. The rows can be selected together, and the menu then acts on all of them. `--selftest-git` covers it.
 ## [0.1.0-alpha.8] - 2026-11-10
 
 ### Fixed

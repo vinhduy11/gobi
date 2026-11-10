@@ -1295,6 +1295,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.moveFilesDivider(toBlockHeight: blockHeight + 120)
         check("dragging the divider makes the Source control block taller (\(Int(blockHeight)) to \(Int(controller.sourceControlHeight)) pt)", controller.sourceControlHeight > blockHeight + 60)
         check("and the changed files with their letters (\(controller.sourceControlRows))", controller.sourceControlRows.contains("M a.go") && controller.sourceControlRows.contains("? fresh.go"))
+        // The right-click menu of Source control.
+        let aRow = controller.sourceControlRows.firstIndex(of: "M a.go") ?? 0, freshRow = controller.sourceControlRows.firstIndex(of: "? fresh.go") ?? 0
+        let aMenu = controller.sourceControlMenu(row: aRow), freshMenu = controller.sourceControlMenu(row: freshRow)
+        func enabled(_ menu: NSMenu, _ title: String) -> Bool? { menu.items.first { $0.title == title }?.isEnabled }
+        check("a changed file's menu offers open, diff, stage, discard and the path commands (\(aMenu.items.map(\.title).filter { !$0.isEmpty }))", ["Open", "Show Diff", "Stage", "Unstage", "Discard Changes…", "Reveal in Finder", "Copy Path", "Copy Relative Path"].allSatisfy { title in aMenu.items.contains { $0.title == title } })
+        check("only an untracked file can be added to .gitignore", enabled(freshMenu, "Add to .gitignore") != nil && enabled(aMenu, "Add to .gitignore") == nil)
+        check("Unstage is off until something is staged", enabled(aMenu, "Unstage") == false && enabled(aMenu, "Stage") == true)
+        controller.chooseSourceControlItem(row: aRow, title: "Stage")
+        settle(15) { controller.gitStatus?.stagedFiles.contains { $0.path == "a.go" } == true }
+        check("Stage in the menu stages the file", controller.gitStatus?.stagedFiles.contains { $0.path == "a.go" } == true)
+        let staged = controller.sourceControlRows.firstIndex { $0.hasSuffix(" a.go") } ?? 0
+        check("and then Unstage is on", enabled(controller.sourceControlMenu(row: staged), "Unstage") == true)
+        controller.chooseSourceControlItem(row: staged, title: "Unstage")
+        settle(15) { controller.gitStatus?.stagedFiles.isEmpty == true }
+        check("Unstage in the menu unstages it", controller.gitStatus?.stagedFiles.isEmpty == true)
+        controller.chooseSourceControlItem(row: aRow, title: "Copy Relative Path")
+        check("Copy Relative Path puts the path on the pasteboard", NSPasteboard.general.string(forType: .string) == "a.go")
+        controller.chooseSourceControlItem(row: aRow, title: "Copy Path")
+        check("Copy Path puts the full path on the pasteboard", NSPasteboard.general.string(forType: .string) == root.appendingPathComponent("a.go").path)
+        let ignoreFile = root.appendingPathComponent(".gitignore")
+        controller.chooseSourceControlItem(row: freshRow, title: "Add to .gitignore")
+        settle(15) { !controller.sourceControlRows.contains("? fresh.go") }
+        check("Add to .gitignore writes the pattern and the file leaves the list (\((try? String(contentsOf: ignoreFile, encoding: .utf8)) ?? "no file"))", ((try? String(contentsOf: ignoreFile, encoding: .utf8)) ?? "").contains("/fresh.go\n") && !controller.sourceControlRows.contains("? fresh.go"))
+        try? FileManager.default.removeItem(at: ignoreFile)
+        controller.refreshGit()
+        settle(15) { controller.sourceControlRows.contains("? fresh.go") }
         settle(15) { !(controller.currentPane?.editor.gitMarks.modified.isEmpty ?? true) }
         let marks = controller.currentPane?.editor.gitMarks
         check("the gutter marks the changed, added and removed lines (\(String(describing: marks)))", marks?.modified == [2] && marks?.added == [5, 6] && marks?.deletedAfter == [3])

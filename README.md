@@ -56,7 +56,7 @@ macOS first; Windows and Linux UIs come later next to it.
   pprof profiler with flame graph, Top table, per-line source cost, filter, compare two profiles, and capture from a
   running program.
 - **Git**: status and gutter marks, changes, diff, log, stage, commit, branches, merge, rebase, stash, tags, reset,
-  patches, remotes, worktrees, push, pull, fetch, discard; a full Git menu.
+  patches, remotes, worktrees, push, pull, fetch, discard; a full Git menu and a right-click menu on the changed files in Source control.
 - **Terminal and search**: terminal tabs and split, Find in Files with replace (one match, one file or all), search
   history, Go to File, Command Palette.
 - **Safe by default**: Restricted Mode for projects you have not trusted, unsaved edits recovered after a crash,
