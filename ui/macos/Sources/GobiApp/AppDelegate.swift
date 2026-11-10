@@ -34,7 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !CommandLine.arguments.contains(where: { $0.hasPrefix("--selftest") }) { DispatchQueue.global(qos: .utility).async { RecoveryStore.prune() } }
         installMenu()
         NotificationCenter.default.addObserver(forName: AppPreferences.didChange, object: nil, queue: .main) { [weak self] _ in self?.installMenu() }   // a changed shortcut reaches the menu bar
-        WindowSettings.applyAppearance()
+        ThemeController.start()
         if let pending = pendingProjectSelfTest { runProjectSelfTest(pending) }
         // Paths on the command line reach us through application(_:openFile:), which AppKit calls for each one.
         if CommandLine.arguments.contains("--selftest-welcome") { runWelcomeSelfTest(); return }
@@ -44,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if CommandLine.arguments.contains("--selftest-codehelp") { runCodeHelpSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-generate") { runGenerateSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-lang") { runLanguageSelfTest(); return }
+        if CommandLine.arguments.contains("--selftest-semantic") { runSemanticSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-toolchain") { runToolchainSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-debug") { runDebugSelfTest(); return }
         if CommandLine.arguments.contains("--selftest-profile") { runProfileSelfTest(); return }
@@ -283,14 +284,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settle(20) {
             let text = controller.terminalText
             if text != lastText { lastText = text; stableSince = Date() }
-            return !text.isEmpty && Date().timeIntervalSince(stableSince) > 1.5
+            return !text.isEmpty && !text.contains("Starting shell…") && Date().timeIntervalSince(stableSince) > 1.5
         }
+        let firstRows = lastText.split(separator: "\n", omittingEmptySubsequences: false).prefix(4).map(String.init)
+        check("the first prompt leaves no stray % end-of-line mark or blank rows above it (\(firstRows.map { String($0.prefix(30)) }))", firstRows.first.map { !$0.hasPrefix("%") && !$0.isEmpty } ?? false)
         controller.typeInTerminal("echo result-$((1+2)); pwd\r")
         settle { controller.terminalText.contains("result-3") }
         check("a command typed into it runs and its output is on screen (\(controller.terminalText.suffix(160).debugDescription))", controller.terminalText.contains("result-3"))
         check("the shell started in the project folder", controller.terminalText.contains(root.lastPathComponent))
-        let palette = TerminalPalette.forAppearance(isDark: controller.window?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua)
-        check("the terminal uses the palette's background (\(controller.terminalBackground.map(String.init(describing:)) ?? "none"))", controller.terminalBackground == [Int(palette.background.red), Int(palette.background.green), Int(palette.background.blue)])
+        let sidebarBefore = controller.sidebarWidth, inspectorBefore = controller.inspectorWidth
+        check("the sidebar starts 260 pt wide and the inspector 250 pt (\(Int(sidebarBefore)), \(Int(inspectorBefore)))", abs(sidebarBefore - 260) < 6 && abs(inspectorBefore - 250) < 6)
+        controller.moveSidebarDivider(toWidth: 340)
+        controller.moveInspectorDivider(toWidth: 330)
+        check("the sidebar and the inspector can be dragged wider (\(Int(sidebarBefore)) to \(Int(controller.sidebarWidth)), \(Int(inspectorBefore)) to \(Int(controller.inspectorWidth)))", abs(controller.sidebarWidth - 340) < 3 && abs(controller.inspectorWidth - 330) < 3)
+        controller.moveSidebarDivider(toWidth: 200)
+        controller.moveInspectorDivider(toWidth: 210)
+        check("and narrower, down to their minimum (\(Int(controller.sidebarWidth)), \(Int(controller.inspectorWidth)))", controller.sidebarWidth < 230 && controller.inspectorWidth < 240)
+        controller.moveSidebarDivider(toWidth: 300)
+        let beforeTabs = controller.sidebarWidth
+        for tab in [2, 3, 4, 1, 0] { controller.selectSidebarTab(tab) }
+        check("switching the sidebar tabs does not change its width (\(Int(beforeTabs)) to \(Int(controller.sidebarWidth)))", abs(controller.sidebarWidth - beforeTabs) < 3)
+        let background = ThemeColors.theme.palette.editor
+        check("the terminal uses the theme's background (\(controller.terminalBackground.map(String.init(describing:)) ?? "none"))", controller.terminalBackground == [Int(background.red), Int(background.green), Int(background.blue)])
         controller.runInTerminal("echo menu-ran-$((20+22))", inFolder: root)
         settle { controller.terminalText.contains("menu-ran-42") }
         check("a command from a menu (Go Mod Tidy and friends) runs in the terminal", controller.terminalText.contains("menu-ran-42"))
@@ -802,6 +817,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             settle(30) { !(controller.currentPane?.textView.string.contains("\"os\"") ?? true) }
             check("Organize Imports removes the unused import", !(controller.currentPane?.textView.string.contains("\"os\"") ?? true) && (controller.currentPane?.textView.string.contains("\"fmt\"") ?? false))
         }
+        selfTestExit(failures)
+    }
+
+    /// `GobiApp FOLDER --selftest-semantic [--snapshot PNG]`: gopls' semantic tokens reach the editor. The folder holds a Go module
+    /// whose main.go declares a const, a struct type with a field, a method, a function with parameters, and calls them (gopls on PATH).
+    private func runSemanticSelfTest() {
+        guard let path = CommandLine.arguments.dropFirst().first(where: { !$0.hasPrefix("--") && $0 != snapshotPath }) else { print("usage: GobiApp FOLDER --selftest-semantic"); exit(2) }
+        var failures = 0
+        func check(_ name: String, _ passed: Bool) {
+            print(passed ? "  ok   \(name)" : "  FAIL \(name)")
+            if !passed { failures += 1 }
+        }
+        func settle(_ seconds: Double = 30, until condition: () -> Bool) {
+            let deadline = Date().addingTimeInterval(seconds)
+            while !condition() && Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.05)) }
+        }
+        let root = URL(fileURLWithPath: path)
+        let controller = ProjectWindowController(root: root, kind: .module, isTrusted: true)
+        controller.showWindow(nil)
+        controller.openFile(root.appendingPathComponent("main.go"))
+        settle { controller.currentPane?.isConnected == true }
+        guard let pane = controller.currentPane else { check("main.go opens", false); selfTestExit(failures) }
+        func kinds() -> Set<SyntaxKind> {
+            var found: Set<SyntaxKind> = []
+            for line in 0 ..< 40 { for token in pane.editorFile.semantic.tokens(line: line) { found.insert(token.kind) } }
+            return found
+        }
+        let wanted: Set<SyntaxKind> = [.namespace, .typeName, .property, .function, .parameter, .constant, .builtin]
+        settle { wanted.isSubset(of: kinds()) }
+        check("gopls' semantic tokens arrive (\(kinds().map { "\($0)" }.sorted()))", wanted.isSubset(of: kinds()))
+        let storeLine = (0 ..< 40).first { pane.editorFile.semantic.tokens(line: $0).contains { $0.kind == .typeName } }
+        check("a type name is on the line that declares it (line \(storeLine.map(String.init) ?? "none"))", storeLine != nil)
+
+        // Typing a Return at the top moves the tokens below with the text, before gopls answers again.
+        pane.textView.setSelectedRange(NSRange(location: 0, length: 0))
+        pane.textView.insertText("\n", replacementRange: NSRange(location: 0, length: 0))
+        let moved = (0 ..< 41).first { pane.editorFile.semantic.tokens(line: $0).contains { $0.kind == .typeName } }
+        check("the tokens move down with an inserted line (\(storeLine.map(String.init) ?? "-") to \(moved.map(String.init) ?? "-"))", storeLine != nil && moved == storeLine.map { $0 + 1 })
+        settle { pane.editorFile.semantic.tokens(line: (storeLine ?? 0) + 1).contains { $0.kind == .typeName } && wanted.isSubset(of: kinds()) }
+        check("gopls' next answer keeps them in place", wanted.isSubset(of: kinds()))
+        if let snapshotPath { controller.snapshotWindow(to: snapshotPath) }
         selfTestExit(failures)
     }
 
@@ -2825,6 +2881,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsWindow = controller
         controller.sync()
         controller.advanced.onCheckSetup = { [weak self] in self?.showSetup(nil) }
+        if let window = controller.window, !window.isVisible {
+            // Centred over the project window it was asked from, or on the screen when there is none.
+            if let parent = NSApp.keyWindow ?? NSApp.mainWindow, parent !== window {
+                window.setFrameOrigin(NSPoint(x: parent.frame.midX - window.frame.width / 2, y: parent.frame.midY - window.frame.height / 2))
+            } else {
+                window.center()
+            }
+        }
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)
     }

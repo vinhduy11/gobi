@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Appearance themes</title>
+<body style="font-family:system-ui;max-width:760px;margin:2rem auto;padding:0 1rem">
+<h1>Settings &gt; Appearance: themes, accent, editor scheme</h1>
+<h2>Specs</h2>
+<p>Support the theme settings of the reference screens: a Theme dropdown (Islands Light/Dark, High Contrast, Solarized Light/Dark, One Light/Dark), Sync with OS, Editor color scheme, Accent colour (presets and hex) and Different tool window background. Scope chosen: those settings only (not Accessibility or UI Options), applied across the whole app.</p>
+<h2>Actions</h2>
+<ul>
+<li><code>GobiModel/AppTheme.swift</code>: <code>AppTheme</code> (7 themes, palettes), <code>ThemePalette</code>, <code>AccentChoice</code>, <code>ThemeSettings</code> (stored text), hex helpers on <code>RGB</code>. 9 tests in <code>AppThemeTests</code>, written first; they also check text contrast of every theme.</li>
+<li><code>GobiEditor/ThemeColors.swift</code>: the current theme as NSColors; <code>SyntaxTheme</code>, the highlighter's base text colour, the gutter and <code>EditorView.applyTheme()</code> use it and repaint when the revision changes.</li>
+<li><code>GobiApp/ThemeController.swift</code>: sets the app brightness, styles every window, follows macOS appearance changes. <code>AppPreferences.theme</code> stores the settings.</li>
+<li><code>GobiApp/AppearanceSettingsPane.swift</code>: the new Appearance tab (last tab, so existing tab indices are unchanged). The old System/Light/Dark switch and its key were removed.</li>
+<li>All <code>controlAccentColor</code> uses became <code>ThemeColors.accent</code>; terminals take background, text and caret from the theme.</li></ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>Most backgrounds in the app are clear and show the window, so the theme works by colouring the window and the editor, not by replacing every semantic colour. Controls drawn by AppKit (buttons, popups) keep the system look in light or dark.</li>
+<li>Text colours still come from the system's light or dark appearance, matched to the theme's brightness; they are not individually themed.</li>
+<li>Different tool window background colours the window itself (the area around the editor), since tool windows are transparent.</li>
+<li>The system accent for AppKit controls cannot be overridden; the accent applies to Gobi's own highlights, selection and caret.</li>
+<li>Default changed to One Dark and One Light following the OS, so everyone's colours change on update.</li>
+<li>The UI part has no automated test (the app target has none) and was only built, not run.</li></ul>
+</body></html>

@@ -286,7 +286,20 @@ func (b *Broker) buildInitializeParams(clientParams json.RawMessage) json.RawMes
 	if _, ok := fields["capabilities"]; !ok {
 		fields["capabilities"] = json.RawMessage("{}")
 	}
+	fields["initializationOptions"] = withSemanticTokens(fields["initializationOptions"])
 	encoded, _ := json.Marshal(fields)
+	return encoded
+}
+
+// withSemanticTokens switches on gopls' semantic tokens, which it only sends when asked, keeping what the client set. A client that
+// sets the option itself keeps its choice.
+func withSemanticTokens(raw json.RawMessage) json.RawMessage {
+	options := map[string]any{}
+	json.Unmarshal(raw, &options)
+	if _, set := options["ui.semanticTokens"]; !set {
+		options["ui.semanticTokens"] = true
+	}
+	encoded, _ := json.Marshal(options)
 	return encoded
 }
 

@@ -210,12 +210,14 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     override func showWindow(_ sender: Any?) {
         super.showWindow(sender)
         window?.layoutIfNeeded()
+        placeSideDividers()
         placeCentreDivider()
         if let size = window?.contentLayoutRect.size, size.width < 760 || size.height < 480 {
             window?.setContentSize(NSSize(width: 1200, height: 780))
             window?.center()
         }
         window?.layoutIfNeeded()
+        placeSideDividers()
         placeCentreDivider()
     }
 
@@ -250,9 +252,13 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         let sidebar = NSScrollView()
         sidebar.documentView = outline
         sidebar.hasVerticalScroller = true
+        sidebar.drawsBackground = false   // the window's colour (the theme's) shows through; the source-list material is a flat grey under a dark theme
+        outline.backgroundColor = .clear
+        sidebar.scrollerStyle = .overlay   // the legacy track draws a light gradient beside the list under a forced dark appearance
         sidebar.widthAnchor.constraint(greaterThanOrEqualToConstant: 180).isActive = true
 
-        let split = NSSplitView()
+        let split = IslandSplitView()
+        mainSplit = split
         split.isVertical = true
         split.dividerStyle = .thin
         content.translatesAutoresizingMaskIntoConstraints = false
@@ -260,6 +266,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         tabBar.onClose = { [weak self] path in self?.closeTab(path) }
         tabBar.menuProvider = { [weak self] path in self?.tabMenu(path: path) }
         let editorColumn = NSStackView(views: [tabBar, breadcrumb, content])
+        editorColumnView = editorColumn
         editorColumn.orientation = .vertical
         editorColumn.spacing = 0
         editorColumn.alignment = .leading
@@ -289,7 +296,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         outputPanel.onOpenReference = { [weak self] in self?.open(reference: $0) }
         testsPanel.onOpenReference = { [weak self] in self?.open(reference: $0) }
         bottomPanel.heightAnchor.constraint(greaterThanOrEqualToConstant: 120).isActive = true
-        let centre = NSSplitView()
+        let centre = IslandSplitView()
         centre.isVertical = false
         centre.dividerStyle = .thin
         centre.addArrangedSubview(editorColumn)
@@ -342,27 +349,46 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         sidebarColumn.spacing = 6
         sidebarColumn.edgeInsets = NSEdgeInsets(top: 8, left: 0, bottom: 0, right: 0)
         sidebarColumn.distribution = .fill
-        for part in [filesColumn, symbolsList, sidebarTests, debugNavigator, commitPanel] { part.widthAnchor.constraint(equalTo: sidebarColumn.widthAnchor).isActive = true; part.setContentHuggingPriority(.defaultLow, for: .vertical) }
+        // Only the tab on show is tied to the sidebar's width: a hidden tab's own minimum (the Commit tab needs 256 pt, Tests 230) must not
+        // keep the sidebar from being dragged narrower.
+        sidebarWidthConstraints = [filesColumn, symbolsList, sidebarTests, debugNavigator, commitPanel].map { part in
+            let equal = part.widthAnchor.constraint(equalTo: sidebarColumn.widthAnchor)
+            equal.isActive = part === filesColumn
+            return equal
+        }
         tabsControl.widthAnchor.constraint(equalTo: sidebarColumn.widthAnchor, constant: -16).isActive = true
+        tabsControl.setContentCompressionResistancePriority(NSLayoutConstraint.Priority(250), for: .horizontal)   // the segments squeeze rather than hold the sidebar wide
         sidebarView = sidebarColumn
         inspector.outline.onSelect = { [weak self] symbol in self?.currentPane?.reveal(line: symbol.line, character: 0) }
         split.addArrangedSubview(sidebarColumn)
         split.addArrangedSubview(centre)
         split.addArrangedSubview(inspector)
-        split.setHoldingPriority(.defaultHigh, forSubviewAt: 0)
-        split.setHoldingPriority(.defaultHigh, forSubviewAt: 2)
-        sidebarColumn.widthAnchor.constraint(equalToConstant: 260).isActive = true
-        inspector.widthAnchor.constraint(equalToConstant: 250).isActive = true
+        // Well above 250 (the centre's) the side panels keep their width when the window resizes; below 490 a divider can still move them.
+        split.setHoldingPriority(NSLayoutConstraint.Priority(480), forSubviewAt: 0)
+        split.setHoldingPriority(NSLayoutConstraint.Priority(480), forSubviewAt: 2)
+        // The minimums are firm. The starting widths are set once by `placeSideDividers`: a width constraint of any priority above the
+        // 490 NSSplitView moves a divider with would pin the panel, and without one the split view keeps each panel at its content's width.
+        sidebarColumn.widthAnchor.constraint(greaterThanOrEqualToConstant: 180).isActive = true
+        inspector.widthAnchor.constraint(greaterThanOrEqualToConstant: 200).isActive = true
 
-        let stack = NSStackView(views: [split, statusBar])
+        // The panels are islands: the split sits in a frame with a margin, and its dividers are gaps in the window's colour.
+        let islands = NSView()
+        islands.translatesAutoresizingMaskIntoConstraints = false
+        split.translatesAutoresizingMaskIntoConstraints = false
+        islands.addSubview(split)
+        NSLayoutConstraint.activate([
+            split.leadingAnchor.constraint(equalTo: islands.leadingAnchor, constant: IslandSplitView.margin), split.trailingAnchor.constraint(equalTo: islands.trailingAnchor, constant: -IslandSplitView.margin),
+            split.topAnchor.constraint(equalTo: islands.topAnchor, constant: IslandSplitView.margin / 2), split.bottomAnchor.constraint(equalTo: islands.bottomAnchor, constant: -IslandSplitView.margin),
+        ])
+        let stack = NSStackView(views: [islands, statusBar])
         stack.orientation = .vertical
         stack.spacing = 0
         stack.alignment = .leading
         stack.distribution = .fill
-        split.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        islands.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         statusBar.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         // The split takes all spare height; the status bar and the bottom panel keep theirs.
-        split.setContentHuggingPriority(.defaultLow, for: .vertical)
+        islands.setContentHuggingPriority(.defaultLow, for: .vertical)
         statusBar.setContentHuggingPriority(.required, for: .vertical)
         editorColumn.setContentHuggingPriority(.defaultLow, for: .vertical)
         // The window's content view follows the window by autoresizing, not constraints: pinned with constraints, the window
@@ -375,13 +401,41 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         window?.contentView = container
         window?.contentMinSize = NSSize(width: 760, height: 480)
         window?.setContentSize(NSSize(width: 1200, height: 780))   // the layout would otherwise shrink the window to its fitting size
+        NotificationCenter.default.addObserver(forName: EditorPreferences.didChange, object: nil, queue: .main) { [weak self] _ in self?.applyThemeChrome() }
+        applyThemeChrome()
         refreshChrome()
+    }
+
+    private var editorColumnView: NSView?
+    private var themeRevisionApplied = -1
+
+    /// The theme's colours for the panels: the editor column in the editor's colour, the sidebar, bottom panel and inspector in the tool
+    /// window colour; the window itself keeps the frame colour. File icons are drawn again with the theme's greys.
+    private func applyThemeChrome() {
+        guard themeRevisionApplied != ThemeColors.revision else { return }   // editor settings post the same notification
+        themeRevisionApplied = ThemeColors.revision
+        func paint(_ view: NSView?, _ color: NSColor) {
+            view?.wantsLayer = true
+            view?.layer?.backgroundColor = color.cgColor
+            view?.layer?.cornerRadius = IslandSplitView.radius   // each panel is an island
+            view?.layer?.cornerCurve = .continuous
+            view?.layer?.masksToBounds = true
+        }
+        paint(editorColumnView, ThemeColors.editorBackground)
+        for panel in [sidebarView, inspector] { paint(panel, ThemeColors.toolWindowBackground) }
+        paint(bottomPanel, ThemeColors.bottomPanelBackground)
+        FileIcons.reset()
+        outline.reloadData()
+        toolbar.applyTheme()
+        tabBar.reload(tabs)
+        bottomPanel.needsDisplay = true
     }
 
     var sidebarView: NSView?
     private let inspector = InspectorView()
     private let toolbar = ProjectToolbar()
     private var sidebarTabs: [NSView] = []
+    private var sidebarWidthConstraints: [NSLayoutConstraint] = []
     private var sidebarSymbols: OutlineListView?
     private var sidebarTestsPanel: TestsPanelView?
     private var outlineTimer: Timer?
@@ -394,8 +448,10 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     private let profilerPanel = ProfilerPanelView()
     private let sourceControl = SourceControlView()
     private var filesSplit: NSSplitView?
+    private var mainSplit: NSSplitView?
     private var centreSplit: NSSplitView?
     private var placedCentreDivider = false
+    private var placedSideDividers = false
     private var placedFilesDivider = false
 
     /// The first time the Source control block shows, and when the person has not moved the divider before, it gets a useful height.
@@ -404,6 +460,17 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         placedFilesDivider = true
         split.layoutSubtreeIfNeeded()   // the frames are only valid after a layout pass; setPosition on stale ones lands in the wrong place
         split.setPosition(split.bounds.height - 240, ofDividerAt: 0)
+    }
+
+    /// The sidebar starts 260 pt wide and the inspector 250 pt, unless the person has dragged the dividers before.
+    private func placeSideDividers() {
+        guard !placedSideDividers, let split = mainSplit, split.bounds.width > 700 else { return }
+        placedSideDividers = true
+        split.layoutSubtreeIfNeeded()
+        split.setPosition(260, ofDividerAt: 0)
+        split.layoutSubtreeIfNeeded()
+        split.setPosition(split.bounds.width - 250 - split.dividerThickness, ofDividerAt: 1)
+        split.layoutSubtreeIfNeeded()
     }
 
     /// The bottom panel starts 210 pt tall unless the person has dragged the divider before .
@@ -429,6 +496,18 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     var sourceControlHeight: CGFloat {
         filesSplit?.layoutSubtreeIfNeeded()
         return sourceControl.isHidden ? 0 : sourceControl.frame.height
+    }
+    /// For tests: the sidebar's and the inspector's widths, and moving their dividers the way a drag would.
+    var sidebarWidth: CGFloat { mainSplit?.layoutSubtreeIfNeeded(); return sidebarView?.frame.width ?? 0 }
+    var inspectorWidth: CGFloat { mainSplit?.layoutSubtreeIfNeeded(); return inspector.frame.width }
+    func moveSidebarDivider(toWidth width: CGFloat) {
+        mainSplit?.setPosition(width, ofDividerAt: 0)
+        mainSplit?.layoutSubtreeIfNeeded()
+    }
+    func moveInspectorDivider(toWidth width: CGFloat) {
+        guard let split = mainSplit else { return }
+        split.setPosition(split.bounds.width - width - split.dividerThickness, ofDividerAt: 1)
+        split.layoutSubtreeIfNeeded()
     }
     func moveFilesDivider(toBlockHeight height: CGFloat) {
         guard let split = filesSplit else { return }
@@ -481,8 +560,11 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     func setInspector(hidden: Bool) { inspector.isHidden = hidden }
     var isInspectorVisible: Bool { !inspector.isHidden }
 
-    @objc private func sidebarTabChanged(_ sender: NSSegmentedControl) {
-        for (index, view) in sidebarTabs.enumerated() { view.isHidden = index != sender.selectedSegment }
+    @objc private func sidebarTabChanged(_ sender: NSSegmentedControl) { showSidebarTab(sender.selectedSegment) }
+
+    private func showSidebarTab(_ index: Int) {
+        for (position, view) in sidebarTabs.enumerated() { view.isHidden = position != index }
+        for (position, constraint) in sidebarWidthConstraints.enumerated() { constraint.isActive = position == index }
     }
 
     /// Which sidebar tab is showing (0 Files, 1 Symbols, 2 Tests), and a way to switch, for the self-test.
@@ -490,7 +572,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
     func selectSidebarTab(_ index: Int) {
         guard sidebarTabs.indices.contains(index) else { return }
         sidebarTabControl?.selectedSegment = index
-        for (position, view) in sidebarTabs.enumerated() { view.isHidden = position != index }
+        showSidebarTab(index)
     }
     /// True when the segmented control sits inside the sidebar column (it is not pushed wider than the 260 pt sidebar). Its natural
     /// width (about 258 pt at the small control size) is more than the room, so AppKit squeezes the segments; the snapshot shows
@@ -2179,7 +2261,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         cell.imageView?.image = FileIcons.image(for: kind)
         cell.imageView?.setAccessibilityLabel(node.isDirectory ? "Folder" : "File")
         let mark = gitStatus?.mark(of: relativePath(of: node.url), isDirectory: node.isDirectory)
-        cell.textField?.textColor = AppPreferences.git.showColours ? Self.nameColour(for: mark) : .labelColor
+        cell.textField?.textColor = AppPreferences.git.showColours ? Self.nameColour(for: mark) : ThemeColors.uiText
         if !node.isDirectory, errorPaths.contains(node.url.path), let field = cell.textField {
             let marked = NSMutableAttributedString(string: node.url.lastPathComponent, attributes: [.font: field.font ?? NSFont.systemFont(ofSize: 13), .foregroundColor: field.textColor ?? NSColor.labelColor])
             marked.append(NSAttributedString(string: "  !", attributes: [.font: NSFont.systemFont(ofSize: 12, weight: .bold), .foregroundColor: NSColor.systemRed]))
@@ -2195,7 +2277,7 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         case .renamed: return .systemBlue
         case .deleted, .conflict: return .systemRed
         case .ignored: return .tertiaryLabelColor
-        case nil: return .labelColor
+        case nil: return ThemeColors.uiText
         }
     }
 
@@ -2260,5 +2342,19 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
         // Every selected file gets a tab, so shift- or command-clicking several files opens them all.
         let selected = outline.selectedRowIndexes.compactMap { outline.item(atRow: $0) as? FileNode }.filter { !$0.isDirectory }
         openFiles(selected.map(\.url))
+    }
+}
+
+
+/// A split view whose dividers are gaps in the window's colour, so the panels on either side read as separate rounded islands.
+final class IslandSplitView: NSSplitView {
+    static let margin: CGFloat = 8
+    static let radius: CGFloat = 8
+
+    override var dividerThickness: CGFloat { Self.margin }
+
+    override func drawDivider(in rect: NSRect) {
+        ThemeColors.windowBackground.setFill()
+        rect.fill()
     }
 }

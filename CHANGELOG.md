@@ -4,6 +4,35 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+- Settings > Appearance: a Theme list (Islands Light, Islands Dark, High Contrast, Solarized Light, Solarized Dark, One Light, One Dark) with Sync with OS, an Editor color scheme list ("Theme default" or any theme's editor colours), an Accent colour (four presets or a hex value) and Different tool window background. The theme colours the windows, the editor and its syntax colours, the gutter and the terminal. With Sync with OS on, a theme of the other brightness is swapped for One Light or One Dark when macOS is in the other mode.
+
+### Changed
+- One Dark now uses the colours of JetBrains One Dark, sampled from its screen: frame #22252A around panels of #292C33, accent blue #4670DA. The sidebar, bottom panel, inspector, tab strip and terminal take the panel colour (a lighter or darker one with Different tool window background); the title bar and status bar keep the frame colour. Folder and file icons use the JetBrains greys, blue, green, yellow and orange, and the toolbar icons take the theme's icon colour, with its green for Run and a healthy environment and its red for Stop.
+
+- Solarized Dark follows JetBrains Solarized Dark, sampled from its screen: frame #173541 around panels of #0E2A35, code text #839496. The labels of the file tree, tabs and panel titles take a tone per theme (One Dark #C8CFDC, Solarized Dark #93A1A1) instead of the system's white.
+
+- All seven themes follow their JetBrains screens: the frame, editor and syntax colours were sampled from them (Islands Light and Dark, High Contrast, Solarized Light and Dark, One Light and Dark). The file tree takes the editor's colour; the terminal and bottom panel take a shade off it in Islands Light and High Contrast. Solarized numbers are cyan, as there. Toolbar icons are grey in the light themes.
+- The sidebar, editor, bottom panel and inspector are rounded panels with gaps between them and a margin around, over the theme's frame colour, as in JetBrains.
+- The tab strip is darker than the editor in Solarized Dark; terminals use the Solarized sixteen ANSI colours in the Solarized themes; HTML files get a green `<>` icon.
+
+- Semantic highlighting: gopls' semantic tokens colour what the lexer cannot tell apart, as JetBrains does: types, functions and methods, parameters, struct fields, constants, package names, and `//go:` directives (drawn like annotations). Each theme has its own colours for them, sampled from JetBrains (One Dark types yellow, functions blue, parameters and fields red; Solarized types yellow, the rest blue; Islands and High Contrast keep the plain text colour). gobid switches the gopls option on (`ui.semanticTokens`, off by default). Lines being typed fall back to the lexer's colours until gopls answers; lines below an inserted or deleted line move with it. `--selftest-semantic` covers it.
+
+### Changed
+- SwiftTerm is now vendored (`ui/macos/Vendor/SwiftTerm`, 1.5.1, MIT) and patched at the source instead of worked around from outside: a hover is no longer reported to programs as a click (Claude Code clicked whatever the pointer passed over), `CSI > 4 m` is no longer an underline, `4:3` and `38:2::r:g:b` sub-parameters are read properly, `resetNormalBuffer` no longer leaves the terminal on a stale buffer, and the wheel reaches full-screen programs. The patches and how to take a newer upstream are in `VENDORED.md`; each has a test in `TerminalForkTests`. The output filter and the wheel monitor that worked around two of them are removed.
+
+### Fixed
+- After reopening a project, the editor could come back scrolled a few points sideways. The restored caret was revealed while the window was still narrow, and the sideways scroll stayed when the window grew. For two seconds after a reveal, a growing view now gives back the left edge once the caret fits there.
+- The sidebar and inspector dividers could not be dragged. The panels' widths were pinned (a required width, then a holding priority above the 490 NSSplitView moves a divider with, and the minimum widths of the hidden Commit and Tests tabs). They start 260 and 250 pt wide, drag both ways down to 180 and 200 pt, and keep their width when the window or the sidebar tab changes. `--selftest-terminal` checks it.
+- The Explorer sidebar was a flat grey under a dark theme (the source-list material); it now shows the theme's window colour.
+- Terminal: a stray `%` and blank rows showed above the first prompt. The terminal's buffer was made before the view had its real width, so it kept the narrow starting width and wrapped the line of spaces zsh prints after its end-of-line mark. The buffers are now remade with `resetToInitialState` once the view is sized (`resetNormalBuffer` left the terminal on the old buffer, which stopped following the view: a terminal made taller drew only its first rows and left the rest black), and gobid starts the shell at the view's size (it waits for the first message, a resize) instead of 80x24.
+- Settings > Appearance: the colour-wheel swatch opens the system colour panel to pick any accent (it only moved the cursor to the hex field before).
+- Changing the theme while a file is open left the code in the old theme's colours (dark grey on a dark background). The visible text is now recoloured at once.
+- Settings opens centred over the window it was opened from (or on the screen), instead of where it was last.
+
+### Changed
+- The System / Light / Dark switch in Settings > Editor is replaced by Settings > Appearance. The default theme is One Dark; Sync with OS is off until you turn it on, and choosing a theme turns it off.
+
 ## [0.1.0-alpha.6] - 2026-11-09
 
 ### Added

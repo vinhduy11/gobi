@@ -1,4 +1,5 @@
 import AppKit
+import GobiEditor
 import GobiModel
 
 /// The explorer's file icons, in the style of the reference: a quiet grey outline for folders, a solid cyan badge for Go
@@ -12,17 +13,20 @@ enum FileIcons {
     static func color(_ color: FileColor) -> NSColor {
         func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> NSColor { NSColor(srgbRed: r / 255, green: g / 255, blue: b / 255, alpha: 1) }
         switch color {
-        case .blue: return rgb(0x6F, 0x8E, 0xF2)
+        case .blue: return rgb(0x66, 0x93, 0xFF)
         case .cyan: return rgb(0x5B, 0xB5, 0xD5)
         case .teal: return rgb(0x4F, 0xC1, 0xC8)
-        case .green: return rgb(0x7B, 0xC4, 0x7F)
-        case .yellow: return rgb(0xE3, 0xB9, 0x5B)
-        case .orange: return rgb(0xE5, 0x97, 0x5A)
+        case .green: return rgb(0x67, 0xA6, 0x62)
+        case .yellow: return rgb(0xD6, 0xB6, 0x5C)
+        case .orange: return rgb(0xD0, 0x8A, 0x5C)
         case .red: return rgb(0xE2, 0x76, 0x7D)
         case .purple: return rgb(0xA9, 0x8B, 0xEA)
-        case .gray: return NSColor.labelColor.withAlphaComponent(0.7)
+        case .gray: return ThemeColors.theme.isDark ? rgb(0x9D, 0xA0, 0xA8) : rgb(0x6C, 0x70, 0x7E)
         }
     }
+
+    /// The theme changed: icons are drawn again with its greys.
+    static func reset() { cache.removeAll() }
 
     static func image(for kind: FileKind) -> NSImage {
         if let cached = cache[kind] { return cached }

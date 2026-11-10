@@ -342,7 +342,59 @@ public final class EditorView {
         return changed
     }
 
+    /// gopls' semantic tokens for the text at `version`; the visible text is coloured again when they are taken.
+    public func setSemanticTokens(_ lines: [Int: [SyntaxToken]], version: Int) {
+        if document.setSemanticTokens(lines, forVersion: version) { highlighter?.recolourAll() }
+    }
+
+    private var settleObserver: NSObjectProtocol?
+
+    /// A reveal made while the editor is still narrow (a restored session, before the window has its size) scrolls the text sideways
+    /// to show the caret. For a moment after the reveal, a view that grows gives the left edge back as soon as the caret is visible
+    /// there; a person who scrolls sideways later is left alone.
+    public func settleHorizontalScrollAfterReveal(for seconds: TimeInterval = 2) {
+        if let settleObserver { NotificationCenter.default.removeObserver(settleObserver) }
+        let clip = scrollView.contentView
+        clip.postsFrameChangedNotifications = true
+        let until = Date().addingTimeInterval(seconds)
+        settleObserver = NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: clip, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            if Date() > until, let observer = self.settleObserver { NotificationCenter.default.removeObserver(observer); self.settleObserver = nil; return }
+            self.giveBackLeftEdgeIfCaretFits()
+        }
+    }
+
+    /// Scrolls to the left edge when the caret is visible with the text there; true when it did.
+    @discardableResult
+    func giveBackLeftEdgeIfCaretFits() -> Bool {
+        let clip = scrollView.contentView
+        guard clip.bounds.origin.x > 0, let window = textView.window else { return false }
+        let screen = textView.firstRect(forCharacterRange: textView.selectedRange(), actualRange: nil)
+        let caret = textView.convert(window.convertFromScreen(screen), from: nil)
+        guard caret.maxX + 8 <= clip.bounds.width else { return false }
+        clip.scroll(to: NSPoint(x: 0, y: clip.bounds.origin.y))
+        scrollView.reflectScrolledClipView(clip)
+        return true
+    }
+
+    private var appliedThemeRevision = -1
+
+    /// The editor's colours from the theme: background, plain text, caret, selection, gutter and syntax colours.
+    private func applyTheme() {
+        appliedThemeRevision = ThemeColors.revision
+        let background = ThemeColors.editorBackground
+        textView.backgroundColor = background
+        scrollView.backgroundColor = background
+        scrollView.contentView.backgroundColor = background
+        (textView as? NSTextView)?.insertionPointColor = ThemeColors.editorText
+        textView.selectedTextAttributes = [.backgroundColor: ThemeColors.accent.withAlphaComponent(0.35)]
+        textView.typingAttributes[.foregroundColor] = ThemeColors.editorText
+        gutter?.needsDisplay = true
+        highlighter?.recolourAll()
+    }
+
     public func apply(_ settings: EditorSettings) {
+        if appliedThemeRevision != ThemeColors.revision { applyTheme() }
         gutter?.isHidden = !settings.showLineNumbers
         (textView as? EditorTextView)?.rulerColumn = settings.rulerColumn
         (textView as? EditorTextView)?.showInvisibles = settings.showInvisibles
@@ -387,7 +439,7 @@ public final class EditorView {
         style.defaultTabInterval = font.maximumAdvancement.width * CGFloat(settings.tabWidth)
         textView.font = font
         textView.defaultParagraphStyle = style
-        textView.typingAttributes = [.font: font, .paragraphStyle: style, .foregroundColor: NSColor.textColor]
+        textView.typingAttributes = [.font: font, .paragraphStyle: style, .foregroundColor: ThemeColors.editorText]
         if let storage, storage.length > 0 {
             storage.beginEditing()
             storage.addAttributes([.font: font, .paragraphStyle: style], range: NSRange(location: 0, length: storage.length))

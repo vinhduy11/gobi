@@ -1,4 +1,5 @@
 import AppKit
+import GobiEditor
 import GobiModel
 
 /// The icicle flame graph: the root on top, each function's children side by side below it, widths by cumulative cost.
@@ -35,7 +36,7 @@ final class FlameView: NSView {
         for rect in rects {
             let frame = NSRect(x: CGFloat(rect.x) * width, y: CGFloat(rect.depth) * Self.rowHeight + 2, width: CGFloat(rect.width) * width - 1, height: Self.rowHeight - 1)
             guard frame.width >= 1, frame.intersects(dirtyRect), let node = nodes[rect.id] else { continue }
-            (rect.id == selectedID ? NSColor.controlAccentColor : colour(for: node.name)).setFill()
+            (rect.id == selectedID ? ThemeColors.accent : colour(for: node.name)).setFill()
             frame.fill()
             if frame.width > 40 {
                 let label = rect.depth == 0 ? "all · \(ProfileFormat.value(node.cum, unit: unit)) · 100%" : node.name
@@ -204,7 +205,7 @@ final class ProfilerPanelView: NSView, NSTableViewDataSource, NSTableViewDelegat
         inspector.textColor = .secondaryLabelColor
         inspector.stringValue = "Open a profile, or capture one from a running program."
         openSource.isBordered = false
-        openSource.contentTintColor = .controlAccentColor
+        openSource.contentTintColor = ThemeColors.accent
         openSource.target = self
         openSource.action = #selector(openSourcePressed)
         openSource.isHidden = true

@@ -115,9 +115,21 @@ public final class LSPClient: @unchecked Sendable {
                 "resolveSupport": ["properties": ["edit"]],
                 "dataSupport": true,   // without it gopls answers with a command it would run itself instead of data to resolve
             ],
+            // gopls sends only the token types and modifiers listed here, so these are every one of its own (see SemanticTokens).
+            "semanticTokens": [
+                "requests": ["full": true],
+                "tokenTypes": ["namespace", "type", "class", "enum", "interface", "struct", "typeParameter", "parameter", "variable", "property", "enumMember", "event", "function", "method", "macro", "keyword", "modifier", "comment", "string", "number", "regexp", "operator", "decorator", "label"],
+                "tokenModifiers": ["declaration", "definition", "readonly", "static", "deprecated", "abstract", "async", "modification", "documentation", "defaultLibrary", "array", "bool", "chan", "format", "interface", "map", "number", "pointer", "signature", "slice", "string", "struct", "shadowing"],
+                "formats": ["relative"],
+                "overlappingTokenSupport": false,
+                "multilineTokenSupport": false,
+            ],
         ],
         "general": ["positionEncodings": ["utf-16"]],
     ]
+
+    /// How gopls numbers its semantic token types and modifiers; nil when it does not offer them.
+    public private(set) var semanticLegend: SemanticLegend?
 
     @discardableResult
     public func initialize(rootPath: String) throws -> [String: Any] {
@@ -129,6 +141,7 @@ public final class LSPClient: @unchecked Sendable {
         ]
         let answer = try requestAndWait("initialize", params: params) as? [String: Any] ?? [:]
         if let capabilities = answer["capabilities"] as? [String: Any] {
+            semanticLegend = SemanticLegend(capabilities: capabilities)
             switch capabilities["textDocumentSync"] {
             case let kind as Int: syncKind = kind
             case let options as [String: Any]: syncKind = options["change"] as? Int ?? 1

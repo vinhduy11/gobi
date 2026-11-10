@@ -1,5 +1,6 @@
 import AppKit
 import GobiClient
+import GobiEditor
 import GobiModel
 
 /// One labelled row of a settings pane: a right-aligned grey label, then the controls.
@@ -529,7 +530,7 @@ final class KeymapSettingsPane: SettingsPane, NSTableViewDataSource, NSTableView
         case "menu": text = item.menu; colour = .secondaryLabelColor
         default:
             text = keymap.shortcut(for: item.id, default: item.defaultShortcut)
-            if keymap.isCustom(item.id) { colour = .controlAccentColor }
+            if keymap.isCustom(item.id) { colour = ThemeColors.accent }
         }
         let label = NSTextField(labelWithString: text)
         label.textColor = colour

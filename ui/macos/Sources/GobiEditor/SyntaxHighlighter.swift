@@ -25,14 +25,37 @@ final class SyntaxHighlighter {
         }
     }
 
+    /// The theme changed: paragraphs off screen are coloured when TextKit lays them out next; the ones already laid out in the viewport
+    /// are coloured here, because invalidation alone does not make TextKit run the validator again for them.
+    func recolourAll() {
+        guard let layout = textView?.textLayoutManager else { return }
+        layout.invalidateRenderingAttributes(for: layout.documentRange)
+        if let viewport = layout.textViewportLayoutController.viewportRange {
+            layout.enumerateTextLayoutFragments(from: viewport.location, options: []) { [weak self] fragment in
+                guard fragment.rangeInElement.location.compare(viewport.endLocation) == .orderedAscending else { return false }
+                self?.colour(fragment, in: layout)
+                return true
+            }
+        }
+        textView?.needsDisplay = true
+    }
+
     private func colour(_ fragment: NSTextLayoutFragment, in layout: NSTextLayoutManager) {
         let fragmentRange = fragment.rangeInElement
         let startOffset = layout.offset(from: layout.documentRange.location, to: fragmentRange.location)
         let line = document.lineIndex.position(at: startOffset).line
         layout.removeRenderingAttribute(.foregroundColor, for: fragmentRange)
+        layout.addRenderingAttribute(.foregroundColor, value: ThemeColors.editorText, for: fragmentRange)
         guard document.lineIndex.lineRange(line).count <= EditorDocument.overlongLineLimit else { return }
         paragraphsColoured += 1
         for token in document.syntaxIndex.tokens(line: line) {
+            guard let from = layout.location(fragmentRange.location, offsetBy: Int(token.start)),
+                  let to = layout.location(from, offsetBy: Int(token.length)),
+                  let range = NSTextRange(location: from, end: to) else { continue }
+            layout.addRenderingAttribute(.foregroundColor, value: SyntaxTheme.color(for: token.kind), for: range)
+        }
+        // What gopls knows (types, functions, parameters...) goes over the lexer's colours.
+        for token in document.semantic.tokens(line: line) {
             guard let from = layout.location(fragmentRange.location, offsetBy: Int(token.start)),
                   let to = layout.location(from, offsetBy: Int(token.length)),
                   let range = NSTextRange(location: from, end: to) else { continue }

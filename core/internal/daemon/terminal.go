@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gobi/core/internal/ipc"
 	"gobi/core/internal/pty"
@@ -82,10 +83,88 @@ func shellAdmit(hello ipc.Hello, file string) string {
 	return hello.Shell + " is not listed in /etc/shells"
 }
 
-// serveTerminal attaches a login shell to the connection until either side ends it.
+// terminalMessage is one parsed client message.
+type terminalMessage struct {
+	kind       uint64
+	cols, rows uint64
+	data       []byte
+}
+
+func parseTerminalMessage(payload []byte) (terminalMessage, error) {
+	fields, err := wire.Parse(payload)
+	if err != nil {
+		return terminalMessage{}, err
+	}
+	var m terminalMessage
+	for _, field := range fields {
+		switch field.Number {
+		case terminalKind:
+			m.kind = field.Uint
+		case terminalData:
+			m.data = field.Bytes
+		case terminalCols:
+			m.cols = field.Uint
+		case terminalRows:
+			m.rows = field.Uint
+		}
+	}
+	return m, nil
+}
+
+func validTerminalSize(cols, rows uint64) bool {
+	return cols > 0 && rows > 0 && cols < 1<<15 && rows < 1<<15
+}
+
+const (
+	defaultTerminalCols = 80
+	defaultTerminalRows = 24
+	// terminalStartWait is how long the shell waits for the client's first message (its size) before starting at the default size.
+	terminalStartWait = time.Second
+)
+
+// initialTerminalSize is the size the shell starts at: the client's, when its first message is a resize. A shell that starts at the
+// wrong size and is resized afterwards has already laid out its prompt for it (zsh pads its end-of-line mark to the width).
+func initialTerminalSize(first []byte) (cols, rows uint16) {
+	if m, err := parseTerminalMessage(first); err == nil && m.kind == terminalResize && validTerminalSize(m.cols, m.rows) {
+		return uint16(m.cols), uint16(m.rows)
+	}
+	return defaultTerminalCols, defaultTerminalRows
+}
+
+// serveTerminal attaches a login shell to the connection until either side ends it. The shell starts when the first message
+// arrives (a resize, from gobi), so it starts at the right size.
 func serveTerminal(session *ipc.Session, logger *slog.Logger) {
 	hello := session.Hello
-	shell, err := pty.Start(pty.Options{Dir: hello.WorkspaceRoot, Shell: hello.Shell, Cols: 80, Rows: 24})
+	done := make(chan struct{})
+	defer close(done)
+	messages := make(chan []byte)
+	go func() {
+		defer close(messages)
+		for {
+			payload, err := session.Reader.Read()
+			if err != nil {
+				return // the client went away
+			}
+			select {
+			case messages <- payload:
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	var first []byte
+	select {
+	case payload, ok := <-messages:
+		if !ok {
+			return
+		}
+		first = payload
+	case <-time.After(terminalStartWait):
+	}
+
+	cols, rows := initialTerminalSize(first)
+	shell, err := pty.Start(pty.Options{Dir: hello.WorkspaceRoot, Shell: hello.Shell, Cols: cols, Rows: rows})
 	if err != nil {
 		logger.Info("terminal could not start", "root", filepath.Base(hello.WorkspaceRoot), "error", err)
 		var message wire.Writer
@@ -122,39 +201,31 @@ func serveTerminal(session *ipc.Session, logger *slog.Logger) {
 		session.Writer.Write(message.Bytes())
 	}()
 
-	for {
-		payload, err := session.Reader.Read()
+	// handle applies one client message; false ends the session.
+	handle := func(payload []byte) bool {
+		m, err := parseTerminalMessage(payload)
 		if err != nil {
-			return // the client went away: Close hangs up the shell
+			return false
 		}
-		fields, err := wire.Parse(payload)
-		if err != nil {
-			return
-		}
-		var kind, cols, rows uint64
-		var data []byte
-		for _, field := range fields {
-			switch field.Number {
-			case terminalKind:
-				kind = field.Uint
-			case terminalData:
-				data = field.Bytes
-			case terminalCols:
-				cols = field.Uint
-			case terminalRows:
-				rows = field.Uint
-			}
-		}
-		switch kind {
+		switch m.kind {
 		case terminalInput:
-			if _, err := shell.Write(data); err != nil && err != io.ErrClosedPipe {
+			if _, err := shell.Write(m.data); err != nil && err != io.ErrClosedPipe {
 				<-finished
-				return
+				return false
 			}
 		case terminalResize:
-			if cols > 0 && rows > 0 && cols < 1<<15 && rows < 1<<15 {
-				shell.Resize(uint16(cols), uint16(rows))
+			if validTerminalSize(m.cols, m.rows) {
+				shell.Resize(uint16(m.cols), uint16(m.rows))
 			}
+		}
+		return true
+	}
+	if first != nil && !handle(first) {
+		return
+	}
+	for payload := range messages {
+		if !handle(payload) {
+			return
 		}
 	}
 }

@@ -1,5 +1,6 @@
 import AppKit
 import GobiClient
+import GobiEditor
 import GobiModel
 
 /// One tab: the file name (with a dot while it has unsaved edits) and a close button.
@@ -15,11 +16,11 @@ private final class TabItemView: NSView {
         self.path = path
         super.init(frame: .zero)
         wantsLayer = true
-        layer?.backgroundColor = (isActive ? NSColor.controlAccentColor.withAlphaComponent(0.18) : NSColor.clear).cgColor
+        layer?.backgroundColor = (isActive ? ThemeColors.accent.withAlphaComponent(0.18) : NSColor.clear).cgColor
         layer?.cornerRadius = 6
         label.stringValue = (isDirty ? "● " : "") + title
         label.font = NSFont.systemFont(ofSize: 12, weight: isActive ? .semibold : .regular)
-        label.textColor = isActive ? .labelColor : .secondaryLabelColor
+        label.textColor = isActive ? ThemeColors.uiText : ThemeColors.uiSecondaryText
         label.lineBreakMode = .byTruncatingMiddle
         closeButton.bezelStyle = .inline
         closeButton.isBordered = false
@@ -100,7 +101,7 @@ final class TabBarView: NSView {
 
     /// A strip of its own: the window colour with a hairline under it, so inactive tabs stay readable in both appearances.
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.windowBackgroundColor.setFill()
+        ThemeColors.tabStripBackground.setFill()
         bounds.fill()
         NSColor.separatorColor.setFill()
         NSRect(x: 0, y: 0, width: bounds.width, height: 1).fill()

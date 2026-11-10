@@ -232,3 +232,26 @@ struct LSPCapabilitiesTests {
         #expect(resolve?["properties"] as? [String] == ["edit"])
     }
 }
+
+@Suite("Semantic tokens over LSP")
+struct LSPSemanticTokensTests {
+    @Test func theClientAdvertisesTheTokenTypesGoplsUses() {
+        let textDocument = LSPClient.clientCapabilities["textDocument"] as? [String: Any]
+        let tokens = textDocument?["semanticTokens"] as? [String: Any]
+        #expect((tokens?["requests"] as? [String: Any])?["full"] as? Bool == true)
+        #expect(tokens?["formats"] as? [String] == ["relative"])
+        // gopls only sends the types and modifiers the client lists, so every one it can use must be there.
+        let types = Set(tokens?["tokenTypes"] as? [String] ?? [])
+        #expect(types.isSuperset(of: ["namespace", "type", "typeParameter", "parameter", "property", "variable", "function", "method", "macro", "keyword", "comment", "string", "number", "operator", "label"]))
+        let modifiers = Set(tokens?["tokenModifiers"] as? [String] ?? [])
+        #expect(modifiers.isSuperset(of: ["definition", "readonly", "defaultLibrary", "static", "array", "bool", "chan", "format", "interface", "map", "number", "pointer", "signature", "slice", "string", "struct", "shadowing"]))
+    }
+
+    @Test func theDataArrayIsReadFromTheAnswer() {
+        #expect(LSPResults.semanticTokenData(["resultId": "1", "data": [0, 6, 1, 3, 1, 0, 3, 5, 1, 0]] as [String: Any]) == [0, 6, 1, 3, 1, 0, 3, 5, 1, 0])
+        #expect(LSPResults.semanticTokenData(["data": [Int]()] as [String: Any]) == [])
+        #expect(LSPResults.semanticTokenData(nil).isEmpty)
+        #expect(LSPResults.semanticTokenData("nonsense").isEmpty)
+        #expect(LSPResults.semanticTokenData(["data": ["a", "b"]] as [String: Any]).isEmpty)
+    }
+}

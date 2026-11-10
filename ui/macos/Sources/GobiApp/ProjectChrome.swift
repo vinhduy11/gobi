@@ -1,4 +1,5 @@
 import AppKit
+import GobiEditor
 import GobiModel
 
 /// A thin line across a bar, the way the mock separates regions.
@@ -142,13 +143,13 @@ final class PanelTabButton: NSButton {
         }
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 12, weight: isCurrent ? .semibold : .regular),
-            .foregroundColor: isCurrent ? NSColor.labelColor : NSColor.secondaryLabelColor,
+            .foregroundColor: isCurrent ? ThemeColors.uiText : ThemeColors.uiSecondaryText,
         ]
         let text = NSAttributedString(string: title, attributes: attributes)
         let box = text.size()
         text.draw(at: NSPoint(x: bounds.midX - box.width / 2, y: bounds.midY - box.height / 2 + 1))
         if isCurrent {
-            NSColor.controlAccentColor.setFill()
+            ThemeColors.accent.setFill()
             NSRect(x: 8, y: isFlipped ? bounds.maxY - 2 : 0, width: bounds.width - 16, height: 2).fill()   // along the bottom edge
         }
     }

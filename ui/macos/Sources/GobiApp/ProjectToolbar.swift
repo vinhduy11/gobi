@@ -1,10 +1,15 @@
 import AppKit
+import GobiEditor
 import GobiModel
 
 /// A flat icon or text button for the toolbar, with a soft highlight under the pointer (IntelliJ style, no capsule).
 final class FlatToolbarButton: NSButton {
     private var tracking: NSTrackingArea?
     private var hovering = false { didSet { needsDisplay = true } }
+    /// True when no tint was given: the icon takes the theme's icon colour.
+    private(set) var followsTheme = false
+
+    func applyTheme() { if followsTheme { contentTintColor = ThemeColors.icon } }
 
     convenience init(symbol: String?, title: String = "", label: String, tint: NSColor? = nil, chevron: Bool = false, action: Selector?, target: AnyObject?) {
         self.init(frame: .zero)
@@ -14,7 +19,8 @@ final class FlatToolbarButton: NSButton {
         if let symbol {
             image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)?.withSymbolConfiguration(.init(pointSize: 14, weight: .regular))
         }
-        contentTintColor = tint
+        followsTheme = tint == nil
+        contentTintColor = tint ?? ThemeColors.icon
         font = NSFont.systemFont(ofSize: 13)
         self.title = title + (chevron ? "  ⌄" : "")
         toolTip = label
@@ -102,12 +108,19 @@ final class ProjectToolbar: NSObject, NSToolbarDelegate {
         buttons[Item.toolchain]?.toolTip = "Go toolchain used by Run, Test and gopls"
     }
 
+    /// The theme changed: icons take its colours again.
+    func applyTheme() {
+        buttons.values.forEach { $0.applyTheme() }
+        set(running: running)
+        buttons[Item.environment]?.contentTintColor = remote ? .systemOrange : ThemeColors.positive
+    }
+
     /// The Run button turns into Stop while something runs.
     func set(running: Bool) {
         self.running = running
         guard let run = buttons[Item.run] else { return }
         run.image = NSImage(systemSymbolName: running ? "stop.fill" : "play.fill", accessibilityDescription: runTitle)?.withSymbolConfiguration(.init(pointSize: 15, weight: .regular))
-        run.contentTintColor = running ? .systemRed : .systemGreen
+        run.contentTintColor = running ? ThemeColors.negative : ThemeColors.positive
         run.toolTip = runTitle
         run.setAccessibilityLabel(runTitle)
     }
@@ -127,17 +140,17 @@ final class ProjectToolbar: NSObject, NSToolbarDelegate {
         case Item.project: button = FlatToolbarButton(symbol: nil, title: "Project", label: "Project", action: #selector(projectPressed), target: self)
         case Item.branch: button = FlatToolbarButton(symbol: "arrow.triangle.branch", title: "main", label: "Branch", tint: .secondaryLabelColor, action: #selector(branchPressed), target: self)
         case Item.target: button = FlatToolbarButton(symbol: "folder", title: "go run .", label: "Run configuration", action: nil, target: nil)
-        case Item.run: button = FlatToolbarButton(symbol: "play.fill", label: "Run", tint: .systemGreen, action: #selector(runPressed), target: self)
+        case Item.run: button = FlatToolbarButton(symbol: "play.fill", label: "Run", tint: ThemeColors.positive, action: #selector(runPressed), target: self)
         case Item.debug: button = FlatToolbarButton(symbol: "ladybug", label: "Debug", action: #selector(debugPressed), target: self)
         case Item.more: button = FlatToolbarButton(symbol: "ellipsis", label: "More run actions", action: #selector(morePressed), target: self)
-        case Item.environment: button = FlatToolbarButton(symbol: "circle.fill", title: "local", label: "Environment", tint: .systemGreen, action: #selector(environmentPressed), target: self)
+        case Item.environment: button = FlatToolbarButton(symbol: "circle.fill", title: "local", label: "Environment", tint: ThemeColors.positive, action: #selector(environmentPressed), target: self)
         case Item.toolchain: button = FlatToolbarButton(symbol: nil, title: "Go", label: "Go toolchain", action: #selector(toolchainPressed), target: self)
         case Item.search: button = FlatToolbarButton(symbol: "magnifyingglass", label: "Search and commands (⇧⌘P)", action: #selector(search), target: self)
         case Item.inspector: button = FlatToolbarButton(symbol: "sidebar.right", label: "Toggle inspector", action: #selector(inspector), target: self)
         default: return nil
         }
         if id == Item.project { button.font = NSFont.systemFont(ofSize: 13, weight: .semibold) }
-        if id == Item.branch || id == Item.environment || id == Item.toolchain { button.contentTintColor = id == Item.environment ? .systemGreen : .secondaryLabelColor }
+        if id == Item.branch || id == Item.environment || id == Item.toolchain { button.contentTintColor = id == Item.environment ? ThemeColors.positive : .secondaryLabelColor }
         buttons[id] = button
         let item = NSToolbarItem(itemIdentifier: id)
         item.view = button
@@ -149,9 +162,12 @@ final class ProjectToolbar: NSObject, NSToolbarDelegate {
     @objc private func toolchainPressed() { popUp(toolchainMenu(), from: buttons[Item.toolchain]) }
     @objc private func environmentPressed() { popUp(environmentMenu(), from: buttons[Item.environment]) }
 
+    private var remote = false
+
     func set(environment: String, remote: Bool) {
+        self.remote = remote
         buttons[Item.environment]?.title = environment + "  ⌄"
-        buttons[Item.environment]?.contentTintColor = remote ? .systemOrange : .systemGreen
+        buttons[Item.environment]?.contentTintColor = remote ? .systemOrange : ThemeColors.positive
         buttons[Item.environment]?.toolTip = "Environment: " + environment
     }
 

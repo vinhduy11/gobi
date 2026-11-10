@@ -12,8 +12,8 @@ let package = Package(
         .executable(name: "GobiApp", targets: ["GobiApp"]),
     ],
     dependencies: [
-        // The terminal emulator view for the Terminal panel (MIT licence). Only the app shell imports it.
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.5.1"),
+        // The terminal emulator view for the Terminal panel (MIT licence), vendored and patched: see Vendor/SwiftTerm/VENDORED.md. Only the app shell imports it.
+        .package(path: "Vendor/SwiftTerm"),
     ],
     targets: [
         // Layer 1: logic with no imports at all (no Foundation, no AppKit). Same on every platform's port.
@@ -29,6 +29,8 @@ let package = Package(
         .executableTarget(name: "gobi-check", dependencies: ["GobiModel", "GobiClient", "GobiEditor"]),
         .testTarget(name: "GobiModelTests", dependencies: ["GobiModel"]),
         .testTarget(name: "GobiClientTests", dependencies: ["GobiModel", "GobiClient"]),
+        // The patches to the vendored SwiftTerm (Vendor/SwiftTerm/VENDORED.md), each with its test.
+        .testTarget(name: "TerminalForkTests", dependencies: [.product(name: "SwiftTerm", package: "SwiftTerm")]),
     ],
     swiftLanguageModes: [.v5]
 )

@@ -1,4 +1,5 @@
 import AppKit
+import GobiEditor
 import GobiModel
 
 /// What the Welcome window shows for one recent project, read from its folder.
@@ -60,7 +61,7 @@ private final class ActionRow: NSView {
     init(symbol: String, title: String, subtitle: String, shortcut: String) {
         super.init(frame: .zero)
         let icon = NSImageView(image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage())
-        icon.contentTintColor = .controlAccentColor
+        icon.contentTintColor = ThemeColors.accent
         icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 18, weight: .regular)
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = NSFont.systemFont(ofSize: 13)
@@ -128,7 +129,7 @@ private final class DropZone: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10, yRadius: 10)
         path.setLineDash([4, 3], count: 2, phase: 0)
-        (isTargeted ? NSColor.controlAccentColor : NSColor.separatorColor).setStroke()
+        (isTargeted ? ThemeColors.accent : NSColor.separatorColor).setStroke()
         path.stroke()
     }
 
@@ -345,7 +346,7 @@ final class WelcomeWindowController: NSWindowController, NSTableViewDataSource, 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let facts = rows[row]
         let icon = NSImageView(image: NSImage(systemSymbolName: facts.isRestricted ? "folder" : "folder.fill", accessibilityDescription: nil) ?? NSImage())
-        icon.contentTintColor = facts.isRestricted ? .secondaryLabelColor : .controlAccentColor
+        icon.contentTintColor = facts.isRestricted ? .secondaryLabelColor : ThemeColors.accent
         icon.widthAnchor.constraint(equalToConstant: 22).isActive = true
         let name = NSTextField(labelWithString: facts.name)
         name.font = NSFont.systemFont(ofSize: 13, weight: .semibold)

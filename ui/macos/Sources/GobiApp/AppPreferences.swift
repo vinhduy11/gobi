@@ -6,7 +6,7 @@ import GobiModel
 enum AppPreferences {
     static let didChange = Notification.Name("GobiAppPreferencesDidChange")
     private static let defaults = UserDefaults.standard
-    static let keys = ["gobi.generalSettings", "gobi.terminalSettings", "gobi.gitSettings", "gobi.keymapOverrides", "gobi.advancedSettings"]
+    static let keys = ["gobi.generalSettings", "gobi.terminalSettings", "gobi.gitSettings", "gobi.keymapOverrides", "gobi.advancedSettings", "gobi.themeSettings"]
 
     static var general: GeneralSettings {
         get { GeneralSettings.decodeOrDefault(defaults.string(forKey: keys[0]) ?? "") }
@@ -38,6 +38,11 @@ enum AppPreferences {
         defaults.set(KeymapMigration.currentVersion, forKey: versionKey)
     }
 
+    static var theme: ThemeSettings {
+        get { ThemeSettings.decodeOrDefault(defaults.string(forKey: keys[5]) ?? "") }
+        set { store(newValue.encoded(), keys[5]); ThemeController.apply() }
+    }
+
     static var advanced: AdvancedSettings {
         get { AdvancedSettings.decodeOrDefault(defaults.string(forKey: keys[4]) ?? "") }
         set { store(newValue.encoded(), keys[4]) }
@@ -58,8 +63,8 @@ enum AppPreferences {
     /// projects, trusted folders and Keychain secrets are left alone.
     static func resetAll() {
         for key in keys + ["gobi.editorSettings", "gobi.formatOnSave", "gobi.organizeImportsOnSave", "gobi.trimTrailingWhitespace", "gobi.finalNewline",
-                           "gobi.appearance", "gobi.loadDotEnv", "gobi.terminalShell"] { defaults.removeObject(forKey: key) }
-        WindowSettings.applyAppearance()
+                           "gobi.loadDotEnv", "gobi.terminalShell"] { defaults.removeObject(forKey: key) }
+        ThemeController.apply()
         NotificationCenter.default.post(name: didChange, object: nil)
         NotificationCenter.default.post(name: EditorPreferences.didChange, object: nil)
     }

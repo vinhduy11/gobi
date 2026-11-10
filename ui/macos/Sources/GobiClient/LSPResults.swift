@@ -57,6 +57,13 @@ public enum LSPResults {
     }
 
     /// The text of a hover answer: MarkupContent, a string, a MarkedString, or a list of those.
+    /// The `data` numbers of a semantic tokens answer; empty for anything else.
+    public static func semanticTokenData(_ result: Any?) -> [Int] {
+        guard let answer = result as? [String: Any], let data = answer["data"] as? [Any] else { return [] }
+        let numbers = data.compactMap { ($0 as? NSNumber)?.intValue ?? ($0 as? Int) }
+        return numbers.count == data.count ? numbers : []
+    }
+
     public static func hoverText(_ result: Any?) -> String? {
         guard let dictionary = result as? [String: Any], let contents = dictionary["contents"] else { return nil }
         func text(_ value: Any) -> String? {

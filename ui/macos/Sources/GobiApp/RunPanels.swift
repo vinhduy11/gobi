@@ -230,7 +230,11 @@ final class TestsPanelView: NSView, NSTableViewDataSource, NSTableViewDelegate, 
         filter.placeholderString = "Filter tests"
         filter.delegate = self
         filter.setAccessibilityLabel("Filter tests")
-        filter.widthAnchor.constraint(equalToConstant: 160).isActive = true
+        // 160 pt when there is room; in a narrow sidebar the filter gives way first.
+        let filterWidth = filter.widthAnchor.constraint(equalToConstant: 160)
+        filterWidth.priority = NSLayoutConstraint.Priority(499)
+        filterWidth.isActive = true
+        filter.setContentCompressionResistancePriority(NSLayoutConstraint.Priority(250), for: .horizontal)
         let bar = NSStackView(views: [summary, time, NSView(), filter, runFailed, runAll])
         bar.spacing = 10
         bar.edgeInsets = NSEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)

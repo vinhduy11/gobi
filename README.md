@@ -61,7 +61,8 @@ macOS first; Windows and Linux UIs come later next to it.
   history, Go to File, Command Palette.
 - **Safe by default**: Restricted Mode for projects you have not trusted, unsaved edits recovered after a crash,
   changes made on disk by other programs noticed and never overwritten silently.
-- **Settings**: editor, languages, keymap, terminal, git and advanced tabs, applied live.
+- **Settings**: general, editor, languages, keymap, terminal, git, advanced and appearance tabs, applied live. Appearance has seven themes (Islands Light and Dark, High Contrast, Solarized Light and Dark, One Light and Dark) with colours sampled from JetBrains, Sync with OS, an editor colour scheme, an accent colour and rounded island panels.
+- **Semantic highlighting**: gopls' semantic tokens colour types, functions, parameters, fields, constants and packages, per theme.
 
 ## Benchmark
 
@@ -125,7 +126,7 @@ for a bug report. See [logging](docs/architect/logging.md).
 
 - `core/`: `gobid`, a cross-platform Go daemon. It supervises gopls and the other tools and talks to the UI over a local
   socket with channels for language server, terminal, run, git, debug and control requests.
-- `ui/macos/`: native Swift / AppKit UI, in layers (model, client, editor, app) checked by `scripts/check-layers.sh`.
+- `ui/macos/`: native Swift / AppKit UI, in layers (model, client, editor, app) checked by `scripts/check-layers.sh`. The terminal view is SwiftTerm, vendored and patched in `ui/macos/Vendor/SwiftTerm` (see its `VENDORED.md`).
 - `docs/`: architecture, plans, diagrams, mockups and per-implementation reports.
 
 Further reading: [layers](docs/architect/layers.md), [wire protocol](docs/architect/wire-protocol.md),

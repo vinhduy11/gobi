@@ -1,5 +1,6 @@
 import AppKit
 import GobiClient
+import GobiEditor
 import GobiModel
 import SwiftTerm
 
@@ -68,8 +69,8 @@ private final class TerminalTabView: NSView {
     private var selected = false
 
     override func updateLayer() {
-        layer?.borderColor = (selected ? NSColor.controlAccentColor : NSColor.clear).cgColor
-        layer?.backgroundColor = (selected ? NSColor.controlAccentColor.withAlphaComponent(0.14) : NSColor.clear).cgColor
+        layer?.borderColor = (selected ? ThemeColors.accent : NSColor.clear).cgColor
+        layer?.backgroundColor = (selected ? ThemeColors.accent.withAlphaComponent(0.14) : NSColor.clear).cgColor
     }
     override var wantsUpdateLayer: Bool { true }
     override func mouseDown(with event: NSEvent) { onSelect?() }
@@ -91,30 +92,6 @@ final class GobiTerminalView: TerminalView {
         guard bounds.size != laidOutSize else { return }
         laidOutSize = bounds.size
         frame = frame
-    }
-
-    /// SwiftTerm scrolls its own scrollback on the wheel and never tells the program. A full-screen program (Claude Code, vim, less)
-    /// has no scrollback to show, so the wheel goes to it: as wheel mouse events when it asked for the mouse, else as arrow keys on the
-    /// alternate screen. Shift keeps the local scroll.
-    /// Returns whether the event was handed to the program (SwiftTerm's `scrollWheel` cannot be overridden, so the pane calls this first).
-    func forwardWheel(_ event: NSEvent) -> Bool {
-        let terminal = getTerminal()
-        let mouse = terminal.mouseMode != .off
-        guard !event.modifierFlags.contains(.shift), mouse || terminal.isCurrentBufferAlternate, event.deltaY != 0 else { return false }
-        let up = event.deltaY > 0
-        let steps = min(max(Int(abs(event.deltaY)), 1), 5)
-        if mouse {
-            let point = convert(event.locationInWindow, from: nil)
-            let col = min(max(Int(point.x / max(bounds.width, 1) * CGFloat(terminal.cols)), 0), terminal.cols - 1)
-            let row = min(max(Int((bounds.height - point.y) / max(bounds.height, 1) * CGFloat(terminal.rows)), 0), terminal.rows - 1)
-            let flags = terminal.encodeButton(button: up ? 4 : 5, release: false, shift: false, meta: false, control: event.modifierFlags.contains(.control))
-            for _ in 0..<steps { terminal.sendEvent(buttonFlags: flags, x: col, y: row) }
-        } else {
-            let key: UInt8 = up ? UInt8(ascii: "A") : UInt8(ascii: "B")
-            let arrow: [UInt8] = [0x1b, terminal.applicationCursor ? UInt8(ascii: "O") : UInt8(ascii: "["), key]
-            for _ in 0..<steps { send(arrow) }
-        }
-        return true
     }
 
     override func selectionChanged(source: Terminal) {
@@ -149,14 +126,11 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         var pending: [[UInt8]] = []
         /// True while the "Starting shell…" line is on screen, until the shell's first output or an error replaces it.
         var starting = true
-        /// Drops escape sequences SwiftTerm misreads (see `TerminalOutputFilter`); keeps the unfinished tail between chunks.
-        var outputFilter = TerminalOutputFilter()
         init(view: TerminalView, title: String) { self.view = view; self.title = title }
     }
 
     private let root: URL
     private let trusted: Bool
-    private var wheelMonitor: Any?
     private var sessions: [Session] = []
     private var selected = 0
     private let strip = NSStackView()
@@ -184,18 +158,12 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         super.init(frame: .zero)
         build()
         if trusted { loadShells() }
-        wheelMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
-            guard let self, let window = self.window, event.window === window else { return event }
-            let hit = window.contentView?.hitTest(event.locationInWindow)
-            return (hit as? GobiTerminalView)?.forwardWheel(event) == true ? nil : event
-        }
         NotificationCenter.default.addObserver(forName: AppPreferences.didChange, object: nil, queue: .main) { [weak self] _ in self?.applySettingsToAll() }
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
     deinit {
-        if let wheelMonitor { NSEvent.removeMonitor(wheelMonitor) }
         sessions.forEach { $0.client?.close(); $0.split?.client?.close() }
     }
 
@@ -287,7 +255,7 @@ final class TerminalPane: NSView, TerminalViewDelegate {
         trust.keyEquivalent = "\r"
         let learn = NSButton(title: "Learn More", target: self, action: #selector(learnMorePressed))
         learn.isBordered = false
-        learn.contentTintColor = .controlAccentColor
+        learn.contentTintColor = ThemeColors.accent
         let buttons = NSStackView(views: [trust, learn])
         buttons.spacing = 12
         let stack = NSStackView(views: [title, text, buttons])
@@ -350,14 +318,14 @@ final class TerminalPane: NSView, TerminalViewDelegate {
 
     /// The palette for the window's current light or dark appearance, with the soft ANSI colours.
     private func applyPalette(to view: TerminalView) {
-        let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        let palette = TerminalPalette.forAppearance(isDark: isDark)
+        let theme = ThemeColors.theme.palette
+        let palette = TerminalPalette.forTheme(ThemeColors.theme)
         func native(_ color: RGB) -> NSColor { NSColor(srgbRed: CGFloat(color.red) / 255, green: CGFloat(color.green) / 255, blue: CGFloat(color.blue) / 255, alpha: 1) }
         func swiftTermColor(_ color: RGB) -> Color { Color(red: UInt16(color.red) * 257, green: UInt16(color.green) * 257, blue: UInt16(color.blue) * 257) }
         view.installColors(palette.ansi.map(swiftTermColor))
-        view.nativeBackgroundColor = native(palette.background)
-        view.nativeForegroundColor = native(palette.foreground)
-        view.caretColor = native(palette.cursor)
+        view.nativeBackgroundColor = ThemeColors.bottomPanelBackground
+        view.nativeForegroundColor = native(theme.text)
+        view.caretColor = ThemeColors.accent
     }
 
     override func viewDidChangeEffectiveAppearance() {
@@ -385,9 +353,6 @@ final class TerminalPane: NSView, TerminalViewDelegate {
     private func makeSession() -> Session {
         let view = GobiTerminalView(frame: NSRect(x: 0, y: 0, width: 600, height: 200))
         view.terminalDelegate = self
-        // The library fixes the scrollback when the buffer is made, so it is set on a fresh view only.
-        view.getTerminal().options.scrollback = AppPreferences.terminal.scrollback
-        view.getTerminal().resetNormalBuffer()
         applySettings(to: view)
         applyPalette(to: view)
         let chosen = ShellChoice.effective(selected: WindowSettings.terminalShell, shells: shells, login: loginShell)
@@ -403,12 +368,21 @@ final class TerminalPane: NSView, TerminalViewDelegate {
                 DispatchQueue.main.async {
                     guard let self, let view, self.owns(view) else { client.close(); return }
                     session.client = client
+                    let terminal = view.getTerminal()
+                    // The library fixes the scrollback when the buffers are made, so it is set on a view that already has its real size.
+                    // `resetToInitialState` makes them again and points the terminal at the new one; `resetNormalBuffer` alone leaves it on the
+                    // old buffer, which then stops following the view (lines wrap at the starting width, new rows stay black).
+                    terminal.options.scrollback = AppPreferences.terminal.scrollback
+                    terminal.resetToInitialState()
+                    view.feed(text: "\u{1b}[2mStarting shell…\u{1b}[0m")
+                    // The size goes first: gobid starts the shell at the size of the first message.
+                    client.resize(columns: terminal.cols, rows: terminal.rows)
                     for queued in session.pending { client.send(queued) }
                     session.pending.removeAll()
                     client.onOutput = { [weak view, weak session] bytes in
                         DispatchQueue.main.async {
                             if session?.starting == true { session?.starting = false; view?.feed(text: "\r\u{1b}[2K") }
-                            view?.feed(byteArray: (session?.outputFilter.filter(bytes) ?? bytes)[...])
+                            view?.feed(byteArray: bytes[...])
                         }
                     }
                     client.onExit = { [weak view, weak session] code, message in
@@ -420,8 +394,6 @@ final class TerminalPane: NSView, TerminalViewDelegate {
                         }
                     }
                     client.start()
-                    let terminal = view.getTerminal()
-                    client.resize(columns: terminal.cols, rows: terminal.rows)
                 }
             } catch {
                 AppLog.shared.logError("terminal channel: cannot start a terminal: \(error)")
@@ -452,7 +424,8 @@ final class TerminalPane: NSView, TerminalViewDelegate {
     private func applySettingsToAll() {
         for session in sessions {
             applySettings(to: session.view)
-            if let split = session.split { applySettings(to: split.view) }
+            applyPalette(to: session.view)
+            if let split = session.split { applySettings(to: split.view); applyPalette(to: split.view) }
         }
     }
 

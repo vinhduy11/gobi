@@ -11,6 +11,8 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
     public private(set) var lineIndex: LineIndex
     public private(set) var syntaxIndex: SyntaxIndex
     public private(set) var version = 1
+    /// gopls' semantic tokens (types, functions, parameters...), kept in step with the text between its answers.
+    public private(set) var semantic = SemanticOverlay()
     public private(set) var changesSent = 0
     /// A line longer than this (in UTF-16 units) is not syntax coloured: TextKit lays out a paragraph as one unit, and
     /// colouring it costs about 13 s per keystroke at 1 MB (3800-character Go lines cost 3 ms). Measured on the 1 MB JSON.
@@ -37,6 +39,14 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
     private var syncKind: Int { client?.syncKind ?? 1 }
 
     public var uri: String { fileURL.absoluteString }
+
+    /// Takes gopls' answer for the text as it was at `version`; false (and nothing changes) when the text has moved on since.
+    @discardableResult
+    public func setSemanticTokens(_ tokens: [Int: [SyntaxToken]], forVersion version: Int) -> Bool {
+        guard version == self.version else { return false }
+        semantic.replace(tokens)
+        return true
+    }
 
     /// `lineLimit`: a line longer than this (UTF-16 units) opens the file read-only (default `editableLineLimit`).
     public init(fileURL: URL, text: String, lineLimit: Int = EditorDocument.editableLineLimit) {
@@ -108,6 +118,7 @@ public final class EditorDocument: NSObject, NSTextStorageDelegate {
         let change = lineIndex.replace(range: oldRange, with: insertedUnits, before: unitBefore, after: unitAfter)
         version += 1
         if lineIndex.lineRange(change.firstLine).count > Self.overlongLineLimit { hasOverlongLine = true }
+        semantic.edited(firstLine: change.firstLine, oldLineCount: change.oldLineCount, newLineCount: change.newLineCount)
 
         let changed = syntaxIndex.update(firstLine: change.firstLine, oldLineCount: change.oldLineCount, newLineCount: change.newLineCount) { [self] line in
             lineUnits(line, in: textStorage)

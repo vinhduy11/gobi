@@ -1,4 +1,5 @@
 import AppKit
+import GobiEditor
 import GobiModel
 
 /// A row of the usages tree.
@@ -234,7 +235,7 @@ final class UsagesPanelView: NSView, NSOutlineViewDataSource, NSOutlineViewDeleg
             return Self.row([number, text], spacing: 10)
         case .more(let count):
             let label = NSTextField(labelWithString: "Show \(count) more usages")
-            label.textColor = .controlAccentColor
+            label.textColor = ThemeColors.accent
             return Self.row([label])
         }
     }

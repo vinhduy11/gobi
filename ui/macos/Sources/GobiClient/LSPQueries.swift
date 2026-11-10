@@ -39,6 +39,13 @@ extension LSPClient {
         }
     }
 
+    /// The semantic tokens of a whole file as gopls' relative-encoded numbers (decode them with `SemanticTokens`).
+    public func semanticTokens(uri: String, completion: @escaping ([Int]) -> Void) {
+        _ = request("textDocument/semanticTokens/full", params: ["textDocument": ["uri": uri]]) { result in
+            if case .success(let value) = result { completion(LSPResults.semanticTokenData(value)) } else { completion([]) }
+        }
+    }
+
     public func hover(uri: String, at position: LSPPosition, completion: @escaping (String?) -> Void) {
         _ = request("textDocument/hover", params: params(uri: uri, position)) { result in
             if case .success(let value) = result { completion(LSPResults.hoverText(value)) } else { completion(nil) }

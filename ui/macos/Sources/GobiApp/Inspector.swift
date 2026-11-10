@@ -7,7 +7,6 @@ enum WindowSettings {
     private static let importsKey = "gobi.organizeImportsOnSave"
     private static let trimKey = "gobi.trimTrailingWhitespace"
     private static let newlineKey = "gobi.finalNewline"
-    private static let appearanceKey = "gobi.appearance"
     private static let shellKey = "gobi.terminalShell"
     /// The shell new terminals start, an absolute path; empty is the login shell.
     static var terminalShell: String {
@@ -56,20 +55,6 @@ enum WindowSettings {
     static var finalNewline: Bool {
         get { defaults.object(forKey: newlineKey) == nil ? true : defaults.bool(forKey: newlineKey) }
         set { defaults.set(newValue, forKey: newlineKey) }
-    }
-
-    /// 0 System, 1 Light, 2 Dark.
-    static var appearance: Int {
-        get { defaults.integer(forKey: appearanceKey) }
-        set { defaults.set(newValue, forKey: appearanceKey); applyAppearance() }
-    }
-
-    static func applyAppearance() {
-        switch appearance {
-        case 1: NSApp.appearance = NSAppearance(named: .aqua)
-        case 2: NSApp.appearance = NSAppearance(named: .darkAqua)
-        default: NSApp.appearance = nil
-        }
     }
 
     /// Format with gofmt (through gopls) when saving a Go file. On by default, as in the mock's status bar.

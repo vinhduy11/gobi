@@ -116,3 +116,28 @@ func TestTerminalIsRefusedInAnUntrustedWorkspace(t *testing.T) {
 		t.Fatalf("an untrusted workspace must not get a terminal, got %v", err)
 	}
 }
+
+func TestTerminalStartsAtTheSizeOfTheFirstMessage(t *testing.T) {
+	var resize wire.Writer
+	resize.Uint(terminalKind, terminalResize)
+	resize.Uint(terminalCols, 190)
+	resize.Uint(terminalRows, 40)
+	if cols, rows := initialTerminalSize(resize.Bytes()); cols != 190 || rows != 40 {
+		t.Fatalf("a resize first starts the shell at 190x40, got %dx%d", cols, rows)
+	}
+	var input wire.Writer
+	input.Uint(terminalKind, terminalInput)
+	input.Raw(terminalData, []byte("ls\n"))
+	for name, first := range map[string][]byte{"input": input.Bytes(), "nothing": nil, "garbage": {0xff, 0xff}} {
+		if cols, rows := initialTerminalSize(first); cols != 80 || rows != 24 {
+			t.Fatalf("%s first starts the shell at 80x24, got %dx%d", name, cols, rows)
+		}
+	}
+	var huge wire.Writer
+	huge.Uint(terminalKind, terminalResize)
+	huge.Uint(terminalCols, 1<<20)
+	huge.Uint(terminalRows, 24)
+	if cols, rows := initialTerminalSize(huge.Bytes()); cols != 80 || rows != 24 {
+		t.Fatalf("an impossible size falls back to 80x24, got %dx%d", cols, rows)
+	}
+}

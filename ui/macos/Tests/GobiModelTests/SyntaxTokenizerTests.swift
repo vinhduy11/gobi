@@ -105,3 +105,17 @@ struct DataLanguageTokenizerTests {
         #expect(close.tokens == ["comment:```"] && close.end == .normal)
     }
 }
+
+@Suite("Go directive colour")
+struct GoDirectiveColourTests {
+    @Test func aDirectiveCommentIsAnAnnotationLikeJetBrainsDrawsOne() {
+        #expect(lex("//go:generate stringer -type=Kind").tokens == ["annotation://go:generate stringer -type=Kind"])
+        #expect(lex("\t//go:noinline").tokens == ["annotation://go:noinline"])
+        #expect(lex("//go:build linux && amd64").tokens == ["annotation://go:build linux && amd64"])
+    }
+
+    @Test func anOrdinaryCommentOrATrailingOneStaysAComment() {
+        #expect(lex("// go:generate is how it works").tokens == ["comment:// go:generate is how it works"])
+        #expect(lex("x := 1 //go:noinline").tokens == ["number:1", "comment://go:noinline"])
+    }
+}

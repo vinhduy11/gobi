@@ -55,3 +55,14 @@ struct FileKindTests {
         #expect(FileKind.goMod.look.color != FileKind.goSource.look.color)
     }
 }
+
+@Suite("HTML icons")
+struct HTMLIconTests {
+    @Test func htmlFilesGetAGreenAngleBracketGlyphLikeJetBrains() {
+        for name in ["index.html", "Page.HTM", "report.htm"] {
+            #expect(FileKind.classify(name: name, isDirectory: false) == .html, "\(name)")
+        }
+        #expect(FileKind.html.look == FileLook(style: .glyph, text: "<>", symbol: "", color: .green))
+        #expect(FileKind.json.look.color == .purple && FileKind.json.look.text == "{}")
+    }
+}

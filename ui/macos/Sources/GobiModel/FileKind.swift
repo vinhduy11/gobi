@@ -29,7 +29,7 @@ public struct FileLook: Equatable {
 }
 
 public enum FileKind: CaseIterable, Equatable {
-    case folder, goSource, goTest, goMod, goSum, goWork, markdown, yaml, json, toml, makefile, git, env, shell, docker, proto, sql, image, text, generic
+    case folder, goSource, goTest, goMod, goSum, goWork, markdown, html, yaml, json, toml, makefile, git, env, shell, docker, proto, sql, image, text, generic
 
     public static func classify(name: String, isDirectory: Bool) -> FileKind {
         if isDirectory { return .folder }
@@ -50,6 +50,7 @@ public enum FileKind: CaseIterable, Equatable {
         switch lower[lower.index(after: dot)...] {
         case "go": return .goSource
         case "md", "markdown": return .markdown
+        case "html", "htm": return .html
         case "yml", "yaml": return .yaml
         case "json": return .json
         case "toml": return .toml
@@ -71,6 +72,7 @@ public enum FileKind: CaseIterable, Equatable {
         case .goSum: return FileLook(style: .documentSymbol, text: "", symbol: "lock.fill", color: .yellow)
         case .goWork: return FileLook(style: .documentLetter, text: "W", symbol: "", color: .teal)
         case .markdown: return FileLook(style: .glyph, text: "M↓", symbol: "", color: .blue)
+        case .html: return FileLook(style: .glyph, text: "<>", symbol: "", color: .green)
         case .yaml: return FileLook(style: .documentLetter, text: "Y", symbol: "", color: .red)
         case .json: return FileLook(style: .glyph, text: "{}", symbol: "", color: .purple)
         case .toml: return FileLook(style: .documentLetter, text: "T", symbol: "", color: .orange)

@@ -4,10 +4,9 @@ import GobiModel
 /// The Settings window (⌘,) from the Settings mocks: General, Editor, Languages, Keymap, Terminal, Git and Advanced. Controls with
 /// nothing behind them yet are drawn disabled.
 final class SettingsWindowController: NSWindowController {
-    private let tabs = NSSegmentedControl(labels: ["General", "Editor", "Languages", "Keymap", "Terminal", "Git", "Advanced"], trackingMode: .selectOne, target: nil, action: nil)
+    private let tabs = NSSegmentedControl(labels: ["General", "Editor", "Languages", "Keymap", "Terminal", "Git", "Advanced", "Appearance"], trackingMode: .selectOne, target: nil, action: nil)
     private let panes: [NSView]
-    let general = GeneralSettingsPane(), keymap = KeymapSettingsPane(), terminal = TerminalSettingsPane(), git = GitSettingsPane(), advanced = AdvancedSettingsPane()
-    let appearance = NSSegmentedControl(labels: ["System", "Light", "Dark"], trackingMode: .selectOne, target: nil, action: nil)
+    let general = GeneralSettingsPane(), keymap = KeymapSettingsPane(), terminal = TerminalSettingsPane(), git = GitSettingsPane(), advanced = AdvancedSettingsPane(), appearance = AppearanceSettingsPane()
     let formatOnSave = NSButton(checkboxWithTitle: "Format file", target: nil, action: nil)
     let trimWhitespace = NSButton(checkboxWithTitle: "Trim trailing whitespace", target: nil, action: nil)
     let finalNewline = NSButton(checkboxWithTitle: "Final newline", target: nil, action: nil)
@@ -29,7 +28,7 @@ final class SettingsWindowController: NSWindowController {
 
     init() {
         let editor = NSView(), languages = NSView()
-        panes = [general, editor, languages, keymap, terminal, git, advanced]
+        panes = [general, editor, languages, keymap, terminal, git, advanced, appearance]
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 560), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Settings"
         window.isReleasedWhenClosed = false
@@ -63,7 +62,7 @@ final class SettingsWindowController: NSWindowController {
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    /// The tab showing, in the order General, Editor, Languages, Keymap, Terminal, Git, Advanced.
+    /// The tab showing, in the order General, Editor, Languages, Keymap, Terminal, Git, Advanced, Appearance.
     var selectedPane: Int { panes.firstIndex { !$0.isHidden } ?? 1 }
 
     func select(pane: Int) {
@@ -99,8 +98,6 @@ final class SettingsWindowController: NSWindowController {
     }
 
     private func buildEditor(_ view: NSView) {
-        appearance.target = self
-        appearance.action = #selector(appearanceChanged)
         for box in [formatOnSave, trimWhitespace, finalNewline] { box.target = self; box.action = #selector(saveOptionsChanged) }
         invisibles.target = self
         invisibles.action = #selector(editorOptionChanged)
@@ -134,7 +131,6 @@ final class SettingsWindowController: NSWindowController {
         saveBoxes.alignment = .leading
         saveBoxes.spacing = 6
         let rows: [NSView] = [
-            row("Appearance", [appearance]),
             row("Font", [fontPopup, sizePopup]),
             row("Line height", [lineHeightPopup]),
             row("Indent using", [indentControl, tabsNote]),
@@ -243,7 +239,7 @@ final class SettingsWindowController: NSWindowController {
 
     /// Shows the stored values in the controls.
     func sync() {
-        appearance.selectedSegment = WindowSettings.appearance
+        appearance.sync()
         formatOnSave.state = WindowSettings.formatOnSave ? .on : .off
         goFormat.state = formatOnSave.state
         jsonErrors.state = WindowSettings.reportJSONErrors ? .on : .off
@@ -287,8 +283,6 @@ final class SettingsWindowController: NSWindowController {
     }
 
     @objc private func dotEnvChanged() { WindowSettings.loadDotEnv = loadDotEnv.state == .on }
-
-    @objc private func appearanceChanged() { WindowSettings.appearance = appearance.selectedSegment }
 
     @objc private func saveOptionsChanged() {
         WindowSettings.formatOnSave = formatOnSave.state == .on

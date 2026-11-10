@@ -4,6 +4,8 @@
 
 public enum SyntaxKind: UInt8, Sendable {
     case keyword, builtin, string, character, comment, number, heading, code, marker, key
+    /// What gopls knows and the lexer cannot (see `SemanticTokens`), and directive comments like `//go:generate`.
+    case typeName, function, parameter, property, constant, namespace, annotation
 }
 
 public struct SyntaxToken: Equatable, Sendable {
@@ -41,6 +43,14 @@ private func isIdentifierStart(_ unit: UInt16) -> Bool {
 }
 
 private func isIdentifierPart(_ unit: UInt16) -> Bool { isIdentifierStart(unit) || isDigit(unit) }
+
+/// `//go:name` as the first thing on a line is a compiler directive (go:generate, go:build, go:noinline), not prose.
+private func isDirective(_ line: [UInt16], from start: Int, lineStart: Bool) -> Bool {
+    guard lineStart, start >= 0 else { return false }
+    for unit in line[..<start] where unit != 0x20 && unit != 0x09 { return false }
+    let marker = Array("//go:".utf16)
+    return line.count > start + marker.count && Array(line[start ..< start + marker.count]) == marker
+}
 
 // MARK: Go
 
@@ -125,7 +135,7 @@ private enum GoLexer {
             let unit = line[cursor]
             switch unit {
             case ascii("/") where cursor + 1 < count && line[cursor + 1] == ascii("/"):
-                add(cursor, count, .comment)
+                add(cursor, count, isDirective(line, from: cursor, lineStart: tokens.isEmpty) ? .annotation : .comment)
                 return (tokens, .normal)
             case ascii("/") where cursor + 1 < count && line[cursor + 1] == ascii("*"):
                 if let end = blockCommentEnd(from: cursor + 2) {

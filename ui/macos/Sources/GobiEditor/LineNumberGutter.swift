@@ -11,10 +11,9 @@ final class LineNumberGutter: NSView {
 
     private let document: EditorDocument
     private weak var textView: NSTextView?
-    private let attributes: [NSAttributedString.Key: Any] = [
-        .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
-        .foregroundColor: NSColor.secondaryLabelColor,
-    ]
+    private var attributes: [NSAttributedString.Key: Any] {
+        [.font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular), .foregroundColor: ThemeColors.editorSecondaryText]
+    }
     /// Lines (1-based) that carry a breakpoint, drawn as red dots; a click on the gutter asks to toggle one.
     var breakpoints: Set<Int> = [] { didSet { needsDisplay = true } }
     var conditional: Set<Int> = [] { didSet { needsDisplay = true } }
@@ -93,7 +92,7 @@ final class LineNumberGutter: NSView {
             drawCount += 1
             lastDrawMilliseconds = Double(DispatchTime.now().uptimeNanoseconds - started) / 1e6
         }
-        NSColor.windowBackgroundColor.setFill()
+        ThemeColors.gutterBackground.setFill()
         bounds.fill()
         NSColor.separatorColor.setFill()
         NSRect(x: bounds.maxX - 1, y: bounds.minY, width: 1, height: bounds.height).fill()

@@ -1,7 +1,7 @@
 // The terminal's colours: a background and foreground in the tone of the window, and a softer set of the sixteen ANSI colours
 // than the harsh pure ones terminals default to. Plain values; the app layer hands them to the terminal view.
 
-public struct RGB: Hashable {
+public struct RGB: Hashable, Sendable {
     public var red: UInt8
     public var green: UInt8
     public var blue: UInt8
@@ -60,4 +60,22 @@ public final class TerminalPalette {
         ])
 
     public static func forAppearance(isDark: Bool) -> TerminalPalette { isDark ? dark : light }
+
+    /// The canonical Solarized sixteen colours (the dark and light themes share them; only the background and text differ).
+    private static let solarized = TerminalPalette(
+        background: RGB(0x00, 0x2B, 0x36), foreground: RGB(0x83, 0x94, 0x96), cursor: RGB(0x93, 0xA1, 0xA1),
+        ansi: [
+            RGB(0x07, 0x36, 0x42), RGB(0xDC, 0x32, 0x2F), RGB(0x85, 0x99, 0x00), RGB(0xB5, 0x89, 0x00),
+            RGB(0x26, 0x8B, 0xD2), RGB(0xD3, 0x36, 0x82), RGB(0x2A, 0xA1, 0x98), RGB(0xEE, 0xE8, 0xD5),
+            RGB(0x00, 0x2B, 0x36), RGB(0xCB, 0x4B, 0x16), RGB(0x58, 0x6E, 0x75), RGB(0x65, 0x7B, 0x83),
+            RGB(0x83, 0x94, 0x96), RGB(0x6C, 0x71, 0xC4), RGB(0x93, 0xA1, 0xA1), RGB(0xFD, 0xF6, 0xE3),
+        ])
+
+    /// The sixteen ANSI colours that go with a theme.
+    public static func forTheme(_ theme: AppTheme) -> TerminalPalette {
+        switch theme {
+        case .solarizedDark, .solarizedLight: return solarized
+        default: return forAppearance(isDark: theme.isDark)
+        }
+    }
 }

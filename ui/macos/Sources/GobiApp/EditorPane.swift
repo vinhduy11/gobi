@@ -32,6 +32,7 @@ final class EditorPane: NSViewController {
     private(set) var isConnected = false
     /// The code lens above declarations (references, implementations, run test).
     private(set) var lens: CodeLensFeed!
+    private(set) var semanticTokens: SemanticTokensFeed!
     private var selectionObserver: NSObjectProtocol?
     private var preferencesObserver: NSObjectProtocol?
     private var appPreferencesObserver: NSObjectProtocol?
@@ -108,6 +109,7 @@ final class EditorPane: NSViewController {
             client.hover(uri: self.editorFile.uri, at: position) { text in DispatchQueue.main.async { done(self.editorFile.version == version ? text : nil) } }
         }
         lens = CodeLensFeed(pane: self)
+        semanticTokens = SemanticTokensFeed(pane: self)
         refreshRunButtons()
         runTextObserver = NotificationCenter.default.addObserver(forName: NSText.didChangeNotification, object: textView, queue: .main) { [weak self] _ in self?.scheduleRunButtons() }
         selectionObserver = NotificationCenter.default.addObserver(forName: NSTextView.didChangeSelectionNotification, object: editor.textView, queue: .main) { [weak self] _ in
@@ -166,6 +168,7 @@ final class EditorPane: NSViewController {
         let offset = editorFile.lineIndex.offset(of: LSPPosition(line: line, character: character))
         textView.setSelectedRange(NSRange(location: offset, length: 0))
         textView.scrollRangeToVisible(NSRange(location: offset, length: 0))
+        editor.settleHorizontalScrollAfterReveal()
         textView.window?.makeFirstResponder(textView)
     }
 
@@ -417,7 +420,7 @@ final class EditorPane: NSViewController {
                     DispatchQueue.main.async { self?.show(diagnostics) }
                 }
                 client.onNotification = { method, _ in
-                    if method == "gobi/lspRestarted" { DispatchQueue.main.async { self?.setStatus("Language server restarted") } }
+                    if method == "gobi/lspRestarted" { DispatchQueue.main.async { self?.setStatus("Language server restarted"); self?.semanticTokens.schedule(after: 1.0) } }
                 }
                 client.onDisconnect = { DispatchQueue.main.async { self?.setStatus("Disconnected from gobid") } }
                 client.start()
@@ -428,6 +431,7 @@ final class EditorPane: NSViewController {
                     self?.isConnected = true
                     self?.onConnected?()
                     self?.lens.schedule(after: 1.0)
+                    self?.semanticTokens.schedule(after: 1.0)
                     // Anything typed while connecting is covered by sending the current text, not the original.
                     let current = self?.textView.string ?? initialText
                     client.didOpen(uri: editorFile.uri, languageID: editorFile.language, version: editorFile.version, text: current)

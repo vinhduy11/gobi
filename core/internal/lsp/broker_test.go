@@ -238,3 +238,26 @@ func waitFor(t *testing.T, what string, condition func() bool) {
 	}
 	t.Fatalf("timed out waiting for %s", what)
 }
+
+func TestInitializeAsksGoplsForSemanticTokens(t *testing.T) {
+	broker := newTestBroker(t)
+	options := func(clientParams string) map[string]any {
+		t.Helper()
+		var params struct {
+			InitializationOptions map[string]any `json:"initializationOptions"`
+		}
+		if err := json.Unmarshal(broker.buildInitializeParams(json.RawMessage(clientParams)), &params); err != nil {
+			t.Fatal(err)
+		}
+		return params.InitializationOptions
+	}
+	// gopls sends no semantic tokens unless asked: they are off by default.
+	if got := options(`{"capabilities":{}}`); got["ui.semanticTokens"] != true {
+		t.Fatalf("semantic tokens must be switched on, got %v", got)
+	}
+	// What the client set itself stays, and its own choice about semantic tokens wins.
+	got := options(`{"capabilities":{},"initializationOptions":{"ui.staticcheck":true,"ui.semanticTokens":false}}`)
+	if got["ui.staticcheck"] != true || got["ui.semanticTokens"] != false {
+		t.Fatalf("the client's options must be kept, got %v", got)
+	}
+}
