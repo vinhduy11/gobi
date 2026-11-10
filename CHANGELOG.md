@@ -4,10 +4,13 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.0-alpha.9] - 2026-11-10
+
 ### Added
 - Updates with Sparkle. Gobi > Check for Updates… and Settings > General > Updates check an appcast (GitHub Pages) and install a new release after you confirm; the app also checks about once a day. An update is installed only when its DMG carries a valid EdDSA signature from the release key, so a tampered or unsigned download is refused. Settings > General > Include pre-releases (on by default in an alpha, beta or rc build) decides whether pre-releases are offered. The release workflow signs the DMG and publishes the appcast (`scripts/publish-appcast.sh`, `scripts/appcast.py`); `scripts/sparkle-key.sh` manages the key. This build is the first with updates, so it has to be installed by hand once.
 ### Added
 - Source control (the block in the sidebar) has a right-click menu on its changed files: Open, Show Diff, Stage, Unstage, Discard Changes…, Add to .gitignore (untracked files; a root-anchored pattern, written to the project's .gitignore), Reveal in Finder, Copy Path and Copy Relative Path. The rows can be selected together, and the menu then acts on all of them. `--selftest-git` covers it.
+
 ## [0.1.0-alpha.8] - 2026-11-10
 
 ### Fixed
@@ -293,7 +296,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.
 
-[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.8...HEAD
+[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.9...HEAD
+[0.1.0-alpha.9]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.8...v0.1.0-alpha.9
 [0.1.0-alpha.8]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.7...v0.1.0-alpha.8
 [0.1.0-alpha.7]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.6...v0.1.0-alpha.7
 [0.1.0-alpha.6]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
