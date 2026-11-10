@@ -4,8 +4,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.0-alpha.8] - 2026-11-10
+
 ### Fixed
 - CI: `TestUntrustedWorkspaceRunsTheServerWithLocalToolchain` failed whenever `GOTOOLCHAIN=local` was set in the environment, as it is on GitHub's runners; it was passing there only through the test cache. The test now sets the variable itself. The 0.1.0-alpha.7 tag was cut before this and its release workflow failed on the test, so that release was never published; alpha.8 carries the same changes.
+
 ## [0.1.0-alpha.7] - 2026-11-10
 
 ### Added
@@ -286,7 +289,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.
 
-[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.7...HEAD
+[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.8...HEAD
+[0.1.0-alpha.8]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.7...v0.1.0-alpha.8
 [0.1.0-alpha.7]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.6...v0.1.0-alpha.7
 [0.1.0-alpha.6]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
 [0.1.0-alpha.5]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.4...v0.1.0-alpha.5
