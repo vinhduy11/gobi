@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.0-alpha.7] - 2026-11-10
+
 ### Added
 - Settings > Appearance: a Theme list (Islands Light, Islands Dark, High Contrast, Solarized Light, Solarized Dark, One Light, One Dark) with Sync with OS, an Editor color scheme list ("Theme default" or any theme's editor colours), an Accent colour (four presets or a hex value) and Different tool window background. The theme colours the windows, the editor and its syntax colours, the gutter and the terminal. With Sync with OS on, a theme of the other brightness is swapped for One Light or One Dark when macOS is in the other mode.
 
@@ -282,7 +284,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.
 
-[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.6...HEAD
+[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.7...HEAD
+[0.1.0-alpha.7]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.6...v0.1.0-alpha.7
 [0.1.0-alpha.6]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
 [0.1.0-alpha.5]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.4...v0.1.0-alpha.5
 [0.1.0-alpha.4]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.3...v0.1.0-alpha.4
