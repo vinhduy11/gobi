@@ -75,7 +75,7 @@ struct MenuSpecTests {
         func all(_ entries: [MenuEntry]) -> [MenuEntry] { entries.flatMap { [$0] + all($0.children) } }
         let every = MenuSpec.all.flatMap { all($0.entries) }
         let live = every.filter { $0.action != nil }.map(\.title)
-        for title in ["New Project…", "Toggle Bottom Panel", "Commit…", "Build Project", "Stop", "Roll Back All…", "Sort Lines", "Recent Files", "New Window", "Next Project Window", "Show Next Tab"] {
+        for title in ["Check for Updates…", "New Project…", "Toggle Bottom Panel", "Commit…", "Build Project", "Stop", "Roll Back All…", "Sort Lines", "Recent Files", "New Window", "Next Project Window", "Show Next Tab"] {
             #expect(live.contains(title), "\(title) should be live")
         }
         let notBuilt = every.filter { !$0.isSeparator && $0.action == nil && $0.children.isEmpty }.map(\.title)

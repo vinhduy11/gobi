@@ -114,8 +114,10 @@ final class GeneralSettingsPane: SettingsPane, NSTableViewDataSource, NSTableVie
     let launch = settingsPopup(["Reopen the last project", "Show the Welcome window"])
     let recents = settingsPopup(GeneralSettings.recentLimits.map(String.init))
     let confirmQuit = settingsCheckbox("Before quitting with unsaved changes or running work")
-    /// Stays off: there is no update server to ask yet.
+    /// Off in a build that has no update feed.
     let updates = settingsCheckbox("Check for updates automatically", enabled: false)
+    let prereleases = settingsCheckbox("Include pre-releases (alpha, beta, rc)")
+    private let lastChecked = settingsHint("")
     let trustedTable = NSTableView()
     private(set) var trustedPaths: [String] = []
 
@@ -124,7 +126,10 @@ final class GeneralSettingsPane: SettingsPane, NSTableViewDataSource, NSTableVie
         for popup in [launch, recents] { popup.target = self; popup.action = #selector(changed) }
         confirmQuit.target = self
         confirmQuit.action = #selector(changed)
-        updates.toolTip = "Gobi has no update server yet"
+        updates.target = self
+        updates.action = #selector(updatesChanged)
+        prereleases.target = self
+        prereleases.action = #selector(prereleasesChanged)
         let forget = NSButton(title: "Forget Recent Projects", target: self, action: #selector(forgetRecents))
         forget.bezelStyle = .rounded
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("path"))
@@ -149,6 +154,8 @@ final class GeneralSettingsPane: SettingsPane, NSTableViewDataSource, NSTableVie
             settingsRow("Recent projects", [recents, settingsHint("shown in the Welcome window and File > Open Recent")]),
             settingsRow("Confirm", [confirmQuit]),
             settingsRow("Updates", [updates]),
+            settingsRow("", [prereleases]),
+            settingsRow("", [lastChecked]),
             settingsRow("Trusted folders", [trusted]),
             settingsRow("", [settingsHint("Projects inside a trusted folder open without asking. Others open in Restricted Mode until you trust them.")]),
             settingsRow("Reset", [forget]),
@@ -163,6 +170,17 @@ final class GeneralSettingsPane: SettingsPane, NSTableViewDataSource, NSTableVie
         launch.selectItem(at: general.onLaunch == .welcome ? 1 : 0)
         recents.selectItem(at: GeneralSettings.recentLimits.firstIndex(of: general.recentLimit) ?? 1)
         confirmQuit.state = general.confirmQuit ? .on : .off
+        prereleases.state = general.includesPrereleases(currentVersion: GobiClientVersion.current) ? .on : .off
+        if let updater = (NSApp.delegate as? AppDelegate)?.updater {
+            updates.isEnabled = true
+            updates.state = updater.automaticallyChecks ? .on : .off
+            updates.toolTip = nil
+            lastChecked.stringValue = updater.lastCheck.map { "Last checked " + $0.formatted(date: .abbreviated, time: .shortened) } ?? "Not checked yet"
+        } else {
+            updates.isEnabled = false
+            updates.toolTip = "This build has no update feed"
+            lastChecked.stringValue = "This build has no update feed."
+        }
         trustedPaths = ProjectStore.shared.trust.paths
         trustedTable.reloadData()
     }
@@ -174,6 +192,10 @@ final class GeneralSettingsPane: SettingsPane, NSTableViewDataSource, NSTableVie
             $0.confirmQuit = confirmQuit.state == .on
         }
     }
+
+    @objc private func prereleasesChanged() { AppPreferences.update(\.general) { $0.includePrereleases = prereleases.state == .on } }
+
+    @objc private func updatesChanged() { (NSApp.delegate as? AppDelegate)?.updater?.automaticallyChecks = updates.state == .on }
 
     @objc private func forgetRecents() {
         var list = ProjectStore.shared.recents

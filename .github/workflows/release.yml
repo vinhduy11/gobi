@@ -34,3 +34,10 @@ jobs:
           FLAGS=""; case "$VERSION" in *-*) FLAGS="--prerelease";; esac
           gh release create "${GITHUB_REF_NAME}" "dist/Gobi-$VERSION.dmg" "dist/Gobi-$VERSION.dmg.sha256" \
             --title "Gobi $VERSION" --notes-file "dist/RELEASE_NOTES-$VERSION.md" $FLAGS --verify-tag
+      - name: Appcast
+        # Signs the DMG and adds it to appcast.xml on gh-pages, which the app checks for updates. Without the secret the release stands
+        # and a warning says no update is offered.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: scripts/publish-appcast.sh

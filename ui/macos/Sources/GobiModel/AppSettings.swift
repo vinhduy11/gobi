@@ -20,6 +20,8 @@ public struct GeneralSettings: Equatable, Sendable {
     public var recentLimit = 10
     /// Ask before quitting while files have unsaved changes or a run or debug session is going.
     public var confirmQuit = true
+    /// Offer pre-release updates (alpha, beta, rc). nil until chosen: then a pre-release build does and a stable one does not.
+    public var includePrereleases: Bool?
     public init() {}
 
     public func validated() -> GeneralSettings {
@@ -28,7 +30,11 @@ public struct GeneralSettings: Equatable, Sendable {
         return s
     }
 
-    public func encoded() -> String { "onLaunch=\(onLaunch.rawValue)\nrecentLimit=\(recentLimit)\nconfirmQuit=\(confirmQuit)" }
+    public func encoded() -> String {
+        var text = "onLaunch=\(onLaunch.rawValue)\nrecentLimit=\(recentLimit)\nconfirmQuit=\(confirmQuit)"
+        if let includePrereleases { text += "\nincludePrereleases=\(includePrereleases)" }
+        return text
+    }
 
     public static func decodeOrDefault(_ text: String) -> GeneralSettings {
         let map = Lines.parse(text)
@@ -36,6 +42,7 @@ public struct GeneralSettings: Equatable, Sendable {
         if let v = map["onLaunch"].flatMap(Launch.init(rawValue:)) { s.onLaunch = v }
         if let v = map["recentLimit"].flatMap({ Int($0) }) { s.recentLimit = v }
         if let v = map["confirmQuit"] { s.confirmQuit = v == "true" }
+        if let v = map["includePrereleases"] { s.includePrereleases = v == "true" }
         return s.validated()
     }
 }

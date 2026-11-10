@@ -62,6 +62,7 @@ macOS first; Windows and Linux UIs come later next to it.
 - **Safe by default**: Restricted Mode for projects you have not trusted, unsaved edits recovered after a crash,
   changes made on disk by other programs noticed and never overwritten silently.
 - **Settings**: general, editor, languages, keymap, terminal, git, advanced and appearance tabs, applied live. Appearance has seven themes (Islands Light and Dark, High Contrast, Solarized Light and Dark, One Light and Dark) with colours sampled from JetBrains, Sync with OS, an editor colour scheme, an accent colour and rounded island panels.
+- **Updates**: Gobi > Check for Updates… and a daily automatic check, with updates verified by an EdDSA signature (Sparkle).
 - **Semantic highlighting**: gopls' semantic tokens colour types, functions, parameters, fields, constants and packages, per theme.
 
 ## Benchmark

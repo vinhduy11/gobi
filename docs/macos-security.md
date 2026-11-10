@@ -59,7 +59,7 @@ spctl --assess --type execute --verbose=2 /Applications/Gobi.app    # "rejected"
 
 ## 4. Permission prompts you may see
 
-An ad hoc signature changes with every build, so macOS may ask again after an update. All of these are macOS asking, and you can say
+An ad hoc signature changes with every build, so macOS may ask again after a manual update (an update installed by Gobi itself is not asked about). All of these are macOS asking, and you can say
 no; a feature that needs the permission will then report it.
 
 | Prompt | Why Gobi asks | If you refuse |
@@ -86,7 +86,11 @@ Knowing this helps you decide what to trust:
   `.env`, are never kept); profiles and run output in the project's `.gobi/` folder (ignored by git).
 - **No usage data.** Gobi has no analytics or crash upload. Crash and error logs stay on your machine; you decide whether to attach
   them to an issue (Help > Copy Diagnostics reduces paths to folder names).
-- **Updates.** There is no updater yet. Install a new release by replacing the app in Applications.
+- **Updates.** Gobi checks for a new release by reading a small feed (`appcast.xml`, on GitHub Pages) about once a day and when you choose
+  Gobi > Check for Updates…. The request carries the normal HTTP details (your IP address and the time) and nothing else that Gobi adds:
+  no usage data. A download is installed only if its EdDSA signature matches the key built into the app, so a tampered or unsigned file is
+  refused. An update you install this way is not quarantined, so macOS does not ask you to approve it again. Turn the daily check off in
+  Settings > General > Updates. Releases before the first one with this feature must be installed by hand.
 
 ## 6. Removing Gobi
 

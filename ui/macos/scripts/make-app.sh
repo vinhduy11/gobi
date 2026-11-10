@@ -27,6 +27,18 @@ mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 cp .build/release/GobiApp "$CONTENTS/MacOS/GobiApp"
 cp .build/gobid "$CONTENTS/MacOS/gobid"
 
+# Sparkle (updates): the framework SwiftPM fetched, copied with symlinks and permissions kept (ditto). Gobi is not sandboxed, so the XPC
+# services are left out. The executable finds the framework through this rpath.
+SPARKLE=".build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
+mkdir -p "$CONTENTS/Frameworks"
+ditto "$SPARKLE" "$CONTENTS/Frameworks/Sparkle.framework"
+rm -rf "$CONTENTS/Frameworks/Sparkle.framework/Versions/B/XPCServices" "$CONTENTS/Frameworks/Sparkle.framework/XPCServices"
+install_name_tool -add_rpath "@executable_path/../Frameworks" "$CONTENTS/MacOS/GobiApp"
+# The appcast and the public half of the EdDSA key that signs the releases (the private half is in the release maintainer's Keychain and
+# in the SPARKLE_ED_PRIVATE_KEY secret of the release workflow). Override both to test updates against another feed.
+UPDATE_FEED_URL=${UPDATE_FEED_URL:-https://vinhduy11.github.io/gobi/appcast.xml}
+SPARKLE_PUBLIC_KEY=${SPARKLE_PUBLIC_KEY:-1BcxRJKgaaAl0KF+iP965bcR0fh7jNVRldlCooigdbg=}
+
 # App icon: render Resources/AppIcon.svg into an iconset, then pack it into AppIcon.icns.
 ICONSET="$ROOT/.build/AppIcon.iconset"
 rm -rf "$ICONSET"
@@ -50,6 +62,10 @@ cat > "$CONTENTS/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSHighResolutionCapable</key><true/>
+    <key>SUFeedURL</key><string>$UPDATE_FEED_URL</string>
+    <key>SUPublicEDKey</key><string>$SPARKLE_PUBLIC_KEY</string>
+    <key>SUEnableAutomaticChecks</key><true/>
+    <key>SUScheduledCheckInterval</key><integer>86400</integer>
 </dict>
 </plist>
 PLIST
@@ -59,7 +75,14 @@ PLIST
 # hardened runtime that notarization requires.
 IDENTITY=${SIGN_IDENTITY:--}
 OPTIONS=""
+# The hardened runtime only with a Developer ID: it turns on library validation, which refuses a framework signed ad hoc by another
+# process ("different Team IDs") and Gobi would not start. With one Developer ID on both, the check passes.
 [ "$IDENTITY" != "-" ] && OPTIONS="--options runtime --timestamp"
+# Inside out, never --deep (it breaks the framework's signatures).
+SPARKLE_B="$CONTENTS/Frameworks/Sparkle.framework/Versions/B"
+codesign --force --sign "$IDENTITY" $OPTIONS "$SPARKLE_B/Autoupdate"
+codesign --force --sign "$IDENTITY" $OPTIONS "$SPARKLE_B/Updater.app"
+codesign --force --sign "$IDENTITY" $OPTIONS "$CONTENTS/Frameworks/Sparkle.framework"
 codesign --force --sign "$IDENTITY" $OPTIONS "$CONTENTS/MacOS/gobid"
 codesign --force --sign "$IDENTITY" $OPTIONS "$APP"
 codesign --verify --strict --verbose=2 "$APP"

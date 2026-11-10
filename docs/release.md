@@ -41,6 +41,31 @@ Gobi uses [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`, with a
    the notes file, attach the DMG and its `.sha256`, tick "Set as a pre-release" for alpha, beta and rc.
 7. Merge `main` back into `develop` so the release commit is on both.
 
+## Updates
+
+Gobi updates itself with [Sparkle](https://sparkle-project.org). The app reads an appcast (`appcast.xml` on the `gh-pages` branch, served by
+GitHub Pages at `https://vinhduy11.github.io/gobi/appcast.xml`) and trusts an update only if its DMG carries a valid EdDSA signature made
+with the release key. Design and the spike that proved it works for an ad-hoc app: `docs/architect/auto-update.md`.
+
+- The workflow signs the DMG and adds it to the appcast after it has published the release (`scripts/publish-appcast.sh`; the
+  appcast points at the release's DMG). A pre-release version goes in the `prerelease` channel; Settings > General > Include
+  pre-releases decides whether an app offers it (on by default in a pre-release build).
+- **The release key.** The private half is in the maintainer's login Keychain and in the repository secret `SPARKLE_ED_PRIVATE_KEY`; the
+  public half is in `ui/macos/scripts/make-app.sh` (`SPARKLE_PUBLIC_KEY`). `scripts/sparkle-key.sh check` says they match, `secret`
+  stores the key as the secret, `backup FILE` writes it for an offline copy. Keep a backup: if the key is lost, nobody can update by
+  themselves and everyone installs a new build by hand once; if it leaks, anyone can ship an update, so replace the key at once (new
+  key, new app build, manual install).
+- Without the secret a release is still published and the workflow warns that no update is offered.
+- First time only: create the `gh-pages` branch by running a release (the script creates it), then turn on GitHub Pages for it
+  (Settings > Pages > Deploy from a branch > `gh-pages`, folder `/`).
+- Try an update without a release: `UPDATE_FEED_URL=http://127.0.0.1:8000/appcast.xml SPARKLE_PUBLIC_KEY=<a throwaway key> make-app.sh`,
+  an appcast made with `scripts/appcast.py add`, `python3 -m http.server`. A build installed over another keeps its place: the new
+  app is signed ad hoc and differs from the old one; the EdDSA signature is what is checked.
+- Ad hoc signing and the hardened runtime do not mix: the hardened runtime turns on library validation, which refuses the Sparkle
+  framework ("different Team IDs"). `make-app.sh` turns it on only with a Developer ID (`SIGN_IDENTITY`).
+- Quitting to install asks the usual question when files are unsaved or something is running. The old `gobid` is replaced by the new
+  one when the new app starts (`DaemonFreshness`), which ends running terminals.
+
 ## Tracking what is installed
 
 - In the app: Gobi > About Gobi.

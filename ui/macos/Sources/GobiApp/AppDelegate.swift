@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         installMenu()
         NotificationCenter.default.addObserver(forName: AppPreferences.didChange, object: nil, queue: .main) { [weak self] _ in self?.installMenu() }   // a changed shortcut reaches the menu bar
         ThemeController.start()
+        if !CommandLine.arguments.contains(where: { $0.hasPrefix("--selftest") }) { updater = AppUpdater.makeIfConfigured() }
         if let pending = pendingProjectSelfTest { runProjectSelfTest(pending) }
         // Paths on the command line reach us through application(_:openFile:), which AppKit calls for each one.
         if CommandLine.arguments.contains("--selftest-welcome") { runWelcomeSelfTest(); return }
@@ -1766,7 +1767,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         check("and on brings them back", !(controller.currentPane?.editor.gitMarks.modified.isEmpty ?? true))
 
         // Quit confirmation, and the update check that stays off.
-        check("the update check is drawn disabled (no update server)", !settings.general.updates.isEnabled)
+        check("the update check is off in a build without an update feed", !settings.general.updates.isEnabled)
         check("quit confirmation is on by default", AppPreferences.general.confirmQuit && settings.general.confirmQuit.state == .on)
         controller.currentPane?.textView.insertText("// unsaved\n", replacementRange: NSRange(location: 0, length: 0))
         check("an edited file counts as unsaved (\(controller.unsavedFileCount))", controller.unsavedFileCount == 1)
@@ -2899,6 +2900,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.reload(projectRoot: frontProject?.root)
         controller.showWindow(nil)
         controller.window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// nil in a build that has no update feed, and in the self-tests.
+    private(set) var updater: AppUpdater?
+
+    /// Gobi > Check for Updates…
+    @objc func checkForUpdates(_ sender: Any?) {
+        if let updater { updater.checkForUpdates(); return }
+        let alert = NSAlert()
+        alert.messageText = "Updates are not available in this build"
+        alert.informativeText = "This copy of Gobi has no update feed. Download the latest release from the Gobi page on GitHub."
+        alert.runModal()
     }
 
     private var settingsWindow: SettingsWindowController?

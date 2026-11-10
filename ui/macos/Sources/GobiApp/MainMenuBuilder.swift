@@ -131,6 +131,7 @@ enum MainMenuBuilder {
         case "manageEnvironments": return #selector(AppDelegate.showEnvironments(_:))
         case "findInFiles": return #selector(AppDelegate.findInFiles(_:))
         case "settings": return #selector(AppDelegate.showSettings(_:))
+        case "checkForUpdates": return #selector(AppDelegate.checkForUpdates(_:))
         case "toggleInspector": return #selector(AppDelegate.toggleInspector(_:))
         case "toggleSidebar": return #selector(AppDelegate.toggleSidebar(_:))
         case "toggleBottomPanel": return #selector(AppDelegate.toggleBottomPanel(_:))

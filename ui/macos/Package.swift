@@ -14,6 +14,8 @@ let package = Package(
     dependencies: [
         // The terminal emulator view for the Terminal panel (MIT licence), vendored and patched: see Vendor/SwiftTerm/VENDORED.md. Only the app shell imports it.
         .package(path: "Vendor/SwiftTerm"),
+        // Updates (MIT licence): the standard updater, EdDSA-verified. Only the app shell imports it; make-app.sh embeds and signs the framework.
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.10.1"),
     ],
     targets: [
         // Layer 1: logic with no imports at all (no Foundation, no AppKit). Same on every platform's port.
@@ -23,7 +25,7 @@ let package = Package(
         // Layer 3: AppKit editor view built on the two layers below.
         .target(name: "GobiEditor", dependencies: ["GobiModel", "GobiClient"]),
         // Layer 4: the application shell.
-        .executableTarget(name: "GobiApp", dependencies: ["GobiModel", "GobiClient", "GobiEditor", .product(name: "SwiftTerm", package: "SwiftTerm")]),
+        .executableTarget(name: "GobiApp", dependencies: ["GobiModel", "GobiClient", "GobiEditor", .product(name: "SwiftTerm", package: "SwiftTerm"), .product(name: "Sparkle", package: "Sparkle")]),
         .executableTarget(name: "gobi-probe", dependencies: ["GobiModel", "GobiClient"]),
         .executableTarget(name: "gobi-bench", dependencies: ["GobiModel", "GobiClient", "GobiEditor"]),
         .executableTarget(name: "gobi-check", dependencies: ["GobiModel", "GobiClient", "GobiEditor"]),

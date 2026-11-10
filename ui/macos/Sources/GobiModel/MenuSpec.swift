@@ -34,7 +34,7 @@ public enum MenuSpec {
 
     public static let all: [MenuDefinition] = [
         MenuDefinition(title: "Gobi", entries: [
-            .item("About Gobi", "", "about"), .item("Check for Updates…"), .separator,
+            .item("About Gobi", "", "about"), .item("Check for Updates…", "", "checkForUpdates"), .separator,
             .item("Settings…", "⌘,", "settings"), .separator,
             .submenu("Services", "services"), .separator,
             .item("Hide Gobi", "⌘H", "hide"), .item("Hide Others", "⌥⌘H", "hideOthers"), .separator,
