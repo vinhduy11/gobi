@@ -89,6 +89,8 @@ func TestRegistryStopsTheServerWhenTheLastClientLeaves(t *testing.T) {
 }
 
 func TestUntrustedWorkspaceRunsTheServerWithLocalToolchain(t *testing.T) {
+	// The test compares trusted and untrusted environments, so it must not depend on the one it runs in: CI sets GOTOOLCHAIN=local.
+	t.Setenv("GOTOOLCHAIN", "auto")
 	registry := newTestRegistry()
 	t.Cleanup(registry.Close)
 

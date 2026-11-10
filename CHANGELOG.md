@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Fixed
+- CI: `TestUntrustedWorkspaceRunsTheServerWithLocalToolchain` failed whenever `GOTOOLCHAIN=local` was set in the environment, as it is on GitHub's runners; it was passing there only through the test cache. The test now sets the variable itself. The 0.1.0-alpha.7 tag was cut before this and its release workflow failed on the test, so that release was never published; alpha.8 carries the same changes.
 ## [0.1.0-alpha.7] - 2026-11-10
 
 ### Added
