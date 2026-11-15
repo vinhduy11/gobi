@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.0-alpha.10] - 2026-11-15
+
 ### Fixed
 - A dependency added with `go get` had no completions until Gobi was restarted: gopls was never told that go.mod, go.sum or go.work had changed. The disk watcher now sends it `workspace/didChangeWatchedFiles` when one of them changes in the project folder.
 
@@ -299,7 +301,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.
 
-[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.9...HEAD
+[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.10...HEAD
+[0.1.0-alpha.10]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.9...v0.1.0-alpha.10
 [0.1.0-alpha.9]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.8...v0.1.0-alpha.9
 [0.1.0-alpha.8]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.7...v0.1.0-alpha.8
 [0.1.0-alpha.7]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.6...v0.1.0-alpha.7
