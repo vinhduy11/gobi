@@ -5,6 +5,16 @@
     <link>https://github.com/vinhduy11/gobi</link>
     <description>Updates for Gobi</description>
     <item>
+      <title>0.1.0-alpha.10</title>
+      <sparkle:version>73</sparkle:version>
+      <sparkle:shortVersionString>0.1.0-alpha.10</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:channel>prerelease</sparkle:channel>
+      <pubDate>Sun, 15 Nov 2026 02:09:44 +0000</pubDate>
+      <sparkle:fullReleaseNotesLink>https://github.com/vinhduy11/gobi/releases/tag/v0.1.0-alpha.10</sparkle:fullReleaseNotesLink>
+      <enclosure url="https://github.com/vinhduy11/gobi/releases/download/v0.1.0-alpha.10/Gobi-0.1.0-alpha.10.dmg" length="12808908" type="application/x-apple-diskimage" sparkle:edSignature="BPznLH2DcSLEF1QxrY10j8di1stDdNIXR/FnZZn4tQvPB8pbktCHWDU+bSAYLz4S9Eueb1EmCXU2gcNvXdmtCw==" />
+    </item>
+    <item>
       <title>0.1.0-alpha.9</title>
       <sparkle:version>70</sparkle:version>
       <sparkle:shortVersionString>0.1.0-alpha.9</sparkle:shortVersionString>
