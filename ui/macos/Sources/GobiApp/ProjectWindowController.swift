@@ -1011,10 +1011,26 @@ final class ProjectWindowController: NSWindowController, NSOutlineViewDataSource
             }
         }
         if let name = reloaded.sorted().first { statusBar.set(note: "\(name) updated from disk") }
+        notifyModuleFilesChanged()
         if rootNode.refresh() {
             outline.reloadData()
             refreshGit()
         }
+    }
+
+    private var moduleStamps: [String: Date] = [:]
+
+    /// `go get` / `go mod tidy` rewrite go.mod, go.sum and go.work behind the editor's back; gopls only learns of it from this
+    /// notice, and without it a new dependency has no completions until the daemon restarts.
+    func notifyModuleFilesChanged() {
+        var changed: [String] = []
+        for name in ["go.mod", "go.sum", "go.work"] {
+            let url = root.appendingPathComponent(name)
+            let stamp = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+            defer { moduleStamps[name] = stamp }
+            if let stamp, let old = moduleStamps[name], old != stamp { changed.append(url.absoluteString) }
+        }
+        if !changed.isEmpty { panes.values.lazy.compactMap { $0.editorFile.client }.first?.didChangeWatchedFiles(uris: changed) }
     }
 
     /// The project button's menu: where the project is on disk.

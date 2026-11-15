@@ -156,6 +156,11 @@ public final class LSPClient: @unchecked Sendable {
         notify("textDocument/didOpen", params: ["textDocument": ["uri": uri, "languageId": languageID, "version": version, "text": text]])
     }
 
+    /// Tells the server files changed outside the editor (type 2 = changed). gopls reloads its module graph on go.mod / go.sum.
+    public func didChangeWatchedFiles(uris: [String]) {
+        notify("workspace/didChangeWatchedFiles", params: ["changes": uris.map { ["uri": $0, "type": 2] }])
+    }
+
     public func didChange(uri: String, version: Int, changes: [[String: Any]]) {
         notify("textDocument/didChange", params: ["textDocument": ["uri": uri, "version": version], "contentChanges": changes])
     }
