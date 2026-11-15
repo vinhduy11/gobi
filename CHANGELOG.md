@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Fixed
+- A dependency added with `go get` had no completions until Gobi was restarted: gopls was never told that go.mod, go.sum or go.work had changed. The disk watcher now sends it `workspace/didChangeWatchedFiles` when one of them changes in the project folder.
+
 ## [0.1.0-alpha.9] - 2026-11-10
 
 ### Added
