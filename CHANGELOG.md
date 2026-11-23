@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.0-alpha.11] - 2026-11-23
+
 ### Fixed
 - Copy in the Terminal (⌘C, Edit > Copy, Copy on select) put an empty string on the clipboard: the vendored SwiftTerm took the selection's start as both ends of a forward selection, so `getSelectedText` was always empty. Patched in `SelectionService.swift`, with `ClipboardTests` in `TerminalForkTests`.
 
@@ -304,7 +306,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - The handshake and the control channel are binary now (protobuf wire format, hand-coded in `internal/wire` and `GobiClient/Wire.swift`, no dependency). A JSON handshake is refused with a reply that says so. The LSP channel still carries JSON-RPC because gopls speaks it and the broker passes the bytes through. Both sides test the same golden bytes; the wire parser has a fuzz test. Field layout in `docs/architect/wire-protocol.md`.
 - `gobid` with no arguments now serves instead of printing usage.
 
-[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.10...HEAD
+[Unreleased]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.11...HEAD
+[0.1.0-alpha.11]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.10...v0.1.0-alpha.11
 [0.1.0-alpha.10]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.9...v0.1.0-alpha.10
 [0.1.0-alpha.9]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.8...v0.1.0-alpha.9
 [0.1.0-alpha.8]: https://github.com/vinhduy11/gobi/compare/v0.1.0-alpha.7...v0.1.0-alpha.8
