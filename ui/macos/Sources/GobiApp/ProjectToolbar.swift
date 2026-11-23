@@ -11,6 +11,17 @@ final class FlatToolbarButton: NSButton {
 
     func applyTheme() { if followsTheme { contentTintColor = ThemeColors.icon } }
 
+    private var widthPin: NSLayoutConstraint?
+
+    /// Sets the title and pins the width to fit it: a toolbar sizes its views once, so without this a title
+    /// set after the toolbar is built (project, branch) is clipped to the width of the placeholder text.
+    func setFittedTitle(_ text: String) {
+        title = text
+        widthPin?.isActive = false
+        widthPin = widthAnchor.constraint(equalToConstant: ceil(fittingSize.width))
+        widthPin?.isActive = true
+    }
+
     convenience init(symbol: String?, title: String = "", label: String, tint: NSColor? = nil, chevron: Bool = false, action: Selector?, target: AnyObject?) {
         self.init(frame: .zero)
         isBordered = false
@@ -100,11 +111,11 @@ final class ProjectToolbar: NSObject, NSToolbarDelegate {
 
     func set(project: String, branch: String?, target: String, toolchain: String, status: String) {
         statusSummary = status
-        buttons[Item.project]?.title = project + "  ⌄"
+        buttons[Item.project]?.setFittedTitle(project + "  ⌄")
         buttons[Item.project]?.toolTip = status
-        buttons[Item.branch]?.title = (branch ?? "no git") + "  ⌄"
-        buttons[Item.target]?.title = target + "  ⌄"
-        buttons[Item.toolchain]?.title = toolchain + "  ⌄"
+        buttons[Item.branch]?.setFittedTitle((branch ?? "no git") + "  ⌄")
+        buttons[Item.target]?.setFittedTitle(target + "  ⌄")
+        buttons[Item.toolchain]?.setFittedTitle(toolchain + "  ⌄")
         buttons[Item.toolchain]?.toolTip = "Go toolchain used by Run, Test and gopls"
     }
 
@@ -166,7 +177,7 @@ final class ProjectToolbar: NSObject, NSToolbarDelegate {
 
     func set(environment: String, remote: Bool) {
         self.remote = remote
-        buttons[Item.environment]?.title = environment + "  ⌄"
+        buttons[Item.environment]?.setFittedTitle(environment + "  ⌄")
         buttons[Item.environment]?.contentTintColor = remote ? .systemOrange : ThemeColors.positive
         buttons[Item.environment]?.toolTip = "Environment: " + environment
     }
