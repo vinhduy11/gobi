@@ -12,6 +12,7 @@ from upstream is marked `GOBI` in the source and has a test in `Tests/TerminalFo
 | SGR sub-parameters (`4:3`, `38:2::r:g:b`, `58:...`) | `Terminal.swift` `cmdCharAttributesWithSubParameters` | The colons were read as semicolons: `4:3` also switched italic on. |
 | `resetNormalBuffer` keeps `buffer` pointing at the new buffer | `Terminal.swift` | The terminal stayed on the replaced buffer, which no longer followed resizes: lines wrapped at the old width and added rows stayed black. |
 | `Terminal.sendWheel` and an `open` `scrollWheel` that uses it | `Terminal.swift`, `Mac/MacTerminalView.swift` | A full-screen program gets the wheel as mouse reports, or as arrow keys on the alternate screen. Shift keeps the local scrollback. |
+| `Selection.getSelectedText` takes the end as the max | `SelectionService.swift` | Upstream used the start for both ends of a forward selection, so the text was always empty: Copy (menu, ⌘C, Copy on select) put an empty string on the pasteboard. |
 
 To take a newer upstream: copy its `Sources/SwiftTerm` over this one, then re-apply the table above (`rg -n GOBI Sources`) and run the
 tests. Patches that upstream has fixed can be dropped together with their tests.

@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+### Fixed
+- Copy in the Terminal (⌘C, Edit > Copy, Copy on select) put an empty string on the clipboard: the vendored SwiftTerm took the selection's start as both ends of a forward selection, so `getSelectedText` was always empty. Patched in `SelectionService.swift`, with `ClipboardTests` in `TerminalForkTests`.
+
 ## [0.1.0-alpha.10] - 2026-11-15
 
 ### Fixed

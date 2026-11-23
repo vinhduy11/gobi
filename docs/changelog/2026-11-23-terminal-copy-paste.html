@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Terminal copy fix</title></head>
+<body>
+<h1>Terminal copy returned an empty string</h1>
+<h2>Specs</h2>
+<p>Bug report: in the bottom-panel Terminal, copy and paste do not work. Acceptance: selecting text and choosing Copy (⌘C or Edit &gt; Copy) puts that text on the pasteboard; Paste sends the pasteboard text to the shell.</p>
+<h2>Actions</h2>
+<ul>
+<li>Root cause: <code>Vendor/SwiftTerm/Sources/SwiftTerm/SelectionService.swift</code>, <code>getSelectedText()</code>. For a forward selection <code>max</code> was set to <code>start</code>, so min equalled max and <code>Terminal.getText</code> returned "". The terminal's <code>copy(_:)</code> therefore cleared the pasteboard and wrote "" (Copy on select was affected the same way). Fixed: <code>max</code> is <code>end</code> unless the selection runs backward.</li>
+<li>Tests (<code>Tests/TerminalForkTests/ClipboardTests.swift</code>): copy puts the selection on the pasteboard (was red), paste sends the pasteboard text, and Copy/Paste validate as enabled on the terminal.</li>
+<li>Recorded the patch in <code>Vendor/SwiftTerm/VENDORED.md</code> and CHANGELOG.</li>
+</ul>
+<h2>Tradeoffs</h2>
+<ul>
+<li>Patched the vendored library (as the other fixes are) instead of re-implementing the selection text in <code>GobiTerminalView</code>: one line, and covers every caller.</li>
+<li>Paste worked in the headless check when the terminal is the target, so no paste change was made. Not verified: a paste failure inside the running app (real key event, menu validation with the real key window, a connected shell). Pasted text is sent raw (no bracketed paste), as in SwiftTerm 1.5.1.</li>
+<li>The responder chain and menu key equivalents could not be driven headless (no key window), so the tests send the actions to the terminal directly.</li>
+</ul>
+</body></html>

@@ -532,10 +532,11 @@ class SelectionService: CustomDebugStringConvertible {
         } else {
             end
         }
+        // GOBI: upstream took `start` for the max when the selection runs forward, so min == max and the text was always empty.
         let max = if Position.compare(start, end) == .after {
-            end
-        } else {
             start
+        } else {
+            end
         }
         let r = terminal.getText(start: min, end: max)
         return r
